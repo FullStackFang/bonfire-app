@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-strong: rgba(255, 255, 255, 0.97);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+
+  /* Text */
+  --text: rgba(20, 20, 22, 0.96);
+  --text-muted: rgba(20, 20, 22, 0.55);
+  --text-faint: rgba(20, 20, 22, 0.38);
+
+  /* Brand */
+  --accent: #ff5c3a;
+  --accent-warm: #ff8c42;
+  --accent-glow: rgba(255, 92, 58, 0.45);
+
+  /* Status colors */
+  --status-available: #00c46a;
+  --status-out: #ff8c42;
+  --status-down: #9333ea;
+  --status-place: #0891b2;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #c9e0d5;
+  color: var(--text);
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Slow campfire simmer (warm halo around each marker) === */
+.simmer {
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+    rgba(255, 170, 60, 0.65) 0%,
+    rgba(255, 120, 40, 0.4) 35%,
+    rgba(255, 90, 30, 0.15) 60%,
+    transparent 80%
+  );
+  filter: blur(6px);
+  animation: simmer-out 3.6s ease-in-out infinite;
+}
+.simmer::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+    rgba(255, 215, 100, 0.7) 0%,
+    rgba(255, 150, 50, 0.4) 40%,
+    transparent 75%
+  );
+  filter: blur(3px);
+  animation: simmer-out 3.6s ease-in-out infinite;
+  animation-delay: 1.8s;
+}
+@keyframes simmer-out {
+  0%, 100% { transform: scale(0.88); opacity: 0.55; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+
+/* === AIM-style floating note above an avatar === */
+.note-bubble {
+  animation: noteFloat 4s ease-in-out infinite;
+  opacity: 0;
+}
+@keyframes noteFloat {
+  0%, 30%   { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  45%, 75%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100%      { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+}
+
+/* === Live status dot pulse === */
+.live-dot-pulse {
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(0.85); }
+}
+
+/* === Status dot glows (encoded as classes for Tailwind compatibility) === */
+.status-dot-available { background: var(--status-available); box-shadow: 0 0 10px var(--status-available); }
+.status-dot-out       { background: var(--status-out);       box-shadow: 0 0 10px var(--status-out); }
+.status-dot-down      { background: var(--status-down);      box-shadow: 0 0 10px var(--status-down); }
+.status-dot-place     { background: var(--status-place);     box-shadow: 0 0 10px var(--status-place); }
+
+/* === Vignette overlay (subtle edge darkening for depth) === */
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at top, transparent 55%, rgba(0,0,0,0.10) 100%),
+    radial-gradient(ellipse at bottom, transparent 45%, rgba(0,0,0,0.14) 100%);
+  z-index: 5;
+}
+
+/* === Pannable map cursor states === */
+.viewport { cursor: grab; }
+.viewport.dragging { cursor: grabbing; }
+
+/* === Backdrop and sheet transitions === */
+.sheet-enter { transform: translateY(0); }
+.sheet-exit  { transform: translateY(110%); }
