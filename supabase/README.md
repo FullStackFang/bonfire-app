@@ -38,6 +38,15 @@ Local Postgres + RLS schema for the Bonfire app. The migrations are written to b
 | `20260516000900_realtime.sql` | Publication for client subscriptions |
 | `20260516001000_user_profile_trigger.sql` | Auto-create `public.users` row when an `auth.users` row is created |
 
+## Auth setup (anonymous, for now)
+
+The welcome screen calls `supabase.auth.signInAnonymously()` to skip phone OTP during MVP. Two things must be true in the Supabase dashboard:
+
+1. **Authentication → Sign In / Up → Allow anonymous sign-ins**: toggle **on**.
+2. **Authentication → URL Configuration** doesn't matter for native; anonymous sign-in is API-only.
+
+Anonymous users get the `authenticated` role in their JWT (with `is_anonymous: true`), so all RLS policies in this schema apply to them unchanged. You can switch to phone OTP later without touching the schema — the `(auth)/phone.tsx` and `(auth)/verify.tsx` screens are still in the tree; just route to `/(auth)/phone` from welcome.
+
 ## RLS philosophy
 
 - Every table has RLS enabled. No row is readable by an unauthenticated client.

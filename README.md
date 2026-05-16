@@ -10,7 +10,7 @@ A real-time, circle-scoped presence app for iOS. This monorepo contains the mobi
 |---|---|---|
 | **M0** — Design system | Tokens (OKLCH→hex baked), nine base components, `/components-preview` route, font loading | — |
 | **M1** — Schema | 9 SQL migrations, RLS policies, fan-out triggers, Realtime publication, 25-venue seed | Need to apply via `supabase db reset` against a real project |
-| **M2** — Auth + onboarding | Welcome, phone, OTP with shake error, three-permission sheets, contact-match + circle build | OTP is mock; wire to `supabase.auth.signInWithOtp` once a project exists |
+| **M2** — Auth + onboarding | Welcome (anonymous sign-in for now, phone OTP screens kept in tree), three-permission sheets, contact-match + circle build | Phone OTP paused — needs Twilio/MessageBird; swap back later by routing welcome → `/(auth)/phone` |
 | **M3** — Network | Tabs (circles/friends/suggested), circle detail+edit, add-friend (phone/contacts/QR) | QR camera; phone search query |
 | **M4** — Go Live | Modal with three IntentBadge-anchored intent cards, visible-to picker, haptics | Real `presence_events` insert; venue auto-detect via `snap_to_venue` RPC |
 | **M5** — Home map | Skia map stage, breathing heatmap (`HeatmapPulse`), venue-grouped `AvatarStack`s, FAB | MapLibre swap — public interface of `<MapStage>` matches what MapLibre would expose |
