@@ -1,0 +1,409 @@
+<style>
+.pf{width:280px;background:#1a1a1a;border-radius:36px;padding:6px;margin:0 auto}
+.ps{width:100%;height:560px;background:#f0f2f5;border-radius:30px;overflow:hidden;position:relative}
+.pn{position:absolute;top:0;left:50%;transform:translateX(-50%);width:70px;height:18px;background:#1a1a1a;border-radius:0 0 12px 12px;z-index:20}
+.sb{height:28px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 18px 4px;font-size:11px;font-weight:500;color:#1a1a1a;position:relative;z-index:10}
+.sbi{display:flex;gap:4px;font-size:12px}
+.bn{position:absolute;bottom:0;left:0;right:0;height:54px;background:white;border-top:0.5px solid #e0e0e0;display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:8px;z-index:10}
+.bni{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:#999}
+.bni.a{color:#FF5C3A}
+.bni i{font-size:18px}
+.lbl{text-align:center;font-size:12px;color:var(--color-text-primary);margin-bottom:10px;font-weight:500}
+.lblN{display:inline-block;width:20px;height:20px;background:#FF5C3A;color:white;border-radius:50%;font-size:11px;line-height:20px;margin-right:6px;vertical-align:-4px}
+.lblK{font-size:10px;color:var(--color-text-secondary);font-weight:400;margin-left:4px}
+.fab{position:absolute;bottom:66px;right:14px;width:50px;height:50px;background:#FF5C3A;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;z-index:15;border:3px solid white}
+.av{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;border:2px solid white;color:white}
+.chip{display:inline-block;padding:5px 10px;border-radius:14px;font-size:10px;white-space:nowrap;font-weight:500;margin-right:4px}
+.chipA{background:#FF5C3A;color:white}
+.chipI{background:white;color:#444;border:0.5px solid #e0e0e0}
+.btn{width:100%;background:#FF5C3A;color:white;border:none;padding:11px;border-radius:22px;font-size:13px;font-weight:500;text-align:center;cursor:pointer}
+.card{background:white;border-radius:12px;padding:10px 12px;font-size:11px}
+.cap{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:1px}
+.search{background:white;border-radius:22px;padding:9px 14px;display:flex;align-items:center;gap:8px;font-size:12px;color:#888}
+</style>
+
+<div style="background:var(--color-background-secondary);padding:2rem 1rem;border-radius:var(--border-radius-lg)">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:36px 20px">
+
+<!-- 1. Onboarding & Circles -->
+<div>
+<div class="lbl"><span class="lblN">1</span>Onboarding & circles<span class="lblK">foundation</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:6px 20px 12px">
+<div style="font-size:20px;font-weight:500;color:#1a1a1a">Build your <span style="color:#FF5C3A">bonfire</span></div>
+<div style="font-size:11px;color:#666;margin-top:3px;line-height:1.4">Add people who'll see when you're out. Group them into circles.</div>
+</div>
+<div style="padding:0 14px;display:flex;flex-direction:column;gap:8px">
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+<div class="av" style="background:#5E7FE5;width:32px;height:32px;font-size:11px">SP</div>
+<div style="flex:1"><div style="font-size:12px;font-weight:500">Sarah Park</div><div style="font-size:10px;color:#888">Cornell · in 3 circles</div></div>
+<div style="width:32px;height:18px;background:#FF5C3A;border-radius:10px;position:relative"><div style="width:14px;height:14px;background:white;border-radius:50%;position:absolute;top:2px;right:2px"></div></div>
+</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+<div class="av" style="background:#1A9E75;width:32px;height:32px;font-size:11px">JP</div>
+<div style="flex:1"><div style="font-size:12px;font-weight:500">Josh Pizzaro</div><div style="font-size:10px;color:#888">Co-builder · in 2 circles</div></div>
+<div style="width:32px;height:18px;background:#FF5C3A;border-radius:10px;position:relative"><div style="width:14px;height:14px;background:white;border-radius:50%;position:absolute;top:2px;right:2px"></div></div>
+</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+<div class="av" style="background:#E2843D;width:32px;height:32px;font-size:11px">LK</div>
+<div style="flex:1"><div style="font-size:12px;font-weight:500">Lydia Kim</div><div style="font-size:10px;color:#888">Suggested · 4 mutual</div></div>
+<div style="width:32px;height:18px;background:#e0e0e0;border-radius:10px;position:relative"><div style="width:14px;height:14px;background:white;border-radius:50%;position:absolute;top:2px;left:2px"></div></div>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+<span style="background:#FFE7E0;color:#993C1D;padding:5px 10px;border-radius:12px;font-size:10px;font-weight:500"><i class="ti ti-school" style="font-size:11px"></i> Cornell crew · 12</span>
+<span style="background:#FFE7E0;color:#993C1D;padding:5px 10px;border-radius:12px;font-size:10px;font-weight:500"><i class="ti ti-building" style="font-size:11px"></i> NYC · 8</span>
+<span style="background:#f0f2f5;color:#666;padding:5px 10px;border-radius:12px;font-size:10px;font-weight:500"><i class="ti ti-plus" style="font-size:11px"></i> New circle</span>
+</div>
+</div>
+<div style="position:absolute;bottom:16px;left:16px;right:16px">
+<button class="btn">Continue</button>
+</div>
+</div></div>
+</div>
+
+<!-- 2. Home / Map (Hero) -->
+<div>
+<div class="lbl"><span class="lblN">2</span>Home / live map<span class="lblK">see</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:6px 12px 8px">
+<div class="search"><i class="ti ti-search"></i><span style="flex:1">Find friends or hangouts...</span><i class="ti ti-flame" style="color:#FF5C3A;font-size:14px"></i></div>
+</div>
+<div style="padding:0 12px;display:flex;gap:4px;overflow:hidden">
+<span class="chip chipA"><i class="ti ti-flame" style="font-size:10px"></i> People</span>
+<span class="chip chipI"><i class="ti ti-calendar-event" style="font-size:10px"></i> Events</span>
+<span class="chip chipI">Available now <i class="ti ti-chevron-down" style="font-size:10px"></i></span>
+</div>
+<div style="position:relative;height:340px;margin-top:8px;background:#e8ebe1;overflow:hidden">
+<div style="position:absolute;top:50px;left:0;right:0;height:3px;background:#dfe2d8"></div>
+<div style="position:absolute;top:180px;left:0;right:0;height:5px;background:#dfe2d8"></div>
+<div style="position:absolute;top:280px;left:0;right:0;height:3px;background:#dfe2d8"></div>
+<div style="position:absolute;top:0;bottom:0;left:60px;width:3px;background:#dfe2d8"></div>
+<div style="position:absolute;top:0;bottom:0;left:170px;width:4px;background:#dfe2d8"></div>
+<div style="position:absolute;top:0;bottom:0;right:30px;width:3px;background:#dfe2d8"></div>
+<div style="position:absolute;top:200px;right:0;width:60px;height:80px;background:#cfdde0"></div>
+<div style="position:absolute;top:40px;left:30px;width:90px;height:90px;background:#FF5C3A;opacity:0.18;border-radius:50%"></div>
+<div style="position:absolute;top:120px;right:50px;width:75px;height:75px;background:#FF5C3A;opacity:0.22;border-radius:50%"></div>
+<div style="position:absolute;bottom:40px;left:90px;width:65px;height:65px;background:#FF5C3A;opacity:0.16;border-radius:50%"></div>
+<div style="position:absolute;top:65px;left:65px;display:flex">
+<div class="av" style="background:#5E7FE5">SP</div>
+<div class="av" style="background:#1A9E75;margin-left:-8px">JP</div>
+<div class="av" style="background:#666;margin-left:-8px;font-size:8px">+3</div>
+</div>
+<div style="position:absolute;top:135px;right:60px;background:white;padding:6px 10px;border-radius:10px;font-size:10px;font-weight:500;display:flex;align-items:center;gap:5px"><i class="ti ti-beer" style="color:#F0993D"></i> Out for drinks</div>
+<div style="position:absolute;top:155px;right:78px;display:flex">
+<div class="av" style="background:#E2843D">L</div>
+<div class="av" style="background:#9D5BC2;margin-left:-8px">M</div>
+</div>
+<div class="av" style="background:#E2B33D;position:absolute;bottom:60px;left:120px;width:30px;height:30px;font-size:11px">K</div>
+<div style="position:absolute;top:14px;left:14px;background:white;padding:6px 9px;border-radius:14px;font-size:10px;font-weight:500;display:flex;align-items:center;gap:4px"><span class="dot" style="background:#1A9E75"></span> Available now</div>
+</div>
+<div class="fab"><i class="ti ti-flame"></i></div>
+<div class="bn">
+<div class="bni a"><i class="ti ti-flame"></i><span>Home</span></div>
+<div class="bni"><i class="ti ti-map-pin"></i><span>Around</span></div>
+<div class="bni"><i class="ti ti-users"></i><span>Network</span></div>
+<div class="bni"><i class="ti ti-mail"></i><span>Inbox</span></div>
+</div>
+</div></div>
+</div>
+
+<!-- 3. Go Live -->
+<div>
+<div class="lbl"><span class="lblN">3</span>Go live<span class="lblK">signal</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:8px 20px 12px;display:flex;justify-content:space-between;align-items:center">
+<div style="font-size:18px;font-weight:500">Go live</div>
+<div style="width:28px;height:28px;background:#e8eaec;border-radius:50%;display:flex;align-items:center;justify-content:center"><i class="ti ti-x" style="font-size:14px;color:#666"></i></div>
+</div>
+<div style="padding:0 16px;font-size:11px;color:#666;margin-bottom:12px;line-height:1.4">Broadcast availability to your circles. No event, no plan needed.</div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+<div style="background:white;border-radius:14px;padding:14px;border-left:3px solid #1A9E75">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="dot" style="background:#1A9E75;width:8px;height:8px"></span><span style="font-size:13px;font-weight:500">Available now</span></div>
+<div style="font-size:10px;color:#666;line-height:1.4">Active for the next 60 minutes. Auto-detects your venue.</div>
+</div>
+<div style="background:white;border-radius:14px;padding:14px;border-left:3px solid #F0993D">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><i class="ti ti-sun" style="color:#F0993D;font-size:14px"></i><span style="font-size:13px;font-weight:500">Out today</span></div>
+<div style="font-size:10px;color:#666;line-height:1.4">Floating around until evening. Shows up on the map all day.</div>
+</div>
+<div style="background:white;border-radius:14px;padding:14px;border-left:3px solid #5E7FE5">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><i class="ti ti-moon" style="color:#5E7FE5;font-size:14px"></i><span style="font-size:13px;font-weight:500">Out tonight</span></div>
+<div style="font-size:10px;color:#666;line-height:1.4">Active for the night-time loop, 6pm onward.</div>
+</div>
+</div>
+<div style="position:absolute;bottom:80px;left:16px;right:16px">
+<div style="background:white;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px">
+<i class="ti ti-eye" style="color:#666;font-size:16px"></i>
+<div style="flex:1"><div style="font-size:11px;color:#888">Visible to</div><div style="font-size:12px;font-weight:500">Cornell crew, NYC <i class="ti ti-chevron-down" style="font-size:11px;color:#888"></i></div></div>
+</div>
+<button class="btn">Go live <i class="ti ti-flame" style="vertical-align:-1px"></i></button>
+</div>
+</div></div>
+</div>
+
+<!-- 4. Around (list view) -->
+<div>
+<div class="lbl"><span class="lblN">4</span>Around<span class="lblK">see — list mode</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:8px 16px 8px;display:flex;justify-content:space-between;align-items:center">
+<div style="font-size:18px;font-weight:500">Around you</div>
+<div style="display:flex;gap:6px"><div style="width:28px;height:28px;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="ti ti-map" style="font-size:14px;color:#666"></i></div><div style="width:28px;height:28px;background:#FF5C3A;border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="ti ti-list" style="font-size:14px;color:white"></i></div></div>
+</div>
+<div style="padding:0 16px;display:flex;gap:4px;margin-bottom:10px">
+<span class="chip chipA">Now</span>
+<span class="chip chipI">Today</span>
+<span class="chip chipI">Tonight</span>
+</div>
+<div style="padding:0 12px;display:flex;flex-direction:column;gap:8px">
+<div class="card">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+<div style="display:flex"><div class="av" style="background:#5E7FE5">SP</div><div class="av" style="background:#9D5BC2;margin-left:-8px">M</div><div class="av" style="background:#666;margin-left:-8px;font-size:8px">+2</div></div>
+<div style="flex:1"><div style="font-size:12px;font-weight:500">Sarah, Maya +2</div><div style="font-size:10px;color:#888">at Maxie's · 2 min ago</div></div>
+<span class="dot" style="background:#1A9E75;width:8px;height:8px"></span>
+</div>
+<div style="font-size:10px;color:#444;background:#FFF1ED;padding:6px 8px;border-radius:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-beer" style="color:#F0993D"></i> Out for drinks · Cornell crew</div>
+<button style="margin-top:8px;width:100%;background:#FF5C3A;color:white;border:none;padding:7px;border-radius:14px;font-size:11px;font-weight:500">Join them</button>
+</div>
+<div class="card">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+<div class="av" style="background:#1A9E75">JP</div>
+<div style="flex:1"><div style="font-size:12px;font-weight:500">Josh Pizzaro</div><div style="font-size:10px;color:#888">at Gimme Coffee · 8 min</div></div>
+<span class="dot" style="background:#1A9E75;width:8px;height:8px"></span>
+</div>
+<div style="font-size:10px;color:#444;background:#EEF5FE;padding:6px 8px;border-radius:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-coffee" style="color:#5E7FE5"></i> Working remotely · open to company</div>
+</div>
+<div class="card">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+<div style="display:flex"><div class="av" style="background:#E2843D">LK</div><div class="av" style="background:#E2B33D;margin-left:-8px">K</div></div>
+<div style="flex:1"><div style="font-size:12px;font-weight:500">Lydia, Kim</div><div style="font-size:10px;color:#888">Forming a gather · tonight</div></div>
+<i class="ti ti-flame" style="color:#FF5C3A;font-size:14px"></i>
+</div>
+<div style="font-size:10px;color:#444">Dinner downtown — 3 in, looking for more</div>
+</div>
+</div>
+<div class="fab"><i class="ti ti-flame"></i></div>
+<div class="bn">
+<div class="bni"><i class="ti ti-flame"></i><span>Home</span></div>
+<div class="bni a"><i class="ti ti-map-pin"></i><span>Around</span></div>
+<div class="bni"><i class="ti ti-users"></i><span>Network</span></div>
+<div class="bni"><i class="ti ti-mail"></i><span>Inbox</span></div>
+</div>
+</div></div>
+</div>
+
+<!-- 5. Venue Detail -->
+<div>
+<div class="lbl"><span class="lblN">5</span>Venue detail<span class="lblK">join</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="position:relative;height:120px;background:#cfa57a">
+<div style="position:absolute;top:0;left:0;right:0;height:60px;background:#b88962"></div>
+<div style="position:absolute;top:35px;left:30px;width:60px;height:50px;background:#8a6442"></div>
+<div style="position:absolute;top:45px;right:40px;width:70px;height:40px;background:#a37c54"></div>
+<div style="position:absolute;top:10px;left:14px;width:28px;height:28px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0.95"><i class="ti ti-arrow-left" style="font-size:14px"></i></div>
+<div style="position:absolute;top:10px;right:14px;display:flex;gap:6px"><div style="width:28px;height:28px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0.95"><i class="ti ti-bookmark" style="font-size:13px"></i></div><div style="width:28px;height:28px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0.95"><i class="ti ti-share" style="font-size:13px"></i></div></div>
+</div>
+<div style="padding:12px 16px 8px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+<div><div style="font-size:16px;font-weight:500">Maxie's Supper Club</div><div style="font-size:10px;color:#888;margin-top:2px">Bar · Collegetown · 0.3 mi</div></div>
+<div style="background:#FF5C3A;color:white;padding:6px 10px;border-radius:10px;text-align:center"><div style="font-size:16px;font-weight:500;line-height:1">87</div><div style="font-size:8px;line-height:1;margin-top:2px">BONFIRE</div></div>
+</div>
+</div>
+<div style="padding:0 12px">
+<div style="background:white;border-radius:12px;padding:10px 12px;margin-bottom:8px">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+<span class="dot" style="background:#1A9E75;width:8px;height:8px"></span>
+<span style="font-size:11px;font-weight:500">5 friends here now</span>
+</div>
+<div style="display:flex">
+<div class="av" style="background:#5E7FE5">SP</div>
+<div class="av" style="background:#1A9E75;margin-left:-6px">JP</div>
+<div class="av" style="background:#9D5BC2;margin-left:-6px">M</div>
+<div class="av" style="background:#E2843D;margin-left:-6px">L</div>
+<div class="av" style="background:#666;margin-left:-6px;font-size:8px">+1</div>
+</div>
+</div>
+<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin:8px 4px 6px">Live activity</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.5">
+<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#888;font-size:10px;min-width:32px">2 min</span><span>Sarah arrived</span></div>
+<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#888;font-size:10px;min-width:32px">8 min</span><span>Josh + 2 went live here</span></div>
+<div style="display:flex;gap:8px"><span style="color:#888;font-size:10px;min-width:32px">21 min</span><span>Heatmap turned hot</span></div>
+</div>
+</div>
+<div style="position:absolute;bottom:78px;left:14px;right:14px;display:flex;gap:8px">
+<button style="flex:1;background:white;color:#FF5C3A;border:1.5px solid #FF5C3A;padding:11px;border-radius:22px;font-size:12px;font-weight:500">Drop a pin</button>
+<button class="btn" style="flex:1.3;padding:11px;font-size:12px">Walk over</button>
+</div>
+<div class="bn">
+<div class="bni"><i class="ti ti-flame"></i><span>Home</span></div>
+<div class="bni"><i class="ti ti-map-pin"></i><span>Around</span></div>
+<div class="bni"><i class="ti ti-users"></i><span>Network</span></div>
+<div class="bni"><i class="ti ti-mail"></i><span>Inbox</span></div>
+</div>
+</div></div>
+</div>
+
+<!-- 6. Gather -->
+<div>
+<div class="lbl"><span class="lblN">6</span>Gather<span class="lblK">coordination</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:8px 16px 10px;display:flex;align-items:center;gap:10px">
+<i class="ti ti-arrow-left" style="font-size:18px;color:#444"></i>
+<div style="flex:1"><div style="font-size:14px;font-weight:500">Dinner downtown</div><div style="font-size:10px;color:#888">Tonight · forming now</div></div>
+<i class="ti ti-dots" style="font-size:18px;color:#444"></i>
+</div>
+<div style="padding:0 14px">
+<div style="background:white;border-radius:14px;padding:12px 14px;margin-bottom:8px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<span style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:500">Who's in</span>
+<span style="font-size:10px;background:#E8F5EE;color:#1A9E75;padding:3px 8px;border-radius:10px;font-weight:500">4 confirmed</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="display:flex"><div class="av" style="background:#5E7FE5">SP</div><div class="av" style="background:#1A9E75;margin-left:-6px">JP</div><div class="av" style="background:#E2843D;margin-left:-6px">LK</div><div class="av" style="background:#9D5BC2;margin-left:-6px">M</div></div>
+<span style="font-size:10px;color:#888;margin-left:6px">+ 2 maybe</span>
+</div>
+</div>
+<div style="background:white;border-radius:14px;padding:12px 14px;margin-bottom:8px">
+<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin-bottom:8px">Where</div>
+<div style="display:flex;gap:6px;overflow:hidden">
+<div style="flex:1;min-width:0;background:#FFF1ED;border:1.5px solid #FF5C3A;border-radius:10px;padding:8px"><div style="font-size:11px;font-weight:500">Maxie's</div><div style="font-size:9px;color:#888;margin-top:2px"><span style="color:#FF5C3A;font-weight:500">87</span> · 0.3 mi</div></div>
+<div style="flex:1;min-width:0;background:#f5f6f7;border-radius:10px;padding:8px"><div style="font-size:11px;font-weight:500">Hai Hong</div><div style="font-size:9px;color:#888;margin-top:2px"><span style="color:#FF5C3A;font-weight:500">81</span> · 0.5 mi</div></div>
+<div style="flex:1;min-width:0;background:#f5f6f7;border-radius:10px;padding:8px"><div style="font-size:11px;font-weight:500">Coal Yard</div><div style="font-size:9px;color:#888;margin-top:2px"><span style="color:#FF5C3A;font-weight:500">79</span> · 0.7 mi</div></div>
+</div>
+</div>
+<div style="background:white;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:8px">
+<i class="ti ti-calendar-check" style="color:#1A9E75;font-size:18px"></i>
+<div style="flex:1"><div style="font-size:11px;font-weight:500">Table for 6 · 8:00 PM</div><div style="font-size:10px;color:#888">Available on OpenTable</div></div>
+<button style="background:#1A9E75;color:white;border:none;padding:5px 10px;border-radius:12px;font-size:10px;font-weight:500">Book</button>
+</div>
+<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin:8px 4px 6px">Activity</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.5">
+<div style="margin-bottom:4px"><span style="font-weight:500">Sarah</span> started a gather</div>
+<div style="color:#888;font-size:10px">5 min ago</div>
+</div>
+</div>
+<div style="position:absolute;bottom:78px;left:14px;right:14px">
+<button class="btn">I'm in</button>
+</div>
+<div class="bn">
+<div class="bni"><i class="ti ti-flame"></i><span>Home</span></div>
+<div class="bni"><i class="ti ti-map-pin"></i><span>Around</span></div>
+<div class="bni"><i class="ti ti-users"></i><span>Network</span></div>
+<div class="bni"><i class="ti ti-mail"></i><span>Inbox</span></div>
+</div>
+</div></div>
+</div>
+
+<!-- 7. Network / Circles -->
+<div>
+<div class="lbl"><span class="lblN">7</span>Network & circles<span class="lblK">foundation</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:8px 16px 6px;display:flex;justify-content:space-between;align-items:center">
+<div style="font-size:18px;font-weight:500">Your network</div>
+<i class="ti ti-user-plus" style="font-size:18px;color:#FF5C3A"></i>
+</div>
+<div style="padding:0 16px;display:flex;gap:16px;border-bottom:0.5px solid #e0e0e0;margin-bottom:12px">
+<div style="padding:8px 0;border-bottom:2px solid #FF5C3A;font-size:12px;font-weight:500">Circles</div>
+<div style="padding:8px 0;font-size:12px;color:#888">Friends</div>
+<div style="padding:8px 0;font-size:12px;color:#888">Suggested</div>
+</div>
+<div style="padding:0 12px;display:flex;flex-direction:column;gap:8px">
+<div style="background:white;border-radius:14px;padding:12px;border-left:3px solid #FF5C3A">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+<div style="font-size:13px;font-weight:500">Cornell crew</div>
+<div style="font-size:10px;color:#888">12 people</div>
+</div>
+<div style="display:flex;align-items:center"><div style="display:flex"><div class="av" style="background:#5E7FE5">SP</div><div class="av" style="background:#1A9E75;margin-left:-6px">JP</div><div class="av" style="background:#9D5BC2;margin-left:-6px">M</div><div class="av" style="background:#E2843D;margin-left:-6px">LK</div></div><span style="font-size:10px;color:#888;margin-left:6px">+8</span><span style="margin-left:auto;font-size:10px;color:#1A9E75;font-weight:500"><span class="dot" style="background:#1A9E75;width:6px;height:6px"></span>4 live</span></div>
+</div>
+<div style="background:white;border-radius:14px;padding:12px;border-left:3px solid #5E7FE5">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+<div style="font-size:13px;font-weight:500">NYC group</div>
+<div style="font-size:10px;color:#888">8 people</div>
+</div>
+<div style="display:flex;align-items:center"><div style="display:flex"><div class="av" style="background:#E2B33D">K</div><div class="av" style="background:#9D5BC2;margin-left:-6px">A</div><div class="av" style="background:#5E7FE5;margin-left:-6px">T</div></div><span style="font-size:10px;color:#888;margin-left:6px">+5</span><span style="margin-left:auto;font-size:10px;color:#888">no one out</span></div>
+</div>
+<div style="background:white;border-radius:14px;padding:12px;border-left:3px solid #1A9E75">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+<div style="font-size:13px;font-weight:500">Roommates</div>
+<div style="font-size:10px;color:#888">3 people</div>
+</div>
+<div style="display:flex;align-items:center"><div style="display:flex"><div class="av" style="background:#E2843D">LK</div><div class="av" style="background:#666;margin-left:-6px">D</div><div class="av" style="background:#9D5BC2;margin-left:-6px">N</div></div><span style="margin-left:auto;font-size:10px;color:#1A9E75;font-weight:500"><span class="dot" style="background:#1A9E75;width:6px;height:6px"></span>1 live</span></div>
+</div>
+<div style="background:#f5f6f7;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;border:1px dashed #cccccc">
+<div style="width:32px;height:32px;background:#FFE7E0;border-radius:50%;display:flex;align-items:center;justify-content:center"><i class="ti ti-plus" style="color:#FF5C3A;font-size:16px"></i></div>
+<div style="font-size:12px;color:#666">Create a new circle</div>
+</div>
+</div>
+<div class="bn">
+<div class="bni"><i class="ti ti-flame"></i><span>Home</span></div>
+<div class="bni"><i class="ti ti-map-pin"></i><span>Around</span></div>
+<div class="bni a"><i class="ti ti-users"></i><span>Network</span></div>
+<div class="bni"><i class="ti ti-mail"></i><span>Inbox</span></div>
+</div>
+</div></div>
+</div>
+
+<!-- 8. Inbox -->
+<div>
+<div class="lbl"><span class="lblN">8</span>Inbox<span class="lblK">coordination</span></div>
+<div class="pf"><div class="ps">
+<div class="pn"></div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="ti ti-signal-4g"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+<div style="padding:8px 16px 6px;display:flex;justify-content:space-between;align-items:center">
+<div style="font-size:18px;font-weight:500">Inbox</div>
+<div style="font-size:11px;color:#FF5C3A;font-weight:500">Mark all read</div>
+</div>
+<div style="padding:0 16px 8px;display:flex;gap:4px">
+<span class="chip chipA">All</span>
+<span class="chip chipI">Gathers</span>
+<span class="chip chipI">Live</span>
+</div>
+<div style="padding:0 12px">
+<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin:4px 4px 6px">Today</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+<div style="width:34px;height:34px;background:#FFE7E0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-flame" style="color:#FF5C3A;font-size:18px"></i></div>
+<div style="flex:1"><div style="font-size:11px;line-height:1.4"><span style="font-weight:500">Sarah</span> started a gather: Dinner downtown</div><div style="font-size:10px;color:#888;margin-top:2px">2 min ago · 4 in</div><button style="margin-top:6px;background:#FF5C3A;color:white;border:none;padding:5px 12px;border-radius:12px;font-size:10px;font-weight:500">I'm in</button></div>
+</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+<div class="av" style="background:#1A9E75;width:34px;height:34px;font-size:11px">JP</div>
+<div style="flex:1"><div style="font-size:11px;line-height:1.4"><span style="font-weight:500">Josh</span> went live at Gimme Coffee</div><div style="font-size:10px;color:#888;margin-top:2px">8 min ago</div></div>
+</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+<div style="width:34px;height:34px;background:#FFF1ED;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-map-pin" style="color:#FF5C3A;font-size:16px"></i></div>
+<div style="flex:1"><div style="font-size:11px;line-height:1.4">Heatmap turned hot near you: <span style="font-weight:500">Collegetown</span></div><div style="font-size:10px;color:#888;margin-top:2px">12 min ago · 5 friends nearby</div></div>
+</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+<div class="av" style="background:#9D5BC2;width:34px;height:34px;font-size:11px">M</div>
+<div style="flex:1"><div style="font-size:11px;line-height:1.4"><span style="font-weight:500">Maya</span> arrived at Maxie's</div><div style="font-size:10px;color:#888;margin-top:2px">21 min ago</div></div>
+</div>
+<div style="background:white;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;opacity:0.7">
+<div style="width:34px;height:34px;background:#EEF5FE;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-trophy" style="color:#5E7FE5;font-size:16px"></i></div>
+<div style="flex:1"><div style="font-size:11px;line-height:1.4">You earned the <span style="font-weight:500">Prometheus</span> avatar</div><div style="font-size:10px;color:#888;margin-top:2px">Yesterday · first gather hosted</div></div>
+</div>
+</div>
+</div>
+<div class="bn">
+<div class="bni"><i class="ti ti-flame"></i><span>Home</span></div>
+<div class="bni"><i class="ti ti-map-pin"></i><span>Around</span></div>
+<div class="bni"><i class="ti ti-users"></i><span>Network</span></div>
+<div class="bni a"><i class="ti ti-mail"></i><span>Inbox</span></div>
+</div>
+</div></div>
+</div>
+
+</div>
+</div>

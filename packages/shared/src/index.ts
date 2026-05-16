@@ -1,57 +1,124 @@
-export type Status = "available" | "out" | "down" | "place" | "invisible";
+// Bonfire domain types. Mirror the columns defined in supabase/migrations.
 
-export const STATUS_LABEL: Record<Status, string> = {
-  available: "Available now",
-  out: "Out tonight",
-  down: "Down for something",
-  place: "At a place",
-  invisible: "Invisible",
+export type Intent = "available_now" | "out_today" | "out_tonight";
+
+export const INTENT_LABEL: Record<Intent, string> = {
+  available_now: "Available now",
+  out_today: "Out today",
+  out_tonight: "Out tonight",
 };
 
-export const STATUS_SHORT: Record<Status, string> = {
-  available: "Available",
-  out: "Out",
-  down: "Down",
-  place: "Out",
-  invisible: "Invisible",
+export const INTENT_DESCRIPTION: Record<Intent, string> = {
+  available_now: "Active for the next 60 minutes. Auto-detects your venue.",
+  out_today: "Floating around until evening. Shows up on the map all day.",
+  out_tonight: "Active for the night-time loop, 6pm onward.",
 };
 
-export const STATUS_ORDER: Status[] = ["available", "out", "down", "place", "invisible"];
+export const INTENT_DURATION_MS: Record<Intent, number> = {
+  available_now: 60 * 60 * 1000,
+  out_today: 8 * 60 * 60 * 1000,
+  out_tonight: 6 * 60 * 60 * 1000,
+};
 
-export type Profile = {
+export type User = {
   id: string;
+  phone_hash: string;
   display_name: string;
-  gradient_from: string;
-  gradient_to: string;
-  phone_e164: string;
-  expo_push_token: string | null;
-  tz: string | null;
+  letter_pair: string;
+  avatar_color: string;
   created_at: string;
 };
 
-export type PresenceRow = {
-  user_id: string;
-  status: Status;
-  note: string | null;
-  lat: number | null;
-  lng: number | null;
-  expires_at: string;
-  updated_at: string;
+export type Circle = {
+  id: string;
+  owner_id: string;
+  name: string;
+  accent_color: string;
+  created_at: string;
 };
 
-export type PlanVisibility = "friends" | "fof" | "network" | "everyone";
+export type CircleMember = {
+  circle_id: string;
+  user_id: string;
+  added_at: string;
+};
 
-export type PlanRow = {
+export type CircleWithMembers = Circle & {
+  member_ids: string[];
+};
+
+export type Friendship = {
+  user_a: string;
+  user_b: string;
+  established_via: "contact_match" | "qr" | "phone_search";
+  created_at: string;
+};
+
+export type Venue = {
   id: string;
-  short_id: string;
-  creator_id: string;
-  title: string;
-  vibe: string | null;
+  name: string;
+  category: "bar" | "restaurant" | "cafe" | "other";
+  neighborhood: string | null;
   lat: number;
   lng: number;
-  visibility: PlanVisibility;
-  expires_at: string;
-  created_at: string;
+  opentable_rid: string | null;
+  resy_id: string | null;
 };
 
-export type PlanAttendeeState = "in" | "interested" | "out";
+export type PresenceEvent = {
+  id: string;
+  user_id: string;
+  intent: Intent;
+  visible_to_circle_ids: string[];
+  venue_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  started_at: string;
+  expires_at: string;
+  ended_at: string | null;
+};
+
+export type Gather = {
+  id: string;
+  host_id: string;
+  title: string;
+  starts_at: string | null;
+  primary_venue_id: string | null;
+  candidate_venue_ids: string[];
+  invited_circle_ids: string[];
+  party_size_target: number | null;
+  reservation_provider: "opentable" | "resy" | null;
+  reservation_url: string | null;
+  created_at: string;
+  ended_at: string | null;
+};
+
+export type GatherResponse = {
+  gather_id: string;
+  user_id: string;
+  response: "in" | "maybe" | "out";
+  responded_at: string;
+};
+
+export type InboxKind =
+  | "friend_live"
+  | "gather_invite"
+  | "heatmap_hot"
+  | "friend_arrived"
+  | "milestone";
+
+export type InboxItem = {
+  id: string;
+  recipient_id: string;
+  kind: InboxKind;
+  payload: Record<string, unknown>;
+  source_event_id: string | null;
+  created_at: string;
+  read_at: string | null;
+};
+
+export type UserLocation = {
+  lat: number;
+  lng: number;
+  accuracy_m: number | null;
+};
