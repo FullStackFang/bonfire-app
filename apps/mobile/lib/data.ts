@@ -26,6 +26,11 @@ import {
   mockVenues,
 } from "./mockSeeds";
 import { getMockSelfPresence, onMockSelfPresenceChange } from "./mockPresenceStore";
+import {
+  getMockEvents,
+  onMockEventsChange,
+  type MapEvent,
+} from "./mockEventStore";
 
 const isMock = !supabaseConfigured;
 
@@ -152,6 +157,24 @@ export function useGather(id: string): {
     });
   }, [id]);
   return { gather, responses };
+}
+
+// ---- Map events (user-placed pins with 1h lifetime) ----
+
+// Re-tick every second so countdowns stay live. Cheap: snapshot is small and
+// the store auto-prunes expired entries.
+export function useMapEvents(): MapEvent[] {
+  const [events, setEvents] = useState<MapEvent[]>(() => getMockEvents().slice());
+  useEffect(() => {
+    const refresh = () => setEvents(getMockEvents().slice());
+    const off = onMockEventsChange(refresh);
+    const tick = setInterval(refresh, 1000);
+    return () => {
+      off();
+      clearInterval(tick);
+    };
+  }, []);
+  return events;
 }
 
 // ---- Inbox ----

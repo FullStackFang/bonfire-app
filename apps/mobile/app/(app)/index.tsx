@@ -3,8 +3,10 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
@@ -28,13 +30,41 @@ import {
 } from "../../components/map/MapStage";
 import { PulsingMapPin } from "../../components/map/PulsingMapPin";
 import { SELF_INDICATOR_SIZE, SelfIndicator } from "../../components/map/SelfIndicator";
+import { EventPin } from "../../components/map/EventPin";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { heatmapPulseMs, light } from "@bonfire/ui-tokens";
 import { buildHeatPoints } from "../../lib/mapProjection";
 import { MOCK_CENTER } from "../../lib/mockSeeds";
 import { useUserLocation } from "../../lib/useUserLocation";
-import { useVisiblePresence, usePeople, findVenueSync } from "../../lib/data";
+import {
+  useVisiblePresence,
+  usePeople,
+  findVenueSync,
+  useMapEvents,
+} from "../../lib/data";
 import { useSession } from "../../lib/session";
 import { intentMeta } from "../../components/ui";
+import type { Intent } from "@bonfire/shared";
+
+// Per-intent FAB config: face color, icon, shadow.
+// available_now → EmberRippleHalo, out_today/out_tonight → SpokeHalo.
+const INTENT_FAB = {
+  available_now: {
+    bg: light.ember,
+    icon: "flame" as const,
+    shadow: light.emberDeep,
+  },
+  out_today: {
+    bg: light.dusk,
+    icon: "sunny" as const,
+    shadow: "#8b5520",
+  },
+  out_tonight: {
+    bg: light.night,
+    icon: "moon" as const,
+    shadow: "#080f19",
+  },
+} as const;
 
 // Pin renders are anchored at their geographic point. These offsets pull each
 // pin so its visual anchor (the avatar centre for loose pins; the bottom of
@@ -49,44 +79,38 @@ export default function Home() {
   const { user } = useSession();
   const presence = useVisiblePresence();
   const { byId } = usePeople();
+  const mapEvents = useMapEvents();
   const userLocation = useUserLocation(MOCK_CENTER);
   const userCenter = userLocation?.coords ?? null;
   const mapRef = useRef<MapStageHandle>(null);
   const [recentering, setRecentering] = useState(false);
+  const [mapZoom, setMapZoom] = useState(14);
 
-  // The Go-live FAB pulses when the user has an active broadcast. The pulse
-  // is the only place that surfaces "you're live right now" — the chip-row
-  // status indicator was removed in favor of this.
-  const isLive = useMemo(() => {
-    if (!user) return false;
+  // Long-press on the map opens the create-event sheet with the tapped coords.
+  // MapStage owns the touch animation + haptic — we just navigate on commit.
+  const handleLongPress = (coords: { lat: number; lng: number }) => {
+    router.push({
+      pathname: "/event/new",
+      params: { lat: String(coords.lat), lng: String(coords.lng) },
+    });
+  };
+
+  // Derive the user's active broadcast intent (null = not live).
+  const myIntent = useMemo<Intent | null>(() => {
+    if (!user) return null;
     const now = Date.now();
-    return presence.some(
+    const active = presence.find(
       (p) =>
         p.user_id === user.id &&
         p.ended_at == null &&
         new Date(p.expires_at).getTime() > now,
     );
+    return (active?.intent as Intent) ?? null;
   }, [presence, user]);
 
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    if (!isLive) {
-      cancelAnimation(pulse);
-      pulse.value = 0;
-      return;
-    }
-    pulse.value = withRepeat(
-      withTiming(1, { duration: heatmapPulseMs, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    );
-    return () => cancelAnimation(pulse);
-  }, [isLive, pulse]);
+  const fabCfg = myIntent ? INTENT_FAB[myIntent] : INTENT_FAB.available_now;
 
-  const haloStyle = useAnimatedStyle(() => ({
-    opacity: 0.28 + pulse.value * 0.42,
-    transform: [{ scale: 1 + pulse.value * 0.18 }],
-  }));
+  const handleFabPress = () => router.push("/go-live");
 
   // Recenter is two-phase:
   //   1. SYNCHRONOUS — if we already have a real fix in memory, flyTo right
@@ -243,8 +267,29 @@ export default function Home() {
         ),
       });
     }
+    // User-placed events. Anchored at the bottom of the pin notch — the
+    // EventPin component handles its own internal layout; we just push it up
+    // so the notch tip sits on the geo point.
+    for (const ev of mapEvents) {
+      out.push({
+        id: `event:${ev.id}`,
+        lat: ev.lat,
+        lng: ev.lng,
+        render: (
+          <View
+            style={{
+              transform: [{ translateX: -100 }, { translateY: -42 }],
+              width: 200,
+              alignItems: "center",
+            }}
+          >
+            <EventPin event={ev} />
+          </View>
+        ),
+      });
+    }
     return out;
-  }, [presence, byId]);
+  }, [presence, byId, mapEvents]);
 
   // "You are here" pin. Rendered first so friend pins draw on top — that
   // matches Apple Maps / Google Maps convention where your blue dot is the
@@ -260,7 +305,7 @@ export default function Home() {
           pointerEvents="none"
           style={{ transform: [{ translateX: SELF_ANCHOR_OFFSET }, { translateY: SELF_ANCHOR_OFFSET }] }}
         >
-          <SelfIndicator />
+          <SelfIndicator zoom={mapZoom} />
         </View>
       ),
     };
@@ -303,6 +348,8 @@ export default function Home() {
           initialZoom={14}
           pins={pinsWithSelf}
           heatPoints={heatPoints}
+          onZoomChange={setMapZoom}
+          onLongPress={handleLongPress}
         >
           {/* Recenter on user — chunky 3D press, same footprint as the FAB */}
           <View style={{ position: "absolute", right: 18, bottom: 132 }}>
@@ -368,33 +415,23 @@ export default function Home() {
         ) : null}
       </View>
 
-      {/* FAB — Go live. Sits just above the tab bar (64pt tall), matched size
-          with the recenter control above it. When the user is live, a soft
-          ember halo pulses behind it — the only "you're broadcasting" cue. */}
+      {/* FAB — available-now toggle. Tap = go live / end session.
+          Long-press = picker for out_today / out_tonight.
+          Halo color + pulse speed changes per active intent. */}
       <View style={{ position: "absolute", right: 18, bottom: 68, width: 52, height: 52 }}>
-        {isLive ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              {
-                position: "absolute",
-                left: -10,
-                top: -10,
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: light.emberGlow,
-              },
-              haloStyle,
-            ]}
-          />
+        {myIntent === "out_today" ? (
+          <SpokeHalo color={light.dusk} duration={10000} id="spd" />
+        ) : myIntent === "out_tonight" ? (
+          <SpokeHalo color="#aac4e0" duration={14000} id="spn" />
+        ) : myIntent === "available_now" ? (
+          <EmberRippleHalo />
         ) : null}
         <ChunkyPressable
-          onPress={() => router.push("/go-live")}
-          shadowColor={light.emberDeep}
+          onPress={handleFabPress}
+          shadowColor={myIntent ? fabCfg.shadow : light.emberDeep}
           depth={4}
           radius={26}
-          accessibilityLabel="Go live"
+          accessibilityLabel={myIntent ? "Stop broadcasting" : "Go live"}
           haptic={Haptics.ImpactFeedbackStyle.Medium}
         >
           <View
@@ -402,15 +439,136 @@ export default function Home() {
               width: 52,
               height: 52,
               borderRadius: 26,
-              backgroundColor: light.ember,
+              backgroundColor: myIntent ? fabCfg.bg : light.ember,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Ionicons name="flame" size={24} color={light.hearth} />
+            <Ionicons
+              name={myIntent ? fabCfg.icon : "flame"}
+              size={24}
+              color={light.hearth}
+            />
           </View>
         </ChunkyPressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+// Three ember rings that expand and fade sequentially, staggered by 1/3 of
+// heatmapPulseMs each. Rings overlap in time so there's always motion — like
+// fire radiating outward from the button.
+const EMBER_CYCLE = heatmapPulseMs; // 3200ms
+
+function EmberRippleHalo() {
+  const r0 = useSharedValue(0);
+  const r1 = useSharedValue(0);
+  const r2 = useSharedValue(0);
+
+  useEffect(() => {
+    const stagger = Math.round(EMBER_CYCLE / 3);
+    const ring = (delay: number) =>
+      withDelay(delay, withRepeat(
+        withTiming(1, { duration: EMBER_CYCLE, easing: Easing.out(Easing.cubic) }),
+        -1, false,
+      ));
+    r0.value = ring(0);
+    r1.value = ring(stagger);
+    r2.value = ring(stagger * 2);
+    return () => { cancelAnimation(r0); cancelAnimation(r1); cancelAnimation(r2); };
+  }, [r0, r1, r2]);
+
+  const s0 = useAnimatedStyle(() => ({
+    opacity: interpolate(r0.value, [0, 1], [0.62, 0]),
+    transform: [{ scale: interpolate(r0.value, [0, 1], [1.0, 2.5]) }],
+  }));
+  const s1 = useAnimatedStyle(() => ({
+    opacity: interpolate(r1.value, [0, 1], [0.62, 0]),
+    transform: [{ scale: interpolate(r1.value, [0, 1], [1.0, 2.5]) }],
+  }));
+  const s2 = useAnimatedStyle(() => ({
+    opacity: interpolate(r2.value, [0, 1], [0.62, 0]),
+    transform: [{ scale: interpolate(r2.value, [0, 1], [1.0, 2.5]) }],
+  }));
+
+  const base = {
+    position: "absolute" as const,
+    left: 0, top: 0,
+    width: 52, height: 52,
+    borderRadius: 26,
+    backgroundColor: light.ember,
+  };
+
+  return (
+    <>
+      <Animated.View pointerEvents="none" style={[base, s0]} />
+      <Animated.View pointerEvents="none" style={[base, s1]} />
+      <Animated.View pointerEvents="none" style={[base, s2]} />
+    </>
+  );
+}
+
+// 8 thin rays arranged radially around the FAB, rotating slowly.
+// Each ray fades to transparent at its tip via a vertical linear gradient.
+// Used for out_today (golden) and out_tonight (silver-blue) with different speeds.
+const SPOKE_SIZE = 96;
+const SPOKE_CX = SPOKE_SIZE / 2;
+const SPOKE_CY = SPOKE_SIZE / 2;
+const SPOKE_INNER_R = 30; // 4px gap beyond FAB edge (26px radius)
+const SPOKE_OUTER_R = 46;
+const SPOKE_LEN = SPOKE_OUTER_R - SPOKE_INNER_R;
+const SPOKE_W = 3;
+const SPOKE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+
+function SpokeHalo({ color, duration, id }: { color: string; duration: number; id: string }) {
+  const rot = useSharedValue(0);
+  useEffect(() => {
+    rot.value = withRepeat(
+      withTiming(360, { duration, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(rot);
+  }, [duration, rot]);
+  const rotStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rot.value}deg` }],
+  }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: "absolute",
+          left: -(SPOKE_SIZE - 52) / 2,
+          top: -(SPOKE_SIZE - 52) / 2,
+          width: SPOKE_SIZE,
+          height: SPOKE_SIZE,
+        },
+        rotStyle,
+      ]}
+    >
+      <Svg width={SPOKE_SIZE} height={SPOKE_SIZE}>
+        <Defs>
+          {/* y1=0 is the tip (transparent), y2=1 is the base near the FAB (opaque) */}
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={color} stopOpacity="0" />
+            <Stop offset="100%" stopColor={color} stopOpacity="0.9" />
+          </LinearGradient>
+        </Defs>
+        {SPOKE_ANGLES.map((angle) => (
+          <Rect
+            key={angle}
+            x={SPOKE_CX - SPOKE_W / 2}
+            y={SPOKE_CY - SPOKE_OUTER_R}
+            width={SPOKE_W}
+            height={SPOKE_LEN}
+            rx={SPOKE_W / 2}
+            fill={`url(#${id})`}
+            transform={`rotate(${angle}, ${SPOKE_CX}, ${SPOKE_CY})`}
+          />
+        ))}
+      </Svg>
+    </Animated.View>
   );
 }

@@ -46,6 +46,10 @@ export default function RootLayout() {
                 name="gather/new"
                 options={{ presentation: "modal", animation: "slide_from_bottom" }}
               />
+              <Stack.Screen
+                name="event/new"
+                options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              />
             </Stack>
             <StatusBar style="dark" />
           </SessionProvider>

@@ -1,36 +1,37 @@
-import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, Switch, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import {
-  CTAButton,
   Card,
+  ChunkyPressable,
   IconButton,
   IntentBadge,
   T,
   intentMeta,
 } from "../components/ui";
-import { houseSpring, light } from "@bonfire/ui-tokens";
+import { light } from "@bonfire/ui-tokens";
 import type { Intent } from "@bonfire/shared";
 import { INTENT_DESCRIPTION, INTENT_DURATION_MS } from "@bonfire/shared";
-import { useMyCircles } from "../lib/data";
+import { useMyCircles, useVisiblePresence } from "../lib/data";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { useSession } from "../lib/session";
 import { setMockSelfPresence } from "../lib/mockPresenceStore";
 
-const INTENTS: Intent[] = ["available_now", "out_today", "out_tonight"];
+const ALL_INTENTS: Intent[] = ["available_now", "out_today", "out_tonight"];
+
+const INTENT_CARD_CFG: Record<Intent, { activeBg: string; activeShadow: string }> = {
+  available_now: { activeBg: light.ember,  activeShadow: light.emberDeep },
+  out_today:     { activeBg: light.dusk,   activeShadow: "#8b5520" },
+  out_tonight:   { activeBg: light.night,  activeShadow: "#080f19" },
+};
 
 export default function GoLive() {
   const { user } = useSession();
-  const [selected, setSelected] = useState<Intent>("available_now");
+  const presence = useVisiblePresence();
   const circles = useMyCircles();
   const [visibleIds, setVisibleIds] = useState<Set<string>>(
     new Set(circles.map((c) => c.id)),
@@ -38,37 +39,52 @@ export default function GoLive() {
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const myIntent = useMemo<Intent | null>(() => {
+    if (!user) return null;
+    const now = Date.now();
+    const active = presence.find(
+      (p) =>
+        p.user_id === user.id &&
+        p.ended_at == null &&
+        new Date(p.expires_at).getTime() > now,
+    );
+    return (active?.intent as Intent) ?? null;
+  }, [presence, user]);
+
   const visibleNames =
     circles
       .filter((c) => visibleIds.has(c.id))
       .map((c) => c.name)
       .join(", ") || "No one";
 
-  const commit = async () => {
+  // All intents toggle in-place — screen stays open.
+  const toggleIntent = async (intent: Intent) => {
     setError(null);
-
+    if (myIntent === intent) {
+      if (!supabaseConfigured || !user) {
+        setMockSelfPresence(null);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      return;
+    }
     if (!supabaseConfigured || !user) {
       const now = new Date();
       setMockSelfPresence({
         id: `mock-self-${now.getTime()}`,
         user_id: user?.id ?? "u-self",
-        intent: selected,
+        intent,
         visible_to_circle_ids: Array.from(visibleIds),
         venue_id: null,
         lat: null,
         lng: null,
         started_at: now.toISOString(),
-        expires_at: new Date(now.getTime() + INTENT_DURATION_MS[selected]).toISOString(),
+        expires_at: new Date(now.getTime() + INTENT_DURATION_MS[intent]).toISOString(),
         ended_at: null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      router.back();
       return;
     }
-
     setCommitting(true);
-
-    // Capture location once. We only need a coarse fix to snap to a venue.
     let lat: number | null = null;
     let lng: number | null = null;
     try {
@@ -81,53 +97,31 @@ export default function GoLive() {
         lng = pos.coords.longitude;
       }
     } catch {
-      // location is best-effort; presence_events.lat/lng are nullable.
+      // location is best-effort
     }
-
-    // Snap to a known venue if we got a location.
     let venueId: string | null = null;
     if (lat !== null && lng !== null) {
-      const { data } = await supabase.rpc("snap_to_venue", {
-        lat,
-        lng,
-        radius_m: 60,
-      });
-      if (Array.isArray(data) && data.length === 1) {
-        venueId = data[0].id;
-      }
-      // If 2+ candidates, the spec calls for a confirm sheet; we route to it here.
-      // For now, we just take the closest — easy to wire the sheet later.
-      else if (Array.isArray(data) && data.length > 1) {
-        venueId = data[0].id;
-      }
+      const { data } = await supabase.rpc("snap_to_venue", { lat, lng, radius_m: 60 });
+      if (Array.isArray(data) && data.length >= 1) venueId = data[0].id;
     }
-
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + INTENT_DURATION_MS[selected]);
-
     const { error: err } = await supabase.from("presence_events").insert({
       user_id: user.id,
-      intent: selected,
+      intent,
       visible_to_circle_ids: Array.from(visibleIds),
       venue_id: venueId,
       raw_location:
-        lat !== null && lng !== null
-          ? `SRID=4326;POINT(${lng} ${lat})`
-          : null,
+        lat !== null && lng !== null ? `SRID=4326;POINT(${lng} ${lat})` : null,
       started_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
+      expires_at: new Date(now.getTime() + INTENT_DURATION_MS[intent]).toISOString(),
     });
-
     setCommitting(false);
-
     if (err) {
       setError(err.message);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       return;
     }
-
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    router.back();
   };
 
   return (
@@ -154,15 +148,13 @@ export default function GoLive() {
       </T>
 
       <ScrollView contentContainerStyle={{ padding: 20, rowGap: 12 }}>
-        {INTENTS.map((i) => (
+        {ALL_INTENTS.map((i) => (
           <IntentCard
             key={i}
             intent={i}
-            selected={selected === i}
-            onSelect={() => {
-              Haptics.selectionAsync().catch(() => {});
-              setSelected(i);
-            }}
+            active={myIntent === i}
+            disabled={committing}
+            onToggle={() => toggleIntent(i)}
           />
         ))}
       </ScrollView>
@@ -171,10 +163,10 @@ export default function GoLive() {
         style={{
           paddingHorizontal: 20,
           paddingBottom: 32,
-          rowGap: 14,
           borderTopWidth: 0.5,
           borderTopColor: light.ash,
           paddingTop: 16,
+          rowGap: 12,
         }}
       >
         <Pressable>
@@ -191,13 +183,6 @@ export default function GoLive() {
             </View>
           </Card>
         </Pressable>
-        <CTAButton
-          label={committing ? "Going live..." : "Go live"}
-          onPress={commit}
-          disabled={committing || visibleIds.size === 0}
-          rightIcon={<Ionicons name="flame" size={18} color={light.hearth} />}
-          haptic="success"
-        />
         {error ? (
           <T variant="bodySm" color={light.emberDeep} align="center">
             {error}
@@ -210,47 +195,72 @@ export default function GoLive() {
 
 function IntentCard({
   intent,
-  selected,
-  onSelect,
+  active,
+  disabled = false,
+  onToggle,
 }: {
   intent: Intent;
-  selected: boolean;
-  onSelect: () => void;
+  active: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
 }) {
   const meta = intentMeta[intent];
-  const scale = useSharedValue(1);
-  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { activeBg, activeShadow } = INTENT_CARD_CFG[intent];
 
   return (
-    <Animated.View style={animated}>
-      <Pressable
-        onPressIn={() => { scale.value = withSpring(0.985, houseSpring); }}
-        onPressOut={() => { scale.value = withSpring(1, houseSpring); }}
-        onPress={onSelect}
+    <ChunkyPressable
+      onPress={onToggle}
+      disabled={disabled}
+      shadowColor={active ? activeShadow : light.warmShadow}
+      depth={5}
+      radius={18}
+      haptic={Haptics.ImpactFeedbackStyle.Medium}
+      accessibilityLabel={meta.label}
+    >
+      <View
         style={{
-          backgroundColor: light.hearth,
+          backgroundColor: active ? activeBg : light.hearth,
           borderRadius: 18,
           padding: 18,
-          borderWidth: selected ? 2 : 1,
-          borderColor: selected ? meta.color : light.ash,
-          opacity: selected ? 1 : 0.7,
+          borderWidth: active ? 2 : 1,
+          borderColor: active ? activeShadow : light.ash,
+          flexDirection: "row",
+          alignItems: "center",
+          columnGap: 12,
+          opacity: !active && !disabled ? 0.7 : 1,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", columnGap: 12 }}>
-          <IntentBadge intent={intent} size="lg" showLabel={false} />
-          <View style={{ flex: 1 }}>
-            <T variant="bodyLg" style={{ fontFamily: "Onest_600SemiBold" }}>
-              {meta.label}
-            </T>
-            <T variant="bodySm" color={light.smoke} style={{ marginTop: 2 }}>
-              {INTENT_DESCRIPTION[intent]}
-            </T>
-          </View>
-          {selected ? (
-            <Ionicons name="checkmark-circle" size={22} color={meta.color} />
-          ) : null}
+        <IntentBadge intent={intent} size="lg" showLabel={false} />
+        <View style={{ flex: 1 }}>
+          <T
+            variant="bodyLg"
+            style={{
+              fontFamily: "Onest_600SemiBold",
+              color: active ? light.hearth : light.coal,
+            }}
+          >
+            {meta.label}
+          </T>
+          <T
+            variant="bodySm"
+            style={{
+              color: active ? "rgba(255,255,255,0.7)" : light.smoke,
+              marginTop: 2,
+            }}
+          >
+            {INTENT_DESCRIPTION[intent]}
+          </T>
         </View>
-      </Pressable>
-    </Animated.View>
+        {/* Switch is decorative — ChunkyPressable handles all touches */}
+        <View pointerEvents="none">
+          <Switch
+            value={active}
+            trackColor={{ false: light.ash, true: "rgba(255,255,255,0.35)" }}
+            thumbColor={light.hearth}
+            ios_backgroundColor={light.ash}
+          />
+        </View>
+      </View>
+    </ChunkyPressable>
   );
 }

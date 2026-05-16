@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "PowerShell(Set-Location apps/mobile; npx tsc --noEmit 2>&1; Write-Host \"EXIT: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit -p apps/mobile/tsconfig.json 2>&1; Write-Host \"EXIT: $LASTEXITCODE\")",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

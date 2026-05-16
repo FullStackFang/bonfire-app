@@ -36,12 +36,18 @@ const FLAME_H = 36;
 const CENTER = SELF_INDICATOR_SIZE / 2;
 
 // Single shared silhouette — each layer scales it via transform.
+// Bottom-heavy oval: widest at y=22, stays ~23px wide at y=28 (dot top edge)
+// so all three nested layers visually surround the dot. Bottom tip at y=36
+// stays pinned to the dot centre so transformOrigin "50% 100%" works correctly.
 const FLAME_PATH =
-  "M 13 1 C 19.6 1, 25 8.6, 25 18 C 25 27.4, 19.6 35, 13 35 C 6.4 35, 1 27.4, 1 18 C 1 8.6, 6.4 1, 13 1 Z";
+  "M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z";
 
 const TAU = Math.PI * 2;
 
-export function SelfIndicator() {
+export function SelfIndicator({ zoom = 15 }: { zoom?: number }) {
+  // Scale linearly with zoom so the indicator shrinks as you zoom out.
+  // zoom=15 → scale=1.0 (reference), zoom=6 → 0.2 (min), zoom=24 → 1.4 (max).
+  const scale = Math.max(0.2, Math.min(1.4, (zoom - 6) / 9));
   const pOuter = useSharedValue(0);
   const pMid = useSharedValue(0);
   const pInner = useSharedValue(0);
@@ -229,7 +235,7 @@ export function SelfIndicator() {
   };
 
   return (
-    <View style={{ width: SELF_INDICATOR_SIZE, height: SELF_INDICATOR_SIZE }}>
+    <View style={{ width: SELF_INDICATOR_SIZE, height: SELF_INDICATOR_SIZE, transform: [{ scale }] }}>
       <Animated.View
         pointerEvents="none"
         style={[

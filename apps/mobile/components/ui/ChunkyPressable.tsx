@@ -14,6 +14,7 @@ import { houseSpring } from "@bonfire/ui-tokens";
 export interface ChunkyPressableProps {
   children: React.ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   disabled?: boolean;
   shadowColor: string;
   depth?: number;
@@ -27,6 +28,7 @@ export interface ChunkyPressableProps {
 export function ChunkyPressable({
   children,
   onPress,
+  onLongPress,
   disabled = false,
   shadowColor,
   depth = 4,
@@ -83,6 +85,11 @@ export function ChunkyPressable({
             if (disabled) return;
             fireHaptic();
             onPress?.();
+          }}
+          onLongPress={() => {
+            if (disabled) return;
+            fireHaptic();
+            onLongPress?.();
           }}
           testID={testID}
           style={{ opacity: disabled ? 0.5 : 1 }}
