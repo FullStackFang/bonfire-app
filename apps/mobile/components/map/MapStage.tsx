@@ -1,18 +1,11 @@
-// A Skia-rendered "map stage" used for the MVP map screen.
-// This is intentionally NOT MapLibre — we ship a stylized grid that matches
-// the editorial warm aesthetic without needing tile hosting in the MVP.
+// View-based "map stage" for the MVP. No native dependency — just the
+// editorial warm grid + a teal "water" rectangle + the heatmap layer.
 // Swap to @maplibre/maplibre-react-native by replacing this component;
-// the public interface (cells + pins + tap callback) stays the same.
+// the public interface (cells + pins + children + width/height) stays
+// the same.
 
 import { useMemo } from "react";
 import { View } from "react-native";
-import {
-  Canvas,
-  Group,
-  Line,
-  Rect,
-  vec,
-} from "@shopify/react-native-skia";
 import { light } from "@bonfire/ui-tokens";
 import { HeatmapPulse, type HeatCell } from "./HeatmapPulse";
 
@@ -25,46 +18,72 @@ export interface MapStageProps {
 
 export function MapStage({ width, height, cells, children }: MapStageProps) {
   const grid = useMemo(() => {
-    const lines: { x1: number; y1: number; x2: number; y2: number; weight: number }[] = [];
-    // Vertical lines
-    for (let x = 60; x < width; x += 80) {
-      lines.push({ x1: x, y1: 0, x2: x, y2: height, weight: (x / 80) % 2 === 0 ? 1 : 0.5 });
-    }
-    // Horizontal lines
-    for (let y = 50; y < height; y += 80) {
-      lines.push({ x1: 0, y1: y, x2: width, y2: y, weight: (y / 80) % 2 === 0 ? 1 : 0.5 });
-    }
-    return lines;
+    const v: { left: number; weight: number }[] = [];
+    const h: { top: number; weight: number }[] = [];
+    for (let x = 60; x < width; x += 80) v.push({ left: x, weight: (x / 80) % 2 === 0 ? 1.5 : 1 });
+    for (let y = 50; y < height; y += 80) h.push({ top: y, weight: (y / 80) % 2 === 0 ? 1.5 : 1 });
+    return { v, h };
   }, [width, height]);
 
   return (
-    <View style={{ width, height, position: "relative" }}>
-      <Canvas style={{ position: "absolute", width, height }}>
-        <Rect x={0} y={0} width={width} height={height} color={light.cream} />
-        <Group>
-          {grid.map((l, i) => (
-            <Line
-              key={i}
-              p1={vec(l.x1, l.y1)}
-              p2={vec(l.x2, l.y2)}
-              color={light.ash}
-              style="stroke"
-              strokeWidth={l.weight * 1.2}
-              opacity={0.6}
-            />
-          ))}
-        </Group>
-        {/* a subtle teal "water" rectangle bottom-right to suggest place */}
-        <Rect
-          x={width * 0.65}
-          y={height * 0.55}
-          width={width * 0.4}
-          height={height * 0.25}
-          color="#cfdde0"
-          opacity={0.4}
+    <View
+      style={{
+        width,
+        height,
+        position: "relative",
+        backgroundColor: light.cream,
+        overflow: "hidden",
+      }}
+    >
+      {/* "Water" rectangle, bottom-right */}
+      <View
+        style={{
+          position: "absolute",
+          left: width * 0.65,
+          top: height * 0.55,
+          width: width * 0.4,
+          height: height * 0.25,
+          backgroundColor: "#cfdde0",
+          opacity: 0.4,
+        }}
+      />
+
+      {/* Vertical grid lines */}
+      {grid.v.map((g, i) => (
+        <View
+          key={`v${i}`}
+          style={{
+            position: "absolute",
+            left: g.left,
+            top: 0,
+            width: g.weight,
+            height: "100%",
+            backgroundColor: light.ash,
+            opacity: 0.55,
+          }}
         />
-      </Canvas>
+      ))}
+
+      {/* Horizontal grid lines */}
+      {grid.h.map((g, i) => (
+        <View
+          key={`h${i}`}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: g.top,
+            width: "100%",
+            height: g.weight,
+            backgroundColor: light.ash,
+            opacity: 0.55,
+          }}
+        />
+      ))}
+
+      {/* Heatmap layer */}
       <HeatmapPulse width={width} height={height} cells={cells} />
+
+      {/* Overlays (avatars, activity bubbles, etc.) */}
       {children}
     </View>
   );
