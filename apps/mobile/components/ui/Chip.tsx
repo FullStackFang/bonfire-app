@@ -35,9 +35,9 @@ export function Chip({
 }: ChipProps) {
   const sz = sizes[size];
 
-  let bg = light.hearth;
-  let fg = light.coal;
-  let borderColor = light.ash;
+  let bg: string = light.hearth;
+  let fg: string = light.coal;
+  let borderColor: string = light.ash;
   let borderWidth = 1;
 
   if (variant === "solid") { bg = light.ember; fg = light.hearth; borderWidth = 0; borderColor = "transparent"; }
