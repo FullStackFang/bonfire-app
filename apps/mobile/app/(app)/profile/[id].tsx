@@ -7,6 +7,7 @@ import {
   CTAButton,
   Card,
   Chip,
+  IconButton,
   T,
 } from "../../../components/ui";
 import { light } from "@bonfire/ui-tokens";
@@ -40,9 +41,13 @@ export default function FriendProfile() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
       <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
-        <Pressable onPress={() => router.back()} hitSlop={20} style={{ padding: 4, alignSelf: "flex-start" }}>
-          <Ionicons name="chevron-back" size={26} color={light.coal} />
-        </Pressable>
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={26}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>

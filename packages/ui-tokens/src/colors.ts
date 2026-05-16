@@ -14,6 +14,7 @@ export const light = {
   ash:       "#ddd6d4", // oklch(88% 0.008 30)
   hearth:    "#ffffff", // oklch(100% 0 0)
   cream:     "#fff7f1", // oklch(98% 0.012 60)
+  warmShadow:"#c8b8b1", // oklch(78% 0.012 30) — the bottom layer under hearth-faced chunky buttons
 } as const;
 
 export const night = {
@@ -28,6 +29,7 @@ export const night = {
   ash:       "#322523", // oklch(28% 0.02 30)
   hearth:    "#141b26", // oklch(22% 0.025 260)
   cream:     "#050911", // oklch(14% 0.02 260)
+  warmShadow:"#0a1320", // bottom layer under hearth chunky controls in night mode
 } as const;
 
 export type ColorName = keyof typeof light;

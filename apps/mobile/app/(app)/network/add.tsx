@@ -3,7 +3,7 @@ import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { CTAButton, Card, T } from "../../../components/ui";
+import { CTAButton, Card, IconButton, SegmentedControl, T } from "../../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 
 type Mode = "phone" | "qr" | "contacts";
@@ -22,49 +22,27 @@ export default function AddFriend() {
           justifyContent: "space-between",
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={20} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={28} color={light.coal} />
-        </Pressable>
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={28}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
         <T variant="title">Add friend</T>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 36 }} />
       </View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          marginHorizontal: 20,
-          marginTop: 20,
-          backgroundColor: light.hearth,
-          borderRadius: 14,
-          padding: 4,
-          borderWidth: 1,
-          borderColor: light.ash,
-        }}
-      >
-        {(["phone", "contacts", "qr"] as Mode[]).map((m) => {
-          const active = mode === m;
-          return (
-            <Pressable
-              key={m}
-              onPress={() => setMode(m)}
-              style={{
-                flex: 1,
-                paddingVertical: 10,
-                borderRadius: 10,
-                backgroundColor: active ? light.ember : "transparent",
-                alignItems: "center",
-              }}
-            >
-              <T
-                variant="bodySm"
-                color={active ? light.hearth : light.smoke}
-                style={{ fontFamily: "Onest_600SemiBold", textTransform: "capitalize" }}
-              >
-                {m}
-              </T>
-            </Pressable>
-          );
-        })}
+      <View style={{ marginHorizontal: 20, marginTop: 20 }}>
+        <SegmentedControl
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "phone", label: "Phone" },
+            { value: "contacts", label: "Contacts" },
+            { value: "qr", label: "QR" },
+          ]}
+        />
       </View>
 
       <View style={{ padding: 20, rowGap: 16 }}>

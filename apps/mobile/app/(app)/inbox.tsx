@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  AppHeader,
   Avatar,
   CTAButton,
   Card,
@@ -32,22 +33,22 @@ export default function Inbox() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
-      <View
-        style={{
-          paddingHorizontal: 20,
-          paddingTop: 4,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <T variant="displayLg">Inbox</T>
-        <Pressable onPress={() => {}} hitSlop={8}>
-          <T variant="bodySm" color={light.ember} style={{ fontFamily: "Onest_600SemiBold" }}>
-            Mark all read
-          </T>
-        </Pressable>
-      </View>
+      <AppHeader
+        title="Inbox"
+        rightAction={
+          <Pressable
+            onPress={() => {}}
+            hitSlop={8}
+            accessibilityLabel="Mark all read"
+            accessibilityRole="button"
+            style={{ paddingHorizontal: 8, paddingVertical: 8 }}
+          >
+            <T variant="bodySm" color={light.ember} style={{ fontFamily: "Onest_600SemiBold" }}>
+              Mark all read
+            </T>
+          </Pressable>
+        }
+      />
 
       <View style={{ flexDirection: "row", paddingHorizontal: 20, marginTop: 12, columnGap: 8 }}>
         <Chip label="All" variant={filter === "all" ? "solid" : "outline"} onPress={() => setFilter("all")} />
@@ -110,20 +111,12 @@ function InboxRow({ item }: { item: InboxItem }) {
             </T>
             {item.kind === "gather_invite" ? (
               <View style={{ marginTop: 8 }}>
-                <Pressable
+                <Chip
+                  label="I'm in"
+                  variant="solid"
+                  size="sm"
                   onPress={() => router.push(`/gather/${item.payload.gather_id}`)}
-                  style={{
-                    alignSelf: "flex-start",
-                    backgroundColor: light.ember,
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                    borderRadius: 999,
-                  }}
-                >
-                  <T variant="bodySm" color={light.hearth} style={{ fontFamily: "Onest_600SemiBold" }}>
-                    I&apos;m in
-                  </T>
-                </Pressable>
+                />
               </View>
             ) : null}
           </View>

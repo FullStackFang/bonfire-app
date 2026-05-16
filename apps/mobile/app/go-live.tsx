@@ -13,6 +13,7 @@ import * as Location from "expo-location";
 import {
   CTAButton,
   Card,
+  IconButton,
   IntentBadge,
   T,
   intentMeta,
@@ -127,22 +128,11 @@ export default function GoLive() {
         }}
       >
         <T variant="displayLg">Go live</T>
-        <Pressable
+        <IconButton
+          icon="close"
           onPress={() => router.back()}
-          hitSlop={20}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: light.hearth,
-            borderWidth: 1,
-            borderColor: light.ash,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="close" size={20} color={light.coal} />
-        </Pressable>
+          accessibilityLabel="Close"
+        />
       </View>
 
       <T variant="body" color={light.smoke} style={{ paddingHorizontal: 20, marginTop: 8 }}>

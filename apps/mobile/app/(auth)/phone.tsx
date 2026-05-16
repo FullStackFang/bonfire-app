@@ -3,7 +3,7 @@ import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { CTAButton, T } from "../../components/ui";
+import { CTAButton, IconButton, T } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 
@@ -43,13 +43,13 @@ export default function Phone() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-        <Pressable
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={28}
           onPress={() => router.back()}
-          hitSlop={20}
-          style={{ alignSelf: "flex-start", padding: 4 }}
-        >
-          <Ionicons name="chevron-back" size={28} color={light.coal} />
-        </Pressable>
+          accessibilityLabel="Back"
+        />
       </View>
 
       <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 16, justifyContent: "space-between" }}>

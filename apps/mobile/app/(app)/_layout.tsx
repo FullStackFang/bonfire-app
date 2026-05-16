@@ -13,14 +13,14 @@ export default function AppLayout() {
           backgroundColor: light.hearth,
           borderTopColor: light.ash,
           borderTopWidth: 0.5,
-          height: 84,
-          paddingTop: 8,
-          paddingBottom: 24,
+          height: 64,
+          paddingTop: 6,
+          paddingBottom: 12,
         },
         tabBarLabelStyle: {
           fontFamily: "Onest_500Medium",
           fontSize: 11,
-          marginTop: 2,
+          marginTop: 0,
         },
       }}
     >
@@ -52,6 +52,15 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="mail" size={size} color={color} />,
         }}
       />
+      {/* Routes that exist but shouldn't appear in the tab bar. Expo Router
+          auto-discovers every file under (app)/, so each nested route needs
+          an explicit href: null to stay out of the bottom bar. */}
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="profile/index" options={{ href: null }} />
+      <Tabs.Screen name="profile/settings" options={{ href: null }} />
+      <Tabs.Screen name="profile/[id]" options={{ href: null }} />
+      <Tabs.Screen name="network/add" options={{ href: null }} />
+      <Tabs.Screen name="network/circle/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

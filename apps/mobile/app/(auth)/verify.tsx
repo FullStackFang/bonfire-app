@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { T } from "../../components/ui";
+import { IconButton, T } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 
@@ -82,9 +82,13 @@ export default function Verify() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-        <Pressable onPress={() => router.back()} hitSlop={20} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={28} color={light.coal} />
-        </Pressable>
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={28}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
       </View>
       <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 16 }}>
         <T variant="displayXl">Enter code</T>

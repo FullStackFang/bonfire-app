@@ -1,11 +1,7 @@
-import { Pressable, Text, View, type ViewStyle } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { Text, View, type ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
-import { houseSpring, light } from "@bonfire/ui-tokens";
+import { light } from "@bonfire/ui-tokens";
+import { ChunkyPressable } from "./ChunkyPressable";
 
 export type CTAVariant = "primary" | "outline" | "ghost";
 
@@ -20,6 +16,7 @@ export interface CTAButtonProps {
   testID?: string;
 }
 
+
 export function CTAButton({
   label,
   onPress,
@@ -30,62 +27,88 @@ export function CTAButton({
   haptic = Haptics.ImpactFeedbackStyle.Light,
   testID,
 }: CTAButtonProps) {
-  const scale = useSharedValue(1);
-  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const isPrimary = variant === "primary";
+  const isOutline = variant === "outline";
+  const isGhost = variant === "ghost";
 
-  const bg =
-    variant === "primary" ? light.ember
-    : variant === "outline" ? light.hearth
-    : "transparent";
-  const fg =
-    variant === "primary" ? light.hearth
-    : variant === "outline" ? light.ember
-    : light.coal;
-  const borderColor =
-    variant === "outline" ? light.ember : "transparent";
+  const bg = isPrimary ? light.ember : isOutline ? light.hearth : "transparent";
+  const fg = isPrimary ? light.hearth : isOutline ? light.ember : light.coal;
+  const shadowColor = isPrimary ? light.emberDeep : light.warmShadow;
 
-  const style: ViewStyle = {
+  const chunkyHaptic =
+    haptic === "selection" || haptic === "success" || haptic === "warning"
+      ? "selection"
+      : (haptic as Haptics.ImpactFeedbackStyle);
+
+  // Ghost has no 3D treatment — it's a flat text button.
+  if (isGhost) {
+    return (
+      <ChunkyPressable
+        onPress={onPress}
+        disabled={disabled}
+        shadowColor="transparent"
+        depth={0}
+        radius={999}
+        haptic={chunkyHaptic}
+        accessibilityLabel={label}
+        testID={testID}
+      >
+        <View
+          style={{
+            height: 56,
+            paddingHorizontal: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {leftIcon ? <View style={{ marginRight: 8 }}>{leftIcon}</View> : null}
+          <Text style={{ color: fg, fontFamily: "Onest_600SemiBold", fontSize: 17 }}>
+            {label}
+          </Text>
+          {rightIcon ? <View style={{ marginLeft: 8 }}>{rightIcon}</View> : null}
+        </View>
+      </ChunkyPressable>
+    );
+  }
+
+  const faceStyle: ViewStyle = {
     height: 56,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     borderRadius: 999,
     backgroundColor: bg,
-    borderWidth: variant === "outline" ? 1.5 : 0,
-    borderColor,
+    borderWidth: isOutline ? 1.5 : 0,
+    borderColor: isOutline ? light.warmShadow : "transparent",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    opacity: disabled ? 0.5 : 1,
-  };
-
-  const fireHaptic = () => {
-    if (haptic === "selection") return Haptics.selectionAsync().catch(() => {});
-    if (haptic === "success") return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    if (haptic === "warning") return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    return Haptics.impactAsync(haptic as Haptics.ImpactFeedbackStyle).catch(() => {});
   };
 
   return (
-    <Animated.View style={animated}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        disabled={disabled}
-        onPressIn={() => { if (!disabled) scale.value = withSpring(0.97, houseSpring); }}
-        onPressOut={() => { scale.value = withSpring(1, houseSpring); }}
-        onPress={() => {
-          if (disabled) return;
-          fireHaptic();
-          onPress();
-        }}
-        style={style}
-        testID={testID}
-      >
+    <ChunkyPressable
+      onPress={onPress}
+      disabled={disabled}
+      shadowColor={shadowColor}
+      depth={5}
+      radius={999}
+      haptic={chunkyHaptic}
+      accessibilityLabel={label}
+      testID={testID}
+    >
+      <View style={faceStyle}>
         {leftIcon ? <View style={{ marginRight: 8 }}>{leftIcon}</View> : null}
-        <Text style={{ color: fg, fontFamily: "Onest_600SemiBold", fontSize: 17 }}>
+        <Text
+          style={{
+            color: fg,
+            fontFamily: "Onest_600SemiBold",
+            fontSize: 17,
+            letterSpacing: 0.2,
+          }}
+        >
           {label}
         </Text>
         {rightIcon ? <View style={{ marginLeft: 8 }}>{rightIcon}</View> : null}
-      </Pressable>
-    </Animated.View>
+      </View>
+    </ChunkyPressable>
   );
 }

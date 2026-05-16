@@ -8,6 +8,7 @@ import {
   BonfireScore,
   CTAButton,
   Card,
+  IconButton,
   LiveDot,
   T,
 } from "../../components/ui";
@@ -204,28 +205,25 @@ function VenueHero({ venue }: { venue: ReturnType<typeof findVenueSync> }) {
             paddingTop: 8,
           }}
         >
-          <Pressable
+          <IconButton
+            icon="arrow-back"
+            variant="overlay"
             onPress={() => router.back()}
-            hitSlop={20}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: light.hearth,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: 0.95,
-            }}
-          >
-            <Ionicons name="arrow-back" size={18} color={light.coal} />
-          </Pressable>
+            accessibilityLabel="Back"
+          />
           <View style={{ flexDirection: "row", columnGap: 8 }}>
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: light.hearth, alignItems: "center", justifyContent: "center", opacity: 0.95 }}>
-              <Ionicons name="bookmark-outline" size={18} color={light.coal} />
-            </View>
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: light.hearth, alignItems: "center", justifyContent: "center", opacity: 0.95 }}>
-              <Ionicons name="share-outline" size={18} color={light.coal} />
-            </View>
+            <IconButton
+              icon="bookmark-outline"
+              variant="overlay"
+              onPress={() => {}}
+              accessibilityLabel="Bookmark"
+            />
+            <IconButton
+              icon="share-outline"
+              variant="overlay"
+              onPress={() => {}}
+              accessibilityLabel="Share"
+            />
           </View>
         </View>
       </SafeAreaView>

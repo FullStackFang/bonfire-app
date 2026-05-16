@@ -8,6 +8,7 @@ import {
   CTAButton,
   Card,
   Chip,
+  IconButton,
   T,
 } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
@@ -107,13 +108,13 @@ export default function GatherNew() {
           justifyContent: "space-between",
         }}
       >
-        <Pressable
+        <IconButton
+          icon={step === 1 ? "close" : "chevron-back"}
+          variant="ghost"
+          iconSize={26}
           onPress={() => (step === 1 ? router.back() : setStep((s) => (s - 1) as Step))}
-          hitSlop={20}
-          style={{ padding: 4 }}
-        >
-          <Ionicons name={step === 1 ? "close" : "chevron-back"} size={26} color={light.coal} />
-        </Pressable>
+          accessibilityLabel={step === 1 ? "Close" : "Back"}
+        />
         <View style={{ flexDirection: "row", columnGap: 6 }}>
           {[1, 2, 3].map((i) => (
             <View

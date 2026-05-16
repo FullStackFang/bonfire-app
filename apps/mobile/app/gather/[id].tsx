@@ -8,6 +8,8 @@ import {
   BonfireScore,
   CTAButton,
   Card,
+  Chip,
+  IconButton,
   T,
 } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
@@ -78,9 +80,13 @@ export default function GatherDetail() {
           columnGap: 12,
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={20} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={26} color={light.coal} />
-        </Pressable>
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={26}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
         <View style={{ flex: 1 }}>
           <T variant="title">{gather.title}</T>
           <T variant="bodySm" color={light.smoke}>
@@ -183,19 +189,7 @@ export default function GatherDetail() {
                   Available on {gather.reservation_provider === "opentable" ? "OpenTable" : "Resy"}
                 </T>
               </View>
-              <Pressable
-                onPress={() => {}}
-                style={{
-                  backgroundColor: light.spark,
-                  paddingHorizontal: 14,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                }}
-              >
-                <T variant="bodySm" color={light.hearth} style={{ fontFamily: "Onest_600SemiBold" }}>
-                  Book
-                </T>
-              </Pressable>
+              <Chip label="Book" variant="tinted" tint={light.spark} size="sm" onPress={() => {}} />
             </View>
           </Card>
         ) : null}

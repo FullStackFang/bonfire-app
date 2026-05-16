@@ -4,11 +4,13 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  AppHeader,
   AvatarStack,
   CTAButton,
   Card,
   Chip,
   EmptyState,
+  IconButton,
   LiveDot,
   T,
 } from "../../components/ui";
@@ -58,46 +60,16 @@ export default function Around() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
-      <View
-        style={{
-          paddingHorizontal: 20,
-          paddingTop: 4,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <T variant="displayLg">Around you</T>
-        <View style={{ flexDirection: "row", columnGap: 6 }}>
-          <Pressable
+      <AppHeader
+        title="Around you"
+        rightAction={
+          <IconButton
+            icon="map"
             onPress={() => router.push("/(app)")}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: light.hearth,
-              borderWidth: 1,
-              borderColor: light.ash,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons name="map" size={16} color={light.smoke} />
-          </Pressable>
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: light.ember,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons name="list" size={16} color={light.hearth} />
-          </View>
-        </View>
-      </View>
+            accessibilityLabel="Switch to map view"
+          />
+        }
+      />
 
       <View style={{ flexDirection: "row", paddingHorizontal: 20, marginTop: 12, columnGap: 8 }}>
         <Chip label="Now" variant={filter === "now" ? "solid" : "outline"} onPress={() => setFilter("now")} />

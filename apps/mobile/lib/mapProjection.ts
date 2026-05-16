@@ -17,6 +17,14 @@ export const ITHACA_BOUNDS: Bounds = {
   maxLng: -76.478,
 };
 
+export const ITHACA_CENTER = {
+  lat: (ITHACA_BOUNDS.minLat + ITHACA_BOUNDS.maxLat) / 2,
+  lng: (ITHACA_BOUNDS.minLng + ITHACA_BOUNDS.maxLng) / 2,
+};
+
+// Washington Square Park — central to the Village seed venues.
+export const NYC_CENTER = { lat: 40.7308, lng: -73.9973 };
+
 export function projectPoint(
   lat: number,
   lng: number,
@@ -27,6 +35,22 @@ export function projectPoint(
   const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * width;
   const y = ((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * height;
   return { x, y };
+}
+
+// Heatmap points in lat/lng space, weighted by recency. MapLibre's built-in
+// heatmap layer does its own kernel falloff, so we don't pre-aggregate here.
+export function buildHeatPoints(
+  presence: PresenceEvent[],
+  now = Date.now(),
+): { lat: number; lng: number; weight: number }[] {
+  const out: { lat: number; lng: number; weight: number }[] = [];
+  for (const e of presence) {
+    if (e.ended_at || e.lat == null || e.lng == null) continue;
+    const ageMin = Math.max(0, (now - new Date(e.started_at).getTime()) / 60_000);
+    const weight = ageMin < 10 ? 1 : ageMin < 30 ? 0.7 : 0.4;
+    out.push({ lat: e.lat, lng: e.lng, weight });
+  }
+  return out;
 }
 
 // Heatmap cells: collapse pins into 80px buckets, weight by recency.

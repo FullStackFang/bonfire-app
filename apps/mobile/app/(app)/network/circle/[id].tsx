@@ -3,7 +3,7 @@ import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Avatar, CTAButton, Card, T } from "../../../../components/ui";
+import { Avatar, CTAButton, Card, IconButton, T } from "../../../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 import { findCircleSync, usePeople } from "../../../../lib/data";
 
@@ -48,9 +48,13 @@ export default function CircleDetail() {
           justifyContent: "space-between",
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={20} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={28} color={light.coal} />
-        </Pressable>
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={28}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
         <T variant="bodySm" color={light.smoke}>
           {members.length} people
         </T>

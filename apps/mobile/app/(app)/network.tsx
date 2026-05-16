@@ -4,9 +4,11 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  AppHeader,
   Avatar,
   AvatarStack,
   Card,
+  IconButton,
   LiveDot,
   T,
 } from "../../components/ui";
@@ -30,24 +32,17 @@ export default function Network() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
-      <View
-        style={{
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <T variant="displayLg">Your network</T>
-        <Pressable
-          onPress={() => router.push("/(app)/network/add")}
-          hitSlop={20}
-          style={{ padding: 4 }}
-        >
-          <Ionicons name="person-add" size={22} color={light.ember} />
-        </Pressable>
-      </View>
+      <AppHeader
+        title="Your network"
+        rightAction={
+          <IconButton
+            icon="person-add"
+            iconColor={light.ember}
+            onPress={() => router.push("/(app)/network/add")}
+            accessibilityLabel="Add friend"
+          />
+        }
+      />
 
       <View style={{ flexDirection: "row", paddingHorizontal: 20, marginTop: 16, columnGap: 24, borderBottomWidth: 0.5, borderBottomColor: light.ash }}>
         {(["circles", "friends", "suggested"] as Tab[]).map((t) => {

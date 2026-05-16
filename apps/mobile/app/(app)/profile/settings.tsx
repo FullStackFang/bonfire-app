@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Switch, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, T } from "../../../components/ui";
+import { Card, IconButton, T } from "../../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 import { useSession } from "../../../lib/session";
 
@@ -28,11 +28,15 @@ export default function Settings() {
           justifyContent: "space-between",
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={20} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={26} color={light.coal} />
-        </Pressable>
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={26}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
         <T variant="title">Settings</T>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, rowGap: 16, paddingBottom: 40 }}>
