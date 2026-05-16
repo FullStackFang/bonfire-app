@@ -59,7 +59,7 @@ export default function Around() {
   const isEmpty = grouped.groups.length === 0 && grouped.solos.length === 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={[]}>
       <AppHeader
         title="Around you"
         rightAction={

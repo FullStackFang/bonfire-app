@@ -31,7 +31,7 @@ export default function Network() {
   }, [presence]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={[]}>
       <AppHeader
         title="Your network"
         rightAction={

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Linking, Pressable, ScrollView, View } from "react-native";
+import { Linking, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -53,102 +53,143 @@ export default function VenueDetail() {
     .filter(Boolean) as User[];
 
   const activities = buildActivityFeed(friendsHere);
+  const categoryIcon = iconForCategory(venue.category);
 
   return (
-    <View style={{ flex: 1, backgroundColor: light.cream }}>
-      <VenueHero venue={venue} />
-
-      <ScrollView
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: 140,
+    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top", "left", "right"]}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 4,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
-        style={{ marginTop: -20 }}
       >
+        <IconButton
+          icon="chevron-back"
+          variant="ghost"
+          iconSize={26}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+        />
+        <View style={{ flexDirection: "row", columnGap: 4 }}>
+          <IconButton
+            icon="bookmark-outline"
+            variant="ghost"
+            iconSize={22}
+            onPress={() => {}}
+            accessibilityLabel="Bookmark"
+          />
+          <IconButton
+            icon="share-outline"
+            variant="ghost"
+            iconSize={22}
+            onPress={() => {}}
+            accessibilityLabel="Share"
+          />
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16, rowGap: 12, paddingBottom: 140 }}>
+        {/* Hero card — venue identity + bonfire score. Warm ember glow on the
+            category badge supplies the "bonfire" character; no full-bleed
+            tinted block, no rounded-sheet seam. */}
         <View
           style={{
-            backgroundColor: light.cream,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            padding: 16,
+            backgroundColor: light.hearth,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: light.ash,
+            padding: 18,
           }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              columnGap: 12,
-            }}
-          >
+          <View style={{ flexDirection: "row", alignItems: "flex-start", columnGap: 14 }}>
             <View style={{ flex: 1 }}>
-              <T variant="title">{venue.name}</T>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  alignSelf: "flex-start",
+                  columnGap: 6,
+                  backgroundColor: light.ember + "14",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                }}
+              >
+                <Ionicons name={categoryIcon} size={12} color={light.ember} />
+                <T
+                  variant="bodySm"
+                  color={light.ember}
+                  style={{ fontFamily: "Onest_600SemiBold", letterSpacing: 0.3 }}
+                >
+                  {capitalize(venue.category)}
+                </T>
+              </View>
+              <T variant="title" style={{ marginTop: 10 }}>
+                {venue.name}
+              </T>
               <T variant="bodySm" color={light.smoke} style={{ marginTop: 4 }}>
-                {capitalize(venue.category)}
-                {venue.neighborhood ? ` · ${venue.neighborhood}` : ""}
-                {" · 0.3 mi"}
+                {venue.neighborhood ? `${venue.neighborhood} · ` : ""}0.3 mi away
               </T>
             </View>
             <BonfireScore score={score} size="lg" />
           </View>
+        </View>
 
-          <Card padding={14} style={{ marginTop: 14 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", columnGap: 8 }}>
-              <LiveDot pulse={users.length > 0} />
-              <T variant="bodyLg" style={{ fontFamily: "Onest_600SemiBold" }}>
-                {users.length} friend{users.length === 1 ? "" : "s"} here now
-              </T>
+        <Card padding={14}>
+          <View style={{ flexDirection: "row", alignItems: "center", columnGap: 8 }}>
+            <LiveDot pulse={users.length > 0} />
+            <T variant="bodyLg" style={{ fontFamily: "Onest_600SemiBold" }}>
+              {users.length} friend{users.length === 1 ? "" : "s"} here now
+            </T>
+          </View>
+          {users.length > 0 ? (
+            <View style={{ marginTop: 10 }}>
+              <AvatarStack
+                size="md"
+                max={5}
+                avatars={users.map((u) => ({ label: u.letter_pair, color: u.avatar_color }))}
+              />
             </View>
-            {users.length > 0 ? (
-              <View style={{ marginTop: 10 }}>
-                <AvatarStack
-                  size="md"
-                  max={5}
-                  avatars={users.map((u) => ({ label: u.letter_pair, color: u.avatar_color }))}
-                />
-              </View>
-            ) : (
-              <T variant="bodySm" color={light.smoke} style={{ marginTop: 8 }}>
-                Be the first to drop a pin. The bonfire warms up when someone heads over.
-              </T>
-            )}
-          </Card>
-
-          <T variant="overline" color={light.smoke} style={{ marginTop: 20, letterSpacing: 1.1 }}>
-            LIVE ACTIVITY
-          </T>
-
-          {activities.length > 0 ? (
-            <Card padding={14} style={{ marginTop: 10 }}>
-              {activities.map((a, i) => (
-                <View
-                  key={i}
-                  style={{
-                    flexDirection: "row",
-                    columnGap: 10,
-                    marginTop: i === 0 ? 0 : 8,
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <T
-                    variant="monoSm"
-                    color={light.smoke}
-                    style={{ minWidth: 42 }}
-                  >
-                    {a.timeLabel}
-                  </T>
-                  <T variant="body" style={{ flex: 1 }}>
-                    {a.message}
-                  </T>
-                </View>
-              ))}
-            </Card>
           ) : (
-            <T variant="bodySm" color={light.smoke} style={{ marginTop: 10 }}>
-              No activity yet. Be the spark.
+            <T variant="bodySm" color={light.smoke} style={{ marginTop: 8 }}>
+              Be the first to drop a pin. The bonfire warms up when someone heads over.
             </T>
           )}
-        </View>
+        </Card>
+
+        <T variant="overline" color={light.smoke} style={{ letterSpacing: 1.1, marginTop: 4 }}>
+          LIVE ACTIVITY
+        </T>
+
+        {activities.length > 0 ? (
+          <Card padding={14}>
+            {activities.map((a, i) => (
+              <View
+                key={i}
+                style={{
+                  flexDirection: "row",
+                  columnGap: 10,
+                  marginTop: i === 0 ? 0 : 8,
+                  alignItems: "flex-start",
+                }}
+              >
+                <T variant="monoSm" color={light.smoke} style={{ minWidth: 42 }}>
+                  {a.timeLabel}
+                </T>
+                <T variant="body" style={{ flex: 1 }}>
+                  {a.message}
+                </T>
+              </View>
+            ))}
+          </Card>
+        ) : (
+          <T variant="bodySm" color={light.smoke}>
+            No activity yet. Be the spark.
+          </T>
+        )}
       </ScrollView>
 
       <SafeAreaView edges={["bottom"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
@@ -179,56 +220,21 @@ export default function VenueDetail() {
           </View>
         </View>
       </SafeAreaView>
-    </View>
+    </SafeAreaView>
   );
 }
 
-function VenueHero({ venue }: { venue: ReturnType<typeof findVenueSync> }) {
-  // Three illustrated archetypes; warmth varies by category.
-  const tint =
-    venue?.category === "bar" ? "#a3724a"
-    : venue?.category === "restaurant" ? "#b88962"
-    : venue?.category === "cafe" ? "#c89e6e"
-    : "#a89481";
-
-  return (
-    <View style={{ height: 200, backgroundColor: tint, position: "relative" }}>
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 100, backgroundColor: "rgba(0,0,0,0.12)" }} />
-      <View style={{ position: "absolute", top: 35, left: 30, width: 60, height: 50, backgroundColor: "rgba(0,0,0,0.18)", borderRadius: 4 }} />
-      <View style={{ position: "absolute", top: 45, right: 40, width: 70, height: 40, backgroundColor: "rgba(255,255,255,0.16)", borderRadius: 4 }} />
-      <SafeAreaView edges={["top"]} style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-            paddingTop: 8,
-          }}
-        >
-          <IconButton
-            icon="arrow-back"
-            variant="overlay"
-            onPress={() => router.back()}
-            accessibilityLabel="Back"
-          />
-          <View style={{ flexDirection: "row", columnGap: 8 }}>
-            <IconButton
-              icon="bookmark-outline"
-              variant="overlay"
-              onPress={() => {}}
-              accessibilityLabel="Bookmark"
-            />
-            <IconButton
-              icon="share-outline"
-              variant="overlay"
-              onPress={() => {}}
-              accessibilityLabel="Share"
-            />
-          </View>
-        </View>
-      </SafeAreaView>
-    </View>
-  );
+function iconForCategory(category: string): React.ComponentProps<typeof Ionicons>["name"] {
+  switch (category) {
+    case "bar":
+      return "wine";
+    case "restaurant":
+      return "restaurant";
+    case "cafe":
+      return "cafe";
+    default:
+      return "flame";
+  }
 }
 
 function buildActivityFeed(events: PresenceEvent[]): { timeLabel: string; message: string }[] {

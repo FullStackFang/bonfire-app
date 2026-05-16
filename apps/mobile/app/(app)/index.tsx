@@ -1,5 +1,13 @@
-import { useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, View } from "react-native";
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,7 +18,6 @@ import {
   Avatar,
   AvatarStack,
   ChunkyPressable,
-  Chip,
   EmptyState,
   T,
 } from "../../components/ui";
@@ -20,15 +27,14 @@ import {
   type PinSpec,
 } from "../../components/map/MapStage";
 import { PulsingMapPin } from "../../components/map/PulsingMapPin";
-import { light } from "@bonfire/ui-tokens";
+import { SELF_INDICATOR_SIZE, SelfIndicator } from "../../components/map/SelfIndicator";
+import { heatmapPulseMs, light } from "@bonfire/ui-tokens";
 import { buildHeatPoints } from "../../lib/mapProjection";
 import { MOCK_CENTER } from "../../lib/mockSeeds";
 import { useUserLocation } from "../../lib/useUserLocation";
 import { useVisiblePresence, usePeople, findVenueSync } from "../../lib/data";
 import { useSession } from "../../lib/session";
 import { intentMeta } from "../../components/ui";
-
-type Filter = "people" | "events" | "available";
 
 // Pin renders are anchored at their geographic point. These offsets pull each
 // pin so its visual anchor (the avatar centre for loose pins; the bottom of
@@ -37,16 +43,50 @@ const LOOSE_PIN_SIZE = 32;
 const LOOSE_ANCHOR_OFFSET = -LOOSE_PIN_SIZE / 2;
 const VENUE_ANCHOR_OFFSET_X = -32;
 const VENUE_ANCHOR_OFFSET_Y = -28;
+const SELF_ANCHOR_OFFSET = -SELF_INDICATOR_SIZE / 2;
 
 export default function Home() {
   const { user } = useSession();
   const presence = useVisiblePresence();
   const { byId } = usePeople();
-  const [filter, setFilter] = useState<Filter>("people");
   const userLocation = useUserLocation(MOCK_CENTER);
   const userCenter = userLocation?.coords ?? null;
   const mapRef = useRef<MapStageHandle>(null);
   const [recentering, setRecentering] = useState(false);
+
+  // The Go-live FAB pulses when the user has an active broadcast. The pulse
+  // is the only place that surfaces "you're live right now" — the chip-row
+  // status indicator was removed in favor of this.
+  const isLive = useMemo(() => {
+    if (!user) return false;
+    const now = Date.now();
+    return presence.some(
+      (p) =>
+        p.user_id === user.id &&
+        p.ended_at == null &&
+        new Date(p.expires_at).getTime() > now,
+    );
+  }, [presence, user]);
+
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    if (!isLive) {
+      cancelAnimation(pulse);
+      pulse.value = 0;
+      return;
+    }
+    pulse.value = withRepeat(
+      withTiming(1, { duration: heatmapPulseMs, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+    return () => cancelAnimation(pulse);
+  }, [isLive, pulse]);
+
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: 0.28 + pulse.value * 0.42,
+    transform: [{ scale: 1 + pulse.value * 0.18 }],
+  }));
 
   // Recenter is two-phase:
   //   1. SYNCHRONOUS — if we already have a real fix in memory, flyTo right
@@ -95,14 +135,7 @@ export default function Home() {
     }
   };
 
-  const filtered = useMemo(() => {
-    if (filter === "available") {
-      return presence.filter((p) => p.intent === "available_now");
-    }
-    return presence;
-  }, [presence, filter]);
-
-  const heatPoints = useMemo(() => buildHeatPoints(filtered), [filtered]);
+  const heatPoints = useMemo(() => buildHeatPoints(presence), [presence]);
 
   // Group presence into venue clusters (rendered as avatar stacks) and loose
   // pins (rendered as single avatars). Coordinates stay in lat/lng — MapStage
@@ -118,7 +151,7 @@ export default function Home() {
     const byVenue = new Map<string, VenueGroup>();
     const loose: { lat: number; lng: number; user: ReturnType<typeof byId.get>; intent: string; id: string }[] = [];
 
-    for (const e of filtered) {
+    for (const e of presence) {
       if (e.lat == null || e.lng == null) continue;
       const user = byId.get(e.user_id);
       if (!user) continue;
@@ -211,16 +244,37 @@ export default function Home() {
       });
     }
     return out;
-  }, [filtered, byId]);
+  }, [presence, byId]);
+
+  // "You are here" pin. Rendered first so friend pins draw on top — that
+  // matches Apple Maps / Google Maps convention where your blue dot is the
+  // lowest layer in the map's marker stack.
+  const pinsWithSelf = useMemo<PinSpec[]>(() => {
+    if (!userLocation?.isReal) return pins;
+    const selfPin: PinSpec = {
+      id: "self",
+      lat: userLocation.coords.lat,
+      lng: userLocation.coords.lng,
+      render: (
+        <View
+          pointerEvents="none"
+          style={{ transform: [{ translateX: SELF_ANCHOR_OFFSET }, { translateY: SELF_ANCHOR_OFFSET }] }}
+        >
+          <SelfIndicator />
+        </View>
+      ),
+    };
+    return [selfPin, ...pins];
+  }, [pins, userLocation]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={[]}>
       <AppHeader
         leading={
           <View
             style={{
               height: 40,
-              backgroundColor: light.hearth,
+              backgroundColor: light.cream,
               borderRadius: 999,
               paddingHorizontal: 14,
               flexDirection: "row",
@@ -238,37 +292,7 @@ export default function Home() {
         }
       />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0, flexShrink: 0 }}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          columnGap: 8,
-        }}
-      >
-        <Chip
-          label="People"
-          variant={filter === "people" ? "solid" : "outline"}
-          onPress={() => setFilter("people")}
-          leftIcon={<Ionicons name="flame" size={11} color={filter === "people" ? light.hearth : light.coal} />}
-        />
-        <Chip
-          label="Events"
-          variant={filter === "events" ? "solid" : "outline"}
-          onPress={() => setFilter("events")}
-          leftIcon={<Ionicons name="calendar" size={11} color={filter === "events" ? light.hearth : light.coal} />}
-        />
-        <Chip
-          label="Available now"
-          variant={filter === "available" ? "solid" : "outline"}
-          onPress={() => setFilter("available")}
-          rightIcon={<Ionicons name="chevron-down" size={11} color={filter === "available" ? light.hearth : light.coal} />}
-        />
-      </ScrollView>
-
-      <View style={{ flex: 1, marginTop: 12 }}>
+      <View style={{ flex: 1 }}>
         {/* Hold off mounting the map until we have a real location to open at.
             The hook resolves from AsyncStorage cache first (~20ms on returning
             launches), so this skips the visible fly-to-user animation. */}
@@ -277,62 +301,9 @@ export default function Home() {
           ref={mapRef}
           center={userCenter}
           initialZoom={14}
-          pins={pins}
+          pins={pinsWithSelf}
           heatPoints={heatPoints}
         >
-          {/* available-now floating badge — chunky, hearth-on-warm-shadow */}
-          <View
-            pointerEvents="none"
-            style={{ position: "absolute", top: 14, left: 14, paddingBottom: 3 }}
-          >
-            <View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: 3,
-                bottom: 0,
-                backgroundColor: light.warmShadow,
-                borderRadius: 999,
-              }}
-            />
-            <View
-              style={{
-                backgroundColor: light.hearth,
-                borderRadius: 999,
-                paddingHorizontal: 13,
-                paddingVertical: 7,
-                flexDirection: "row",
-                alignItems: "center",
-                columnGap: 7,
-                borderWidth: 1.5,
-                borderColor: light.warmShadow,
-                borderBottomWidth: 1.5,
-              }}
-            >
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: light.spark,
-                }}
-              />
-              <T
-                variant="bodySm"
-                style={{
-                  fontFamily: "Onest_600SemiBold",
-                  color: light.coal,
-                  letterSpacing: 0.3,
-                  fontSize: 13,
-                }}
-              >
-                Available now
-              </T>
-            </View>
-          </View>
-
           {/* Recenter on user — chunky 3D press, same footprint as the FAB */}
           <View style={{ position: "absolute", right: 18, bottom: 132 }}>
             <ChunkyPressable
@@ -398,8 +369,26 @@ export default function Home() {
       </View>
 
       {/* FAB — Go live. Sits just above the tab bar (64pt tall), matched size
-          with the recenter control above it. */}
-      <View style={{ position: "absolute", right: 18, bottom: 68 }}>
+          with the recenter control above it. When the user is live, a soft
+          ember halo pulses behind it — the only "you're broadcasting" cue. */}
+      <View style={{ position: "absolute", right: 18, bottom: 68, width: 52, height: 52 }}>
+        {isLive ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              {
+                position: "absolute",
+                left: -10,
+                top: -10,
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                backgroundColor: light.emberGlow,
+              },
+              haloStyle,
+            ]}
+          />
+        ) : null}
         <ChunkyPressable
           onPress={() => router.push("/go-live")}
           shadowColor={light.emberDeep}

@@ -32,7 +32,7 @@ export default function Inbox() {
   const grouped = useMemo(() => groupByDay(filtered), [filtered]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }} edges={[]}>
       <AppHeader
         title="Inbox"
         rightAction={

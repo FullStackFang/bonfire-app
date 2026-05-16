@@ -6,7 +6,9 @@ export type ChipVariant = "solid" | "outline" | "ghost" | "tinted";
 export type ChipSize = "sm" | "md";
 
 export interface ChipProps {
-  label: string;
+  // Optional — when omitted, the chip is icon-only. An accessibilityLabel is
+  // then required so screen readers still have something to announce.
+  label?: string;
   variant?: ChipVariant;
   size?: ChipSize;
   onPress?: () => void;
@@ -15,6 +17,7 @@ export interface ChipProps {
   tint?: string;
   disabled?: boolean;
   testID?: string;
+  accessibilityLabel?: string;
 }
 
 const sizes: Record<ChipSize, { paddingV: number; paddingH: number; font: number }> = {
@@ -32,6 +35,7 @@ export function Chip({
   tint,
   disabled,
   testID,
+  accessibilityLabel,
 }: ChipProps) {
   const sz = sizes[size];
 
@@ -70,13 +74,19 @@ export function Chip({
       style={style}
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
     >
-      {leftIcon ? <View style={{ marginRight: 4 }}>{leftIcon}</View> : null}
-      <Text style={{ color: fg, fontFamily: "Onest_500Medium", fontSize: sz.font }}>
-        {label}
-      </Text>
-      {rightIcon ? <View style={{ marginLeft: 4 }}>{rightIcon}</View> : null}
+      {leftIcon ? (
+        <View style={label || rightIcon ? { marginRight: 4 } : undefined}>{leftIcon}</View>
+      ) : null}
+      {label ? (
+        <Text style={{ color: fg, fontFamily: "Onest_500Medium", fontSize: sz.font }}>
+          {label}
+        </Text>
+      ) : null}
+      {rightIcon ? (
+        <View style={label ? { marginLeft: 4 } : undefined}>{rightIcon}</View>
+      ) : null}
     </Pressable>
   );
 }

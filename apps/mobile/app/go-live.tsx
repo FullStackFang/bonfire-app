@@ -24,6 +24,7 @@ import { INTENT_DESCRIPTION, INTENT_DURATION_MS } from "@bonfire/shared";
 import { useMyCircles } from "../lib/data";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { useSession } from "../lib/session";
+import { setMockSelfPresence } from "../lib/mockPresenceStore";
 
 const INTENTS: Intent[] = ["available_now", "out_today", "out_tonight"];
 
@@ -47,6 +48,19 @@ export default function GoLive() {
     setError(null);
 
     if (!supabaseConfigured || !user) {
+      const now = new Date();
+      setMockSelfPresence({
+        id: `mock-self-${now.getTime()}`,
+        user_id: user?.id ?? "u-self",
+        intent: selected,
+        visible_to_circle_ids: Array.from(visibleIds),
+        venue_id: null,
+        lat: null,
+        lng: null,
+        started_at: now.toISOString(),
+        expires_at: new Date(now.getTime() + INTENT_DURATION_MS[selected]).toISOString(),
+        ended_at: null,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
       return;

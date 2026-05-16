@@ -1,4 +1,5 @@
 import { Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Avatar } from "./Avatar";
 import { T } from "./Text";
@@ -8,6 +9,10 @@ import { useSession } from "../../lib/session";
 // Shared top-of-screen header. Every tab uses this so the profile avatar
 // always lives at the same place (top-right) and titles/actions follow one
 // rhythm. See DESIGN.md §5 Navigation for the rationale.
+//
+// Owns the top safe-area inset itself so the hearth bar paints all the way
+// up to the device top. Screens hosting AppHeader should omit "top" from
+// their SafeAreaView edges, otherwise the inset is padded twice.
 
 export interface AppHeaderProps {
   // Title text shown as displayLg, left-aligned. Ignored if `leading` is provided.
@@ -28,16 +33,20 @@ export function AppHeader({
   showAvatar = true,
 }: AppHeaderProps) {
   const { user } = useSession();
+  const insets = useSafeAreaInsets();
 
   return (
     <View
       style={{
         paddingHorizontal: 16,
-        paddingTop: 4,
-        paddingBottom: 4,
+        paddingTop: insets.top + 8,
+        paddingBottom: 12,
         flexDirection: "row",
         alignItems: "center",
         columnGap: 12,
+        backgroundColor: light.hearth,
+        borderBottomWidth: 1,
+        borderBottomColor: light.ash,
       }}
     >
       {leading ? (

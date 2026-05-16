@@ -25,6 +25,7 @@ import {
   mockUsers,
   mockVenues,
 } from "./mockSeeds";
+import { getMockSelfPresence, onMockSelfPresenceChange } from "./mockPresenceStore";
 
 const isMock = !supabaseConfigured;
 
@@ -97,10 +98,18 @@ export function useVenues(): Venue[] {
 
 // ---- Presence ----
 
+function mockPresenceWithSelf(): PresenceEvent[] {
+  const self = getMockSelfPresence();
+  if (!self || new Date(self.expires_at).getTime() <= Date.now()) return mockPresence;
+  return [...mockPresence, self];
+}
+
 export function useVisiblePresence(): PresenceEvent[] {
-  const [events, setEvents] = useState<PresenceEvent[]>(isMock ? mockPresence : []);
+  const [events, setEvents] = useState<PresenceEvent[]>(isMock ? mockPresenceWithSelf() : []);
   useEffect(() => {
-    if (isMock) return;
+    if (isMock) {
+      return onMockSelfPresenceChange(() => setEvents(mockPresenceWithSelf()));
+    }
     const load = async () => {
       const { data } = await supabase.rpc("visible_presence_for_me");
       if (data) setEvents(data as PresenceEvent[]);
