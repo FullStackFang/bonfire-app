@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { CTAButton, T } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
 
 function formatPhone(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 10);
@@ -16,7 +17,28 @@ function formatPhone(raw: string): string {
 
 export default function Phone() {
   const [digits, setDigits] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const valid = digits.replace(/\D/g, "").length === 10;
+
+  const send = async () => {
+    setError(null);
+    const e164 = `+1${digits.replace(/\D/g, "")}`;
+
+    if (!supabaseConfigured) {
+      router.push({ pathname: "/(auth)/verify", params: { phone: digits } });
+      return;
+    }
+
+    setSending(true);
+    const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
+    setSending(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    router.push({ pathname: "/(auth)/verify", params: { phone: digits, e164 } });
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }}>
@@ -61,19 +83,18 @@ export default function Phone() {
               }}
             />
           </View>
-          <View
-            style={{
-              height: 1,
-              backgroundColor: light.ash,
-              marginTop: 4,
-            }}
-          />
+          <View style={{ height: 1, backgroundColor: light.ash, marginTop: 4 }} />
+          {error ? (
+            <T variant="bodySm" color={light.emberDeep} style={{ marginTop: 12 }}>
+              {error}
+            </T>
+          ) : null}
         </View>
 
         <CTAButton
-          label="Send code"
-          onPress={() => router.push({ pathname: "/(auth)/verify", params: { phone: digits } })}
-          disabled={!valid}
+          label={sending ? "Sending..." : "Send code"}
+          onPress={send}
+          disabled={!valid || sending}
         />
       </View>
     </SafeAreaView>

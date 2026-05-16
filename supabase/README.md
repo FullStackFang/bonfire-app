@@ -16,8 +16,8 @@ Local Postgres + RLS schema for the Bonfire app. The migrations are written to b
 3. Copy the local URL/anon key into `apps/mobile/.env.local`:
 
    ```
-   EXPO_PUBLIC_SUPABASE_URL=http://localhost:54321
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=<the anon key supabase start prints>
+   EXPO_PUBLIC_SUPABASE_URL=https://mgclzspzvxuffdhzenlr.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nY2x6c3B6dnh1ZmZkaHplbmxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODk5ODIsImV4cCI6MjA5NDQ2NTk4Mn0.Dv7XTsvUcBEtmbSaVzs1ntiScu4tF9I-vKcb2HuV7i0
    ```
 
    The mobile app reads these on boot. When unset, the app runs on `lib/mockSeeds.ts` data so it stays usable without a backend.
@@ -36,6 +36,7 @@ Local Postgres + RLS schema for the Bonfire app. The migrations are written to b
 | `20260516000700_inbox.sql` | Denormalized inbox items |
 | `20260516000800_fanout_triggers.sql` | Auto-fan-out from presence/gather inserts to inbox |
 | `20260516000900_realtime.sql` | Publication for client subscriptions |
+| `20260516001000_user_profile_trigger.sql` | Auto-create `public.users` row when an `auth.users` row is created |
 
 ## RLS philosophy
 
@@ -45,4 +46,6 @@ Local Postgres + RLS schema for the Bonfire app. The migrations are written to b
 
 ## Seed data
 
-`seed/venues.sql` populates ~25 venues in Ithaca and NYC. This is the MVP launch radius. Replace with a real venue ingestion job before scaling.
+`seed.sql` populates ~25 venues in Ithaca and NYC. This is the MVP launch radius and is the file `supabase db reset` (and the Supabase CLI seed step against a remote project) runs automatically. Replace with a real venue ingestion job before scaling.
+
+To re-seed a remote project that was created via the dashboard, paste `seed.sql` into the SQL editor — `db reset` will wipe data.

@@ -31,20 +31,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const loadProfile = async (authUserId: string) => {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authUserId)
+        .maybeSingle();
+      setUser((profile as User | null) ?? null);
+    };
+
     supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session?.user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", data.session.user.id)
-          .maybeSingle();
-        setUser((profile as User | null) ?? null);
-      }
+      if (data.session?.user) await loadProfile(data.session.user.id);
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
         setUser(null);
       }
     });

@@ -6,20 +6,50 @@ import { Ionicons } from "@expo/vector-icons";
 import { Avatar, CTAButton, Card, Chip, T } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 import { mockUsers } from "../../lib/mockSeeds";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
+import { useSession } from "../../lib/session";
 
 type Bucket = "matched" | "suggested";
 const SUGGESTED_IDS = new Set(["u-lydia", "u-alex"]);
 
 export default function Contacts() {
+  const { user } = useSession();
   const [selected, setSelected] = useState<Record<string, boolean>>({
     "u-sarah": true,
     "u-josh": true,
     "u-maya": true,
     "u-kim": true,
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggle = (id: string) =>
     setSelected((s) => ({ ...s, [id]: !s[id] }));
+
+  const finish = async () => {
+    setError(null);
+
+    if (!supabaseConfigured || !user) {
+      router.replace("/(app)");
+      return;
+    }
+
+    setSaving(true);
+    // Create the user's first circle. Friend matching would happen here too in a real flow,
+    // but since contact-match is mocked for now, we just create the circle shell.
+    const { error: err } = await supabase.from("circles").insert({
+      owner_id: user.id,
+      name: "Crew",
+      accent_color: light.ember,
+    });
+    setSaving(false);
+
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    router.replace("/(app)");
+  };
 
   const candidates = useMemo(() => {
     return mockUsers
@@ -101,10 +131,15 @@ export default function Contacts() {
         }}
       >
         <CTAButton
-          label="Continue"
-          disabled={!anySelected}
-          onPress={() => router.replace("/(app)")}
+          label={saving ? "Saving..." : "Continue"}
+          disabled={!anySelected || saving}
+          onPress={finish}
         />
+        {error ? (
+          <T variant="bodySm" color={light.emberDeep} align="center" style={{ marginTop: 8 }}>
+            {error}
+          </T>
+        ) : null}
       </View>
     </SafeAreaView>
   );

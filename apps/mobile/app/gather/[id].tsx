@@ -20,13 +20,26 @@ import {
 } from "../../lib/data";
 import { bonfireScoreForVenue } from "../../lib/bonfireScore";
 import { relTime } from "../../lib/relTime";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
+import { useSession } from "../../lib/session";
 
 export default function GatherDetail() {
   const params = useLocalSearchParams<{ id: string }>();
   const { gather, responses } = useGather(params.id ?? "");
   const { byId } = usePeople();
   const presence = useVisiblePresence();
+  const { user } = useSession();
   const [myResponse, setMyResponse] = useState<"in" | "maybe" | "out" | null>(null);
+
+  const respond = async (next: "in" | "maybe" | "out" | null) => {
+    setMyResponse(next);
+    if (!supabaseConfigured || !user || !params.id || !next) return;
+    await supabase.from("gather_responses").upsert({
+      gather_id: params.id,
+      user_id: user.id,
+      response: next,
+    });
+  };
 
   const inResponses = responses.filter((r) => r.response === "in");
   const maybeResponses = responses.filter((r) => r.response === "maybe");
@@ -206,18 +219,18 @@ export default function GatherDetail() {
       <View style={{ position: "absolute", left: 16, right: 16, bottom: 32, rowGap: 8 }}>
         {myResponse === "in" ? (
           <>
-            <CTAButton label="You're in" variant="outline" onPress={() => setMyResponse(null)} />
+            <CTAButton label="You're in" variant="outline" onPress={() => respond(null)} />
             <View style={{ flexDirection: "row", columnGap: 8 }}>
               <View style={{ flex: 1 }}>
-                <CTAButton label="I might be" variant="ghost" onPress={() => setMyResponse("maybe")} />
+                <CTAButton label="I might be" variant="ghost" onPress={() => respond("maybe")} />
               </View>
               <View style={{ flex: 1 }}>
-                <CTAButton label="I'm out" variant="ghost" onPress={() => setMyResponse("out")} />
+                <CTAButton label="I'm out" variant="ghost" onPress={() => respond("out")} />
               </View>
             </View>
           </>
         ) : (
-          <CTAButton label="I'm in" onPress={() => setMyResponse("in")} haptic="success" />
+          <CTAButton label="I'm in" onPress={() => respond("in")} haptic="success" />
         )}
       </View>
     </SafeAreaView>

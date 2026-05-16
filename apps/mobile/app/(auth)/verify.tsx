@@ -6,12 +6,14 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } 
 import { Ionicons } from "@expo/vector-icons";
 import { T } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
 
 const LEN = 6;
 
 export default function Verify() {
-  const params = useLocalSearchParams<{ phone?: string }>();
+  const params = useLocalSearchParams<{ phone?: string; e164?: string }>();
   const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -24,22 +26,58 @@ export default function Verify() {
       withTiming(-6, { duration: 50 }),
       withTiming(0, { duration: 50 }),
     );
-    const t = setTimeout(() => setError(null), 1500);
+    const t = setTimeout(() => setError(null), 2000);
     return () => clearTimeout(t);
   }, [error, shake]);
   const animated = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
 
   useEffect(() => {
-    if (code.length === LEN) {
-      // mock verification: any code "000000" fails, anything else "succeeds" and goes to onboarding.
-      if (code === "000000") {
-        setError("That code didn't work.");
+    if (code.length !== LEN) return;
+
+    const verify = async () => {
+      setVerifying(true);
+
+      if (!supabaseConfigured) {
+        if (code === "000000") {
+          setError("That code didn't work.");
+          setCode("");
+          setVerifying(false);
+        } else {
+          router.replace("/(onboarding)/permissions");
+        }
+        return;
+      }
+
+      const e164 = params.e164 || `+1${(params.phone ?? "").replace(/\D/g, "")}`;
+      const { error: err } = await supabase.auth.verifyOtp({
+        phone: e164,
+        token: code,
+        type: "sms",
+      });
+      setVerifying(false);
+
+      if (err) {
+        setError(err.message);
         setCode("");
+        return;
+      }
+
+      // Check whether a profile already exists. The trigger creates one on first signup,
+      // but a returning user already has one too — both paths land in (app).
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = user
+        ? await supabase.from("users").select("id").eq("id", user.id).maybeSingle()
+        : { data: null };
+
+      if (profile) {
+        router.replace("/(app)");
       } else {
         router.replace("/(onboarding)/permissions");
       }
-    }
-  }, [code]);
+    };
+
+    verify();
+  }, [code, params.e164, params.phone]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }}>
@@ -57,11 +95,12 @@ export default function Verify() {
         <Pressable
           onPress={() => inputRef.current?.focus()}
           style={{ marginTop: 40 }}
+          disabled={verifying}
         >
           <Animated.View style={[{ flexDirection: "row", columnGap: 8 }, animated]}>
             {Array.from({ length: LEN }).map((_, i) => {
               const char = code[i];
-              const focused = i === code.length;
+              const focused = i === code.length && !verifying;
               return (
                 <View
                   key={i}
@@ -76,10 +115,7 @@ export default function Verify() {
                     justifyContent: "center",
                   }}
                 >
-                  <T
-                    variant="displayLg"
-                    style={{ fontFamily: "GeistMono_400Regular" }}
-                  >
+                  <T variant="displayLg" style={{ fontFamily: "GeistMono_400Regular" }}>
                     {char ?? ""}
                   </T>
                 </View>
@@ -94,17 +130,18 @@ export default function Verify() {
           onChangeText={(v) => setCode(v.replace(/\D/g, "").slice(0, LEN))}
           keyboardType="number-pad"
           autoFocus
-          style={{
-            position: "absolute",
-            opacity: 0,
-            height: 1,
-            width: 1,
-          }}
+          editable={!verifying}
+          style={{ position: "absolute", opacity: 0, height: 1, width: 1 }}
         />
 
         {error ? (
           <T variant="bodySm" color={light.emberDeep} align="center" style={{ marginTop: 16 }}>
             {error}
+          </T>
+        ) : null}
+        {verifying ? (
+          <T variant="bodySm" color={light.smoke} align="center" style={{ marginTop: 16 }}>
+            Verifying...
           </T>
         ) : null}
       </View>

@@ -12,6 +12,8 @@ import {
 } from "../../components/ui";
 import { light } from "@bonfire/ui-tokens";
 import { useMyCircles, useVenues } from "../../lib/data";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
+import { useSession } from "../../lib/session";
 
 type Step = 1 | 2 | 3;
 
@@ -22,15 +24,75 @@ const TITLE_PLACEHOLDERS = [
   "Late-night ramen",
 ];
 
+function startsAtFor(when: "tonight" | "tomorrow" | "friday"): string {
+  const d = new Date();
+  if (when === "tonight") {
+    d.setHours(20, 0, 0, 0);
+    if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
+  } else if (when === "tomorrow") {
+    d.setDate(d.getDate() + 1);
+    d.setHours(20, 0, 0, 0);
+  } else {
+    // next Friday at 20:00
+    const day = d.getDay();
+    const delta = (5 - day + 7) % 7 || 7;
+    d.setDate(d.getDate() + delta);
+    d.setHours(20, 0, 0, 0);
+  }
+  return d.toISOString();
+}
+
 export default function GatherNew() {
+  const { user } = useSession();
   const [step, setStep] = useState<Step>(1);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState<"tonight" | "tomorrow" | "friday" | null>(null);
   const [venueIds, setVenueIds] = useState<Set<string>>(new Set());
   const [circleIds, setCircleIds] = useState<Set<string>>(new Set());
+  const [committing, setCommitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const circles = useMyCircles();
   const venues = useVenues();
+
+  const createGather = async () => {
+    setError(null);
+    if (!supabaseConfigured || !user) {
+      router.replace("/gather/g-1");
+      return;
+    }
+
+    setCommitting(true);
+    const venueArr = Array.from(venueIds);
+    const { data, error: err } = await supabase
+      .from("gathers")
+      .insert({
+        host_id: user.id,
+        title: title.trim(),
+        starts_at: time ? startsAtFor(time) : null,
+        primary_venue_id: venueArr[0] ?? null,
+        candidate_venue_ids: venueArr,
+        invited_circle_ids: Array.from(circleIds),
+      })
+      .select("id")
+      .single();
+
+    if (err || !data) {
+      setCommitting(false);
+      setError(err?.message ?? "Could not create gather.");
+      return;
+    }
+
+    // Host is implicitly "in".
+    await supabase.from("gather_responses").upsert({
+      gather_id: data.id,
+      user_id: user.id,
+      response: "in",
+    });
+
+    setCommitting(false);
+    router.replace(`/gather/${data.id}` as never);
+  };
 
   const placeholder = TITLE_PLACEHOLDERS[Math.floor(Date.now() / 5000) % TITLE_PLACEHOLDERS.length];
 
@@ -209,12 +271,19 @@ export default function GatherNew() {
 
       <View style={{ position: "absolute", left: 20, right: 20, bottom: 32 }}>
         {step === 3 ? (
-          <CTAButton
-            label="Start gather"
-            disabled={circleIds.size === 0}
-            haptic="success"
-            onPress={() => router.replace("/gather/g-1")}
-          />
+          <>
+            <CTAButton
+              label={committing ? "Starting..." : "Start gather"}
+              disabled={circleIds.size === 0 || committing}
+              haptic="success"
+              onPress={createGather}
+            />
+            {error ? (
+              <T variant="bodySm" color={light.emberDeep} align="center" style={{ marginTop: 8 }}>
+                {error}
+              </T>
+            ) : null}
+          </>
         ) : (
           <CTAButton
             label="Continue"

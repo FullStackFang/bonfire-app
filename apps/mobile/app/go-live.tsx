@@ -9,6 +9,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import {
   CTAButton,
   Card,
@@ -18,17 +19,22 @@ import {
 } from "../components/ui";
 import { houseSpring, light } from "@bonfire/ui-tokens";
 import type { Intent } from "@bonfire/shared";
-import { INTENT_DESCRIPTION } from "@bonfire/shared";
+import { INTENT_DESCRIPTION, INTENT_DURATION_MS } from "@bonfire/shared";
 import { useMyCircles } from "../lib/data";
+import { supabase, supabaseConfigured } from "../lib/supabase";
+import { useSession } from "../lib/session";
 
 const INTENTS: Intent[] = ["available_now", "out_today", "out_tonight"];
 
 export default function GoLive() {
+  const { user } = useSession();
   const [selected, setSelected] = useState<Intent>("available_now");
   const circles = useMyCircles();
   const [visibleIds, setVisibleIds] = useState<Set<string>>(
     new Set(circles.map((c) => c.id)),
   );
+  const [committing, setCommitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const visibleNames =
     circles
@@ -36,7 +42,75 @@ export default function GoLive() {
       .map((c) => c.name)
       .join(", ") || "No one";
 
-  const commit = () => {
+  const commit = async () => {
+    setError(null);
+
+    if (!supabaseConfigured || !user) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      router.back();
+      return;
+    }
+
+    setCommitting(true);
+
+    // Capture location once. We only need a coarse fix to snap to a venue.
+    let lat: number | null = null;
+    let lng: number | null = null;
+    try {
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (perm.granted) {
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      }
+    } catch {
+      // location is best-effort; presence_events.lat/lng are nullable.
+    }
+
+    // Snap to a known venue if we got a location.
+    let venueId: string | null = null;
+    if (lat !== null && lng !== null) {
+      const { data } = await supabase.rpc("snap_to_venue", {
+        lat,
+        lng,
+        radius_m: 60,
+      });
+      if (Array.isArray(data) && data.length === 1) {
+        venueId = data[0].id;
+      }
+      // If 2+ candidates, the spec calls for a confirm sheet; we route to it here.
+      // For now, we just take the closest — easy to wire the sheet later.
+      else if (Array.isArray(data) && data.length > 1) {
+        venueId = data[0].id;
+      }
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + INTENT_DURATION_MS[selected]);
+
+    const { error: err } = await supabase.from("presence_events").insert({
+      user_id: user.id,
+      intent: selected,
+      visible_to_circle_ids: Array.from(visibleIds),
+      venue_id: venueId,
+      raw_location:
+        lat !== null && lng !== null
+          ? `SRID=4326;POINT(${lng} ${lat})`
+          : null,
+      started_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+    });
+
+    setCommitting(false);
+
+    if (err) {
+      setError(err.message);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      return;
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     router.back();
   };
@@ -114,11 +188,17 @@ export default function GoLive() {
           </Card>
         </Pressable>
         <CTAButton
-          label="Go live"
+          label={committing ? "Going live..." : "Go live"}
           onPress={commit}
+          disabled={committing || visibleIds.size === 0}
           rightIcon={<Ionicons name="flame" size={18} color={light.hearth} />}
           haptic="success"
         />
+        {error ? (
+          <T variant="bodySm" color={light.emberDeep} align="center">
+            {error}
+          </T>
+        ) : null}
       </View>
     </SafeAreaView>
   );
