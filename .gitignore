@@ -44,6 +44,7 @@ coverage/
 
 # accidental project-unrelated files
 emanu-el-calendar-*.pdf
+expo-qr.png
 
 # debug logs
 npm-debug.log*
