@@ -25,7 +25,8 @@ export default function AddFriend() {
         <IconButton
           icon="chevron-back"
           variant="ghost"
-          iconSize={28}
+          size={40}
+          iconSize={22}
           onPress={() => router.back()}
           accessibilityLabel="Back"
         />

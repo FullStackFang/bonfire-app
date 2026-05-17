@@ -31,12 +31,13 @@ export default function Settings() {
         <IconButton
           icon="chevron-back"
           variant="ghost"
-          iconSize={26}
+          size={40}
+          iconSize={22}
           onPress={() => router.back()}
           accessibilityLabel="Back"
         />
         <T variant="title">Settings</T>
-        <View style={{ width: 36 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, rowGap: 16, paddingBottom: 40 }}>

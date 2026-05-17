@@ -139,6 +139,143 @@ const ithacaPresence: PresenceEvent[] = [
   },
 ];
 
+// Deterministic per-event attendee seeder. Picks 4-8 non-host, non-self
+// users in a stable order so the count and avatar identities never churn
+// between renders. The detail screen previously invented these from the
+// same event id; now they're a real fact about the event so the home pin,
+// the "near you" footer, and the detail screen all agree.
+function seedAttendees(eventId: string, hostId: string): string[] {
+  let h = 0;
+  for (let i = 0; i < eventId.length; i++) h = (h * 31 + eventId.charCodeAt(i)) | 0;
+  h = Math.abs(h);
+  const candidates = mockUsers
+    .filter((u) => u.id !== hostId && u.id !== "u-self")
+    .map((u, i) => ({ id: u.id, sort: ((h + i * 31) ^ (i * 7)) >>> 0 }))
+    .sort((a, b) => a.sort - b.sort)
+    .map((x) => x.id);
+  const count = Math.min(candidates.length, 4 + (h % 5)); // 4-8
+  return candidates.slice(0, count);
+}
+
+// Seeded MapEvents (user-placed bonfires). Hydrated into mockEventStore on
+// first import so the "bonfires near you" footer has content out of the box.
+// Same shape as MapEvent in lib/mockEventStore — kept untyped here to avoid
+// a circular import.
+const nycMapEvents = [
+  {
+    id: "e-seed-1",
+    host_id: "u-josh",
+    title: "Washington Sq chess",
+    address: "Washington Square Park, NW corner",
+    lat: 40.7312,
+    lng: -74.0014,
+    live_now: true,
+    created_at: minsAgo(8),
+    expires_at: minsFromNow(42),
+    description:
+      "Casual blitz tables under the arch. New players welcome — Josh will spot you a queen if you need it.",
+    what_to_bring: "Yourself. Boards and clocks are already out.",
+  },
+  {
+    id: "e-seed-2",
+    host_id: "u-maya",
+    title: "Joe's late slice",
+    address: "Joe's Pizza, Carmine St",
+    lat: 40.7305,
+    lng: -74.0024,
+    live_now: true,
+    created_at: minsAgo(3),
+    expires_at: minsFromNow(18),
+    description: "Quick slice run before the bars. Roll through whenever.",
+    what_to_bring: "Cash for the second slice.",
+  },
+  {
+    id: "e-seed-3",
+    host_id: "u-kim",
+    title: "McSorley's pints",
+    address: "McSorley's Old Ale House",
+    lat: 40.7283,
+    lng: -73.9893,
+    live_now: false,
+    created_at: minsAgo(20),
+    expires_at: minsFromNow(40),
+    description:
+      "Light or dark — they only serve two beers. Long table at the back, ask for Kim.",
+    what_to_bring: "Cash only. Bring some ones for tips.",
+  },
+  {
+    id: "e-seed-4",
+    host_id: "u-sarah",
+    title: "Stumptown coffee meetup",
+    address: "Stumptown Coffee, NoMad",
+    lat: 40.7448,
+    lng: -73.9883,
+    live_now: true,
+    created_at: minsAgo(12),
+    expires_at: minsFromNow(55),
+    description: "Working remote and looking for company. Pull up, no agenda.",
+    what_to_bring: "Laptop, headphones if you want a working zone.",
+  },
+  {
+    id: "e-seed-upcoming-1",
+    host_id: "u-lydia",
+    title: "Sunset run, the loop",
+    address: "Washington Square Park fountain",
+    lat: 40.7308,
+    lng: -73.9973,
+    live_now: false,
+    created_at: minsAgo(45),
+    starts_at: minsFromNow(25),
+    expires_at: minsFromNow(85),
+    description:
+      "Easy 5k loop down to the river and back. Bringing a small speaker.",
+    what_to_bring: "Shoes you can actually run in.",
+  },
+];
+
+const ithacaMapEvents = [
+  {
+    id: "e-seed-1",
+    host_id: "u-josh",
+    title: "Pickup soccer on the slope",
+    address: "Libe Slope",
+    lat: 42.4474,
+    lng: -76.4866,
+    live_now: true,
+    created_at: minsAgo(5),
+    expires_at: minsFromNow(40),
+    description: "Casual 5v5, rolling subs. Skill level: anything.",
+    what_to_bring: "Cleats if you have them, water.",
+  },
+  {
+    id: "e-seed-2",
+    host_id: "u-maya",
+    title: "Gimme study session",
+    address: "Gimme Coffee, Downtown",
+    lat: 42.4404,
+    lng: -76.4970,
+    live_now: false,
+    created_at: minsAgo(15),
+    expires_at: minsFromNow(35),
+    description: "Heads-down work block until 6. Quiet table reserved.",
+    what_to_bring: "Laptop, your loudest playlist on noise-cancelling.",
+  },
+  {
+    id: "e-seed-upcoming-1",
+    host_id: "u-lydia",
+    title: "Cornell cinema double feature",
+    address: "Cornell Cinema, Willard Straight",
+    lat: 42.4459,
+    lng: -76.4849,
+    live_now: false,
+    created_at: minsAgo(60),
+    starts_at: minsFromNow(25),
+    expires_at: minsFromNow(180),
+    description: "Two 35mm prints back-to-back. Grab seats up top.",
+    what_to_bring: "Snacks from the lobby are fine, nothing too crunchy.",
+  },
+];
+
 const nycPresence: PresenceEvent[] = [
   {
     id: "p-1",
@@ -343,6 +480,9 @@ export const mockVenues: Venue[] = SEED_CITY === "nyc" ? nycVenues : ithacaVenue
 export const mockPresence: PresenceEvent[] = SEED_CITY === "nyc" ? nycPresence : ithacaPresence;
 export const mockGather: Gather = SEED_CITY === "nyc" ? nycGather : ithacaGather;
 export const mockInbox: InboxItem[] = SEED_CITY === "nyc" ? nycInbox : ithacaInbox;
+export const mockMapEventSeeds = (SEED_CITY === "nyc" ? nycMapEvents : ithacaMapEvents).map(
+  (s) => ({ ...s, attendee_ids: seedAttendees(s.id, s.host_id) }),
+);
 export const MOCK_CENTER = SEED_CITY === "nyc" ? NYC_CENTER : ITHACA_CENTER;
 
 export const mockSession = {

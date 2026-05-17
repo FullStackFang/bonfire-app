@@ -52,3 +52,22 @@ export function avatarColorFor(seed: string): string {
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
   return avatarAccents[Math.abs(hash) % avatarAccents.length];
 }
+
+// Warm-tonal palette used to tint the inner flame of each friend's map pin.
+// Kept separate from avatarAccents so the cool identity colors elsewhere in
+// the app (profile chips, contact rows, inbox) stay untouched — the map has
+// its own warm visual language built around ember / dusk.
+export const flameAccents = [
+  "#f05846", // ember
+  "#b8513b", // clay
+  "#e0843e", // dusk
+  "#d3a23a", // amber
+  "#d27263", // rose
+  "#8c3a30", // deep
+] as const;
+
+export function flameAccentFor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  return flameAccents[Math.abs(hash) % flameAccents.length];
+}

@@ -27,8 +27,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} />,
+          title: "Map",
+          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen

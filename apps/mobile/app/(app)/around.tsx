@@ -65,6 +65,9 @@ export default function Around() {
         rightAction={
           <IconButton
             icon="map"
+            variant="ghost"
+            size={40}
+            iconSize={20}
             onPress={() => router.push("/(app)")}
             accessibilityLabel="Switch to map view"
           />

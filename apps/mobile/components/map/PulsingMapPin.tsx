@@ -4,6 +4,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
   cancelAnimation,
@@ -17,6 +18,9 @@ export interface PulsingMapPinProps {
   pinSize: number;
   color?: string;
   scale?: number;
+  // Stagger the breathing cadence so neighbouring pins don't strobe in unison.
+  // Caller passes a deterministic offset (e.g. hash(id) % heatmapPulseMs).
+  phaseOffsetMs?: number;
   children: React.ReactNode;
 }
 
@@ -24,6 +28,7 @@ export function PulsingMapPin({
   pinSize,
   color = light.ember,
   scale = 2.2,
+  phaseOffsetMs = 0,
   children,
 }: PulsingMapPinProps) {
   const t = useSharedValue(0);
@@ -49,16 +54,19 @@ export function PulsingMapPin({
       t.value = 0.5;
       return;
     }
-    t.value = withRepeat(
-      withTiming(1, {
-        duration: heatmapPulseMs,
-        easing: Easing.inOut(Easing.sin),
-      }),
-      -1,
-      true,
+    t.value = withDelay(
+      phaseOffsetMs,
+      withRepeat(
+        withTiming(1, {
+          duration: heatmapPulseMs,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        -1,
+        true,
+      ),
     );
     return () => cancelAnimation(t);
-  }, [reduceMotion, t]);
+  }, [reduceMotion, t, phaseOffsetMs]);
 
   const haloStyle = useAnimatedStyle(() => ({
     opacity: 0.16 + t.value * 0.22,

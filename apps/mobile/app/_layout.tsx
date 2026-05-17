@@ -50,6 +50,18 @@ export default function RootLayout() {
                 name="event/new"
                 options={{ presentation: "modal", animation: "slide_from_bottom" }}
               />
+              <Stack.Screen
+                name="event/list"
+                options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="event/[id]"
+                options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="legend"
+                options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              />
             </Stack>
             <StatusBar style="dark" />
           </SessionProvider>

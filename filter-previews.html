@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Bonfire — filter chip previews</title>
+<style>
+  :root {
+    --ember:     #f05846;
+    --emberDeep: #a52a24;
+    --emberGlow: #fa9b82;
+    --coal:      #231715;
+    --smoke:     #716664;
+    --ash:       #ddd6d4;
+    --hearth:    #ffffff;
+    --cream:     #fff7f1;
+    --warmShadow:#c8b8b1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--cream);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+    color: var(--coal);
+    margin: 0;
+    padding: 32px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h1 span { color: var(--ember); }
+  .sub { color: var(--smoke); font-size: 13px; margin-bottom: 32px; }
+  h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--smoke);
+    margin: 40px 0 16px;
+    border-bottom: 1px solid var(--ash);
+    padding-bottom: 8px;
+  }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .card {
+    background: var(--hearth);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(200,184,177,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .label { font-size: 12px; color: var(--smoke); text-align: center; max-width: 240px; line-height: 1.4; }
+  .label b { color: var(--coal); display: block; margin-bottom: 2px; font-size: 13px; }
+
+  /* ===== Phone-screen mockup ===== */
+  .phone {
+    width: 260px;
+    height: 480px;
+    background: linear-gradient(160deg, #efe8dc 0%, #d8d0c4 60%, #c9bfb0 100%);
+    border-radius: 28px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--ash);
+  }
+  /* faux street lines */
+  .phone::before, .phone::after {
+    content: '';
+    position: absolute;
+    background: rgba(255,255,255,0.5);
+  }
+  .phone::before { top: 38%; left: -10%; right: -10%; height: 18px; transform: rotate(-8deg); }
+  .phone::after  { top: 62%; left: -10%; right: -10%; height: 12px; transform: rotate(6deg); }
+
+  .header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 48px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--ash);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 8px;
+    z-index: 10;
+  }
+  .search {
+    flex: 1;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--cream);
+    border: 1px solid var(--ash);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 10px;
+    color: var(--smoke);
+    gap: 4px;
+  }
+  .info {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--hearth); border: 1px solid var(--ash);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--smoke); font-weight: bold; font-size: 12px;
+  }
+
+  /* Bonfire pin (mini Turrell halo + crossed logs + flame) */
+  .pin {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+  }
+  .pin .halo {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(240,88,70,0.7) 0%,
+      rgba(240,88,70,0.25) 40%,
+      rgba(240,88,70,0) 70%);
+  }
+  .pin svg { position: absolute; inset: 0; }
+
+  /* Right-side controls */
+  .recenter, .fab {
+    position: absolute;
+    right: 16px;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--hearth);
+  }
+  .recenter {
+    bottom: 76px;
+    background: var(--hearth);
+    border: 1px solid var(--warmShadow);
+    color: var(--coal);
+  }
+  .fab {
+    bottom: 28px;
+    background: var(--ember);
+    box-shadow: 0 4px 0 var(--emberDeep);
+  }
+
+  /* ===== Chip styles ===== */
+  .chip {
+    background: var(--hearth);
+    border: 1px solid var(--ash);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--coal);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 6px rgba(200,184,177,0.35);
+    white-space: nowrap;
+  }
+  .chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ember);
+  }
+  .chip .caret { color: var(--smoke); font-size: 9px; }
+
+  .chip.avatars { padding: 4px 10px 4px 4px; gap: 8px; }
+  .chip-stack { display: flex; }
+  .chip-stack .av {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--hearth);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 8px; font-weight: 700;
+    margin-left: -6px;
+  }
+  .chip-stack .av:first-child { margin-left: 0; }
+  .chip-stack .av.a1 { background: #E2843D; }
+  .chip-stack .av.a2 { background: #9D5BC2; }
+  .chip-stack .av.a3 { background: #1A9E75; }
+  .chip .count {
+    background: var(--cream);
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 9px;
+    color: var(--smoke);
+  }
+
+  .chip.dots .dotrow { display: inline-flex; gap: 4px; margin-right: 2px; }
+  .chip.dots .dotrow .d {
+    width: 5px; height: 5px; border-radius: 50%;
+    border: 1px solid var(--smoke);
+    background: transparent;
+  }
+  .chip.dots .dotrow .d.on { background: var(--ember); border-color: var(--ember); }
+
+  .chip.minimal {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 4px 6px;
+    text-shadow: 0 0 4px var(--cream), 0 0 4px var(--cream);
+  }
+
+  /* placements */
+  .chip-top {
+    position: absolute;
+    top: 60px; left: 50%; transform: translateX(-50%);
+  }
+  .chip-inline { /* rendered inside header in variant B */ }
+  .chip-stacked {
+    position: absolute;
+    right: 16px; bottom: 124px;
+  }
+  .chip-bl {
+    position: absolute;
+    left: 16px; bottom: 28px;
+  }
+
+  /* ===== Picker sheets ===== */
+  .sheet {
+    width: 260px;
+    background: var(--hearth);
+    border-radius: 18px 18px 0 0;
+    padding: 14px 16px 20px;
+    box-shadow: 0 -2px 16px rgba(0,0,0,0.06);
+    border: 1px solid var(--ash);
+  }
+  .sheet .handle {
+    width: 36px; height: 4px;
+    background: var(--ash);
+    border-radius: 2px;
+    margin: 0 auto 12px;
+  }
+  .sheet h3 {
+    font-size: 13px;
+    margin: 0 0 12px;
+    color: var(--coal);
+  }
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    font-size: 12px;
+    color: var(--coal);
+  }
+  .opt .radio {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid var(--smoke);
+    flex-shrink: 0;
+  }
+  .opt.active .radio { border-color: var(--ember); background: radial-gradient(circle, var(--ember) 0 4px, transparent 5px); }
+  .opt .meta { margin-left: auto; font-size: 10px; color: var(--ember); }
+  .divider { border-top: 1px solid var(--ash); margin: 12px 0; }
+  .divider-label { font-size: 10px; color: var(--smoke); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .person {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 4px; font-size: 12px;
+  }
+  .person .av {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 9px; font-weight: 700;
+  }
+  .person .x {
+    margin-left: auto;
+    color: var(--smoke);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .done {
+    margin: 16px auto 0;
+    width: 80%;
+    text-align: center;
+    background: var(--coal);
+    color: var(--hearth);
+    border-radius: 999px;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* Popover */
+  .popover {
+    width: 200px;
+    background: var(--hearth);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border: 1px solid var(--ash);
+    position: relative;
+  }
+  .popover::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: 30px;
+    width: 12px; height: 12px;
+    background: var(--hearth);
+    border-left: 1px solid var(--ash);
+    border-top: 1px solid var(--ash);
+    transform: rotate(45deg);
+  }
+  .popover h3 { font-size: 12px; margin: 0 0 8px; }
+  .popover .opt { padding: 6px 2px; font-size: 11px; }
+  .popover .opt .radio { width: 12px; height: 12px; }
+
+  /* Full screen */
+  .fullscreen {
+    width: 280px;
+    background: var(--cream);
+    border-radius: 24px;
+    padding: 16px;
+    border: 1px solid var(--ash);
+  }
+  .fs-head {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .circle-row {
+    margin-bottom: 14px;
+  }
+  .circle-row .top {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 600; margin-bottom: 6px;
+  }
+  .toggle {
+    background: var(--ash);
+    color: var(--smoke);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .toggle.on { background: var(--ember); color: var(--hearth); }
+  .members { display: flex; gap: 0; }
+  .members .av {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 9px; font-weight: 700;
+    margin-left: -6px;
+  }
+  .members .av:first-child { margin-left: 0; }
+
+  .winner-note {
+    background: var(--cream);
+    border: 1px dashed var(--ash);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--smoke);
+  }
+</style>
+</head>
+<body>
+
+<h1>Bonfire — filter chip <span>preview</span></h1>
+<div class="sub">Pick one from each row. Real color tokens, approximate proportions.</div>
+
+<!-- ============ PLACEMENT ============ -->
+<h2>1 · Placement on the map</h2>
+<div class="row">
+
+  <!-- A. Top-center -->
+  <div class="card">
+    <div class="phone">
+      <div class="header">
+        <div class="search">🔍  Find friends...</div>
+        <div class="info">i</div>
+      </div>
+      <div class="chip-top">
+        <div class="chip"><span class="dot"></span> NYC group <span class="caret">▾</span></div>
+      </div>
+      <div class="pin">
+        <div class="halo"></div>
+        <svg viewBox="0 0 60 60">
+          <ellipse cx="30" cy="49" rx="13" ry="2.5" fill="#c8b8b1" opacity="0.4"/>
+          <g transform="rotate(-20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="rotate(20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="translate(30 36) scale(1)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fa9b82" opacity="0.75"/></g>
+          <g transform="translate(30 34) scale(0.72)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#f05846"/></g>
+          <g transform="translate(30 31) scale(0.38)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fff7f1" opacity="0.95"/></g>
+        </svg>
+      </div>
+      <div class="recenter">⊕</div>
+      <div class="fab">🔥</div>
+    </div>
+    <div class="label"><b>A. Top-center</b>Floating chip below header. Always in your line of sight.</div>
+  </div>
+
+  <!-- B. Inline in header -->
+  <div class="card">
+    <div class="phone">
+      <div class="header">
+        <div class="search">🔍  Find...</div>
+        <div class="chip" style="font-size:10px; padding:4px 8px;"><span class="dot"></span> NYC <span class="caret">▾</span></div>
+        <div class="info">i</div>
+      </div>
+      <div class="pin">
+        <div class="halo"></div>
+        <svg viewBox="0 0 60 60">
+          <ellipse cx="30" cy="49" rx="13" ry="2.5" fill="#c8b8b1" opacity="0.4"/>
+          <g transform="rotate(-20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="rotate(20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="translate(30 36) scale(1)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fa9b82" opacity="0.75"/></g>
+          <g transform="translate(30 34) scale(0.72)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#f05846"/></g>
+          <g transform="translate(30 31) scale(0.38)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fff7f1" opacity="0.95"/></g>
+        </svg>
+      </div>
+      <div class="recenter">⊕</div>
+      <div class="fab">🔥</div>
+    </div>
+    <div class="label"><b>B. Inline in header</b>Sits beside search. Saves vertical space but crowds the header.</div>
+  </div>
+
+  <!-- C. Stacked above recenter -->
+  <div class="card">
+    <div class="phone">
+      <div class="header">
+        <div class="search">🔍  Find friends...</div>
+        <div class="info">i</div>
+      </div>
+      <div class="pin">
+        <div class="halo"></div>
+        <svg viewBox="0 0 60 60">
+          <ellipse cx="30" cy="49" rx="13" ry="2.5" fill="#c8b8b1" opacity="0.4"/>
+          <g transform="rotate(-20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="rotate(20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="translate(30 36) scale(1)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fa9b82" opacity="0.75"/></g>
+          <g transform="translate(30 34) scale(0.72)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#f05846"/></g>
+          <g transform="translate(30 31) scale(0.38)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fff7f1" opacity="0.95"/></g>
+        </svg>
+      </div>
+      <div class="chip-stacked">
+        <div class="chip"><span class="dot"></span> NYC <span class="caret">▾</span></div>
+      </div>
+      <div class="recenter">⊕</div>
+      <div class="fab">🔥</div>
+    </div>
+    <div class="label"><b>C. Stacked above recenter</b>Joins right-side controls. Thumb-reach, no header weight.</div>
+  </div>
+
+  <!-- D. Bottom-left -->
+  <div class="card">
+    <div class="phone">
+      <div class="header">
+        <div class="search">🔍  Find friends...</div>
+        <div class="info">i</div>
+      </div>
+      <div class="pin">
+        <div class="halo"></div>
+        <svg viewBox="0 0 60 60">
+          <ellipse cx="30" cy="49" rx="13" ry="2.5" fill="#c8b8b1" opacity="0.4"/>
+          <g transform="rotate(-20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="rotate(20 30 44)"><rect x="18" y="41.5" width="24" height="5" rx="2.5" fill="#231715"/></g>
+          <g transform="translate(30 36) scale(1)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fa9b82" opacity="0.75"/></g>
+          <g transform="translate(30 34) scale(0.72)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#f05846"/></g>
+          <g transform="translate(30 31) scale(0.38)"><path d="M0,-18 C5,-12 8,-5 7,2 C6,7 3,10 0,10 C-3,10 -6,7 -7,2 C-8,-5 -5,-12 0,-18 Z" fill="#fff7f1" opacity="0.95"/></g>
+        </svg>
+      </div>
+      <div class="chip-bl">
+        <div class="chip"><span class="dot"></span> NYC <span class="caret">▾</span></div>
+      </div>
+      <div class="recenter">⊕</div>
+      <div class="fab">🔥</div>
+    </div>
+    <div class="label"><b>D. Bottom-left, opposite FAB</b>Visual balance. Risks colliding with Bonfires-Nearby footer.</div>
+  </div>
+
+</div>
+
+<!-- ============ CHIP STYLE ============ -->
+<h2>2 · Chip style</h2>
+<div class="row">
+
+  <div class="card">
+    <div style="padding:24px 8px">
+      <div class="chip"><span class="dot"></span> NYC group <span class="caret">▾</span></div>
+    </div>
+    <div class="label"><b>A. Icon + label + caret</b>Simple, scannable. Single dot signals "active filter".</div>
+  </div>
+
+  <div class="card">
+    <div style="padding:24px 8px">
+      <div class="chip avatars">
+        <div class="chip-stack">
+          <div class="av a1">SP</div>
+          <div class="av a2">JP</div>
+          <div class="av a3">M</div>
+        </div>
+        <span class="count">12</span>
+        <span class="caret">▾</span>
+      </div>
+    </div>
+    <div class="label"><b>B. Avatar stack + count</b>Shows WHO is in the active filter. Richer, busier.</div>
+  </div>
+
+  <div class="card">
+    <div style="padding:24px 8px">
+      <div class="chip dots">
+        <span class="dotrow">
+          <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span>
+        </span>
+        NYC group
+        <span class="caret">▾</span>
+      </div>
+    </div>
+    <div class="label"><b>C. Dot-row of all circles</b>Filled = active. Teaches that other circles exist.</div>
+  </div>
+
+  <div class="card">
+    <div style="padding:24px 8px; background: linear-gradient(160deg, #efe8dc, #d8d0c4); border-radius: 12px;">
+      <div class="chip minimal"><span class="dot"></span> NYC group <span class="caret">▾</span></div>
+    </div>
+    <div class="label"><b>D. Minimal — text only</b>No pill, just text with cream halo. Quiet, low discoverability.</div>
+  </div>
+
+</div>
+
+<!-- ============ PICKER ============ -->
+<h2>3 · Long-press picker</h2>
+<div class="row">
+
+  <!-- A. Standard bottom sheet -->
+  <div class="card">
+    <div class="sheet">
+      <div class="handle"></div>
+      <h3>Show on map</h3>
+      <div class="opt"><span class="radio"></span> All circles</div>
+      <div class="opt"><span class="radio"></span> Cornell</div>
+      <div class="opt active"><span class="radio"></span> NYC group <span class="meta">active</span></div>
+      <div class="opt"><span class="radio"></span> Roommates</div>
+      <div class="divider"></div>
+      <div class="divider-label">Pinned people</div>
+      <div class="person"><div class="av" style="background:#E2843D">SP</div> Stephen <span class="x">×</span></div>
+      <div class="person"><div class="av" style="background:#9D5BC2">JP</div> Julia <span class="x">×</span></div>
+      <div class="done">Done</div>
+    </div>
+    <div class="label"><b>A. Standard bottom sheet</b>Familiar pattern. Easy room for Pinned section.</div>
+  </div>
+
+  <!-- B. Compact popover -->
+  <div class="card">
+    <div style="height:24px"></div>
+    <div class="popover">
+      <h3>Show on map</h3>
+      <div class="opt active"><span class="radio"></span> All</div>
+      <div class="opt"><span class="radio"></span> Cornell</div>
+      <div class="opt active"><span class="radio"></span> NYC group</div>
+      <div class="opt"><span class="radio"></span> Roommates</div>
+      <div class="divider"></div>
+      <div class="opt" style="color: var(--ember); font-weight: 600;">⋆ Pinned (2)</div>
+    </div>
+    <div class="label" style="margin-top:auto"><b>B. Popover from chip</b>Anchors to chip. Feels instant. Pinned list lives one tap deeper.</div>
+  </div>
+
+  <!-- C. Full screen -->
+  <div class="card">
+    <div class="fullscreen">
+      <div class="fs-head"><span>←</span> Show on map</div>
+      <div class="circle-row">
+        <div class="top">Cornell <span class="toggle">off</span></div>
+        <div class="members">
+          <div class="av" style="background:#E2843D">SP</div>
+          <div class="av" style="background:#9D5BC2">JP</div>
+          <div class="av" style="background:#1A9E75">M</div>
+          <div class="av" style="background:#E2B33D">K</div>
+          <div class="av" style="background:#5E7FE5">A</div>
+          <div class="av" style="background:#666f7d">+3</div>
+        </div>
+      </div>
+      <div class="circle-row">
+        <div class="top">NYC group <span class="toggle on">ON</span></div>
+        <div class="members">
+          <div class="av" style="background:#E2843D">SP</div>
+          <div class="av" style="background:#9D5BC2">JP</div>
+          <div class="av" style="background:#1A9E75">M</div>
+        </div>
+      </div>
+      <div class="circle-row">
+        <div class="top">Roommates <span class="toggle">off</span></div>
+        <div class="members">
+          <div class="av" style="background:#E2843D">SP</div>
+          <div class="av" style="background:#E2B33D">K</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="divider-label">Pinned</div>
+      <div class="person"><div class="av" style="background:#E2843D">SP</div> Stephen <span class="x" style="font-size:10px">unpin</span></div>
+    </div>
+    <div class="label"><b>C. Full screen with avatar previews</b>Each circle shows its members. Information-dense.</div>
+  </div>
+
+</div>
+
+<div class="winner-note">
+  When you've picked, tell me <b>A / B / C / D</b> for each row and I'll build it.
+</div>
+
+</body>
+</html>

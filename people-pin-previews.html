@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Bonfire — flame-driven friend pins</title>
+<style>
+  :root {
+    --ember:     #f05846;
+    --emberDeep: #a52a24;
+    --emberGlow: #fa9b82;
+    --dusk:      #e0843e;
+    --spark:     #54b05a;
+    --coal:      #231715;
+    --smoke:     #716664;
+    --ash:       #ddd6d4;
+    --hearth:    #ffffff;
+    --cream:     #fff7f1;
+    --warmShadow:#c8b8b1;
+
+    /* Warm identity tints — tuned to live inside the ember/dusk palette */
+    --tint-ember:  #f05846;
+    --tint-clay:   #b8513b;
+    --tint-dusk:   #e0843e;
+    --tint-amber:  #d3a23a;
+    --tint-rose:   #d27263;
+    --tint-deep:   #8c3a30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--cream);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+    color: var(--coal);
+    margin: 0;
+    padding: 32px 32px 80px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h1 span { color: var(--ember); }
+  .sub { color: var(--smoke); font-size: 13px; margin-bottom: 32px; max-width: 760px; line-height: 1.55; }
+  h2 {
+    font-size: 14px; text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--smoke); margin: 40px 0 16px;
+    border-bottom: 1px solid var(--ash); padding-bottom: 8px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 24px; }
+  .card {
+    background: var(--hearth); border-radius: 18px; padding: 20px;
+    box-shadow: 0 6px 18px rgba(200,184,177,0.35);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .card h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: baseline; }
+  .card h3 .tag {
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ember); background: #fde6df; padding: 3px 8px; border-radius: 100px;
+  }
+  .card .desc { font-size: 13px; color: var(--smoke); line-height: 1.55; }
+  .card .pros { font-size: 12px; color: var(--smoke); display: flex; flex-direction: column; gap: 4px; }
+  .card .pros b { color: var(--coal); }
+  .card .pros .plus::before  { content: "✓ "; color: var(--spark); }
+  .card .pros .minus::before { content: "− "; color: var(--ember); }
+
+  .stage {
+    position: relative; height: 280px; border-radius: 14px; overflow: hidden;
+    background:
+      radial-gradient(circle at 30% 30%, #e8efe1 0%, transparent 35%),
+      radial-gradient(circle at 75% 70%, #e6ddd2 0%, transparent 40%),
+      linear-gradient(180deg, #fbf4ec 0%, #f5ece1 100%);
+    border: 1px solid var(--ash);
+  }
+  .stage::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, transparent 49.5%, #ece1d3 49.5%, #ece1d3 50.5%, transparent 50.5%),
+      linear-gradient(0deg, transparent 64.5%, #ece1d3 64.5%, #ece1d3 65.5%, transparent 65.5%),
+      linear-gradient(60deg, transparent 19.5%, #ece1d3 19.5%, #ece1d3 20.2%, transparent 20.2%);
+    opacity: 0.7;
+  }
+  .stage::after {
+    content: ""; position: absolute; left: 55%; top: 20%;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(240,88,70,0.18) 0%, rgba(240,88,70,0.06) 45%, transparent 70%);
+    pointer-events: none;
+  }
+  .row {
+    position: absolute; inset: 0;
+    display: flex; align-items: flex-end; justify-content: space-evenly;
+    padding: 24px 24px 60px; z-index: 2;
+  }
+  .lbl {
+    position: absolute; bottom: 10px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between;
+    color: var(--smoke); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    z-index: 2;
+  }
+
+  /* =========================================================
+     Shared flame silhouette — same path the real SelfIndicator
+     uses (M 13 2 ...) — guarantees the visual language matches.
+     Each layer scales/rotates from "50% 100%" (the dot/base).
+     ========================================================= */
+  .flameStack {
+    position: relative;
+    width: 26px; height: 36px;
+    transform-origin: 50% 100%;
+  }
+  .flameStack .layer {
+    position: absolute; left: 0; top: 0;
+    width: 26px; height: 36px;
+    transform-origin: 50% 100%;
+  }
+  /* Three independent sway cycles at incommensurate periods so the layers
+     visibly decorrelate. (The real RN component does sum-of-sines; CSS
+     approximates with a single sin per layer — enough for concept.) */
+  @keyframes swayOuter {
+    0%   { transform: rotate(-4deg) scale(1.00, 1.00); }
+    37%  { transform: rotate(3deg) scale(1.03, 0.98); }
+    63%  { transform: rotate(-2deg) scale(0.98, 1.02); }
+    100% { transform: rotate(-4deg) scale(1.00, 1.00); }
+  }
+  @keyframes swayMid {
+    0%   { transform: rotate(-7deg) scaleX(0.72) scaleY(0.78); opacity: 0.92; }
+    33%  { transform: rotate(6deg) scaleX(0.76) scaleY(0.74); opacity: 0.98; }
+    71%  { transform: rotate(-4deg) scaleX(0.70) scaleY(0.82); opacity: 0.88; }
+    100% { transform: rotate(-7deg) scaleX(0.72) scaleY(0.78); opacity: 0.92; }
+  }
+  @keyframes swayInner {
+    0%   { transform: rotate(-11deg) scaleX(0.44) scaleY(0.52); opacity: 0.78; }
+    27%  { transform: rotate(9deg) scaleX(0.50) scaleY(0.46); opacity: 0.96; }
+    58%  { transform: rotate(-6deg) scaleX(0.42) scaleY(0.56); opacity: 0.70; }
+    81%  { transform: rotate(12deg) scaleX(0.48) scaleY(0.50); opacity: 0.88; }
+    100% { transform: rotate(-11deg) scaleX(0.44) scaleY(0.52); opacity: 0.78; }
+  }
+  .layer.outer { animation: swayOuter 4.1s ease-in-out infinite; }
+  .layer.mid   { animation: swayMid   2.9s ease-in-out infinite; }
+  .layer.inner { animation: swayInner 1.7s ease-in-out infinite; }
+
+  /* Ground halo — soft emberGlow oval beneath each flame */
+  .gHalo {
+    position: absolute; left: 50%; bottom: -4px;
+    transform: translateX(-50%);
+    width: 38px; height: 14px; border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(240,88,70,0.45), transparent 70%);
+    animation: gPulse 3.2s ease-in-out infinite;
+  }
+  @keyframes gPulse {
+    0%, 100% { opacity: 0.5; transform: translateX(-50%) scale(0.9); }
+    50%      { opacity: 0.9; transform: translateX(-50%) scale(1.08); }
+  }
+
+  /* Self-indicator reference — 3 flames + white-ringed ember dot */
+  .self {
+    position: relative; width: 26px; height: 52px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .self .gHalo { bottom: 8px; }
+  .self .dot {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--hearth);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(35,23,21,0.35);
+  }
+  .self .dot::after {
+    content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--ember);
+  }
+  .self .flameStack { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); }
+
+  /* =========================================================
+     OPTION A — Identity Candle
+     Same 3-flame silhouette as self, but smaller, INNER core
+     tinted by identity, base is a tiny monogram pill (not the
+     white-ringed ember dot). Differentiator from self: monogram
+     pill instead of dot, slightly smaller, color-tinted core.
+     ========================================================= */
+  .optA {
+    position: relative; width: 30px; height: 46px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .optA .flameStack {
+    position: absolute; bottom: 12px; left: 50%;
+    transform: translateX(-50%) scale(0.78); /* a hair smaller than self */
+  }
+  .optA .gHalo { bottom: 10px; width: 32px; }
+  .optA .pill {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    background: var(--coal); color: var(--cream);
+    font: 700 9px/1 sans-serif; letter-spacing: 0.4px;
+    padding: 3px 6px; border-radius: 10px;
+    border: 1px solid var(--cream);
+  }
+
+  /* =========================================================
+     OPTION B — Floating flame with embedded monogram
+     No base dot, no chip. The monogram lives INSIDE the
+     brightest inner flame as a watermark. Most "presence,"
+     least UI. Differentiator from self: no base dot.
+     ========================================================= */
+  .optB {
+    position: relative; width: 30px; height: 42px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .optB .flameStack {
+    position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  }
+  .optB .gHalo { bottom: 2px; }
+  .optB .monogram {
+    position: absolute;
+    bottom: 12px; left: 50%; transform: translateX(-50%);
+    font: 700 8px/1 sans-serif; letter-spacing: 0.4px;
+    color: var(--cream);
+    text-shadow: 0 0 2px rgba(140,58,48,0.9);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* =========================================================
+     OPTION C — Campfire (logs + flames)
+     A tiny log silhouette at the geo point with 1–3 flames
+     rising depending on cluster size. Self stays "person";
+     friends are "campfires." Strongest narrative.
+     Differentiator from self: log base instead of dot.
+     ========================================================= */
+  .optC {
+    position: relative; width: 44px; height: 48px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .optC .logs {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 30px; height: 10px;
+  }
+  .optC .gHalo { bottom: 4px; width: 44px; }
+  .optC .flameStack {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%) scale(0.7);
+  }
+  .optC .monogram {
+    position: absolute;
+    bottom: -16px; left: 50%; transform: translateX(-50%);
+    background: var(--coal); color: var(--cream);
+    font: 700 9px/1 sans-serif; letter-spacing: 0.4px;
+    padding: 3px 6px; border-radius: 10px;
+  }
+  /* multi-flame campfire variant — for venue clusters */
+  .optC .flameStack.left  { transform: translateX(-130%) scale(0.55); animation-delay: -0.7s; }
+  .optC .flameStack.right { transform: translateX( 30%) scale(0.5); animation-delay: -1.4s; }
+
+  /* Misc layout */
+  .stack-row { display: flex; align-items: flex-end; gap: 4px; }
+  .palette-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--ash); }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--smoke); align-items: center; }
+</style>
+</head>
+<body>
+
+<h1>Friend pins — <span>flame-driven directions</span></h1>
+<p class="sub">
+  Three concepts that share visual language with <code>SelfIndicator</code> (same Turrell-style nested flame silhouette, same sum-of-sines flicker, same warm palette) while staying clearly distinct from self.
+  Each layer in the previews uses the actual flame path from <code>SelfIndicator.tsx:43</code> — only the base and the color application change between options.
+</p>
+
+<h2>Reference — current self-indicator</h2>
+<div class="grid">
+  <div class="card">
+    <h3>SelfIndicator (you-are-here) <span class="tag">unchanged</span></h3>
+    <div class="stage">
+      <div class="row">
+        <div class="self">
+          <div class="gHalo"></div>
+          <div class="flameStack">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberGlow)"/></svg></div>
+          </div>
+          <div class="dot"></div>
+        </div>
+      </div>
+      <div class="lbl"><span>you-are-here</span><span>baseline</span></div>
+    </div>
+    <p class="desc">Three nested flames over a white-ringed ember dot. Outer = emberDeep (calmest), middle = ember, inner = emberGlow (most agitated). All friend-pin options below borrow this silhouette.</p>
+  </div>
+</div>
+
+<h2>Option A — Identity Candle <em style="color:var(--ember); font-style:normal; font-weight:600;">(most "Turrell-adjacent")</em></h2>
+<div class="grid">
+  <div class="card">
+    <h3>Same flames, smaller, monogram pill base <span class="tag">closest to self</span></h3>
+    <div class="stage">
+      <div class="row">
+        <!-- single live pin -->
+        <div class="optA">
+          <div class="gHalo"></div>
+          <div class="flameStack">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <!-- inner tinted by identity -->
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-dusk)"/></svg></div>
+          </div>
+          <div class="pill">AB</div>
+        </div>
+
+        <!-- 3 friends at a venue: row of candles -->
+        <div class="stack-row" style="gap: 0;">
+          <div class="optA" style="margin-right: -6px;">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner" style="animation-delay: -0.7s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-clay)"/></svg></div>
+            </div>
+            <div class="pill">CK</div>
+          </div>
+          <div class="optA" style="margin-right: -6px;">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer" style="animation-delay: -1.1s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid" style="animation-delay: -0.5s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner" style="animation-delay: -1.4s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-amber)"/></svg></div>
+            </div>
+            <div class="pill">JM</div>
+          </div>
+          <div class="optA">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer" style="animation-delay: -2.1s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid" style="animation-delay: -0.9s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner" style="animation-delay: -0.3s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-rose)"/></svg></div>
+            </div>
+            <div class="pill">RT</div>
+          </div>
+        </div>
+      </div>
+      <div class="lbl"><span>1 loose friend</span><span>3 at a venue</span></div>
+    </div>
+    <p class="desc">
+      Same nested-flame silhouette as <code>SelfIndicator</code>, shrunk ~22%, with the inner core tinted by the person's identity color (warm-tonal: ember / clay / dusk / amber / rose / deep). The white-ringed ember dot is replaced with a dark monogram pill — that one substitution is the only visual difference between "you" and "them."
+    </p>
+    <div class="palette-row">
+      <div class="swatch" style="background: var(--tint-ember);"></div>
+      <div class="swatch" style="background: var(--tint-clay);"></div>
+      <div class="swatch" style="background: var(--tint-dusk);"></div>
+      <div class="swatch" style="background: var(--tint-amber);"></div>
+      <div class="swatch" style="background: var(--tint-rose);"></div>
+      <div class="swatch" style="background: var(--tint-deep);"></div>
+      <span style="font-size:11px; color: var(--smoke);">warm identity tints (inner-flame fill)</span>
+    </div>
+    <div class="pros">
+      <span class="plus">Same Turrell-style flicker engine; literally re-uses <code>FLAME_PATH</code> and the three-layer sway from <code>SelfIndicator.tsx</code></span>
+      <span class="plus">Self vs friend distinction reads at a glance: <i>white dot = me, monogram pill = friend</i></span>
+      <span class="plus">Identity color expressed through the brightest flame layer — color belongs to the fire, not a separate chip</span>
+      <span class="minus">Tall silhouette (~36px) — taller than today's 32px circle, anchor offsets in <code>index.tsx</code> need updating</span>
+    </div>
+  </div>
+</div>
+
+<h2>Option B — Floating Flame (monogram inside)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>No base, monogram embedded in the brightest layer <span class="tag">most atmospheric</span></h3>
+    <div class="stage">
+      <div class="row">
+        <div class="optB">
+          <div class="gHalo"></div>
+          <div class="flameStack">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-dusk)"/></svg></div>
+          </div>
+          <div class="monogram">AB</div>
+        </div>
+
+        <div class="stack-row" style="gap: 2px;">
+          <div class="optB">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer" style="animation-delay:-0.4s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid" style="animation-delay:-1.2s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-clay)"/></svg></div>
+            </div>
+            <div class="monogram">CK</div>
+          </div>
+          <div class="optB">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer" style="animation-delay:-1.8s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid" style="animation-delay:-0.6s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner" style="animation-delay:-0.9s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-amber)"/></svg></div>
+            </div>
+            <div class="monogram">JM</div>
+          </div>
+          <div class="optB">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid" style="animation-delay:-2.1s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner" style="animation-delay:-1.5s;"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-rose)"/></svg></div>
+            </div>
+            <div class="monogram">RT</div>
+          </div>
+        </div>
+      </div>
+      <div class="lbl"><span>1 loose friend</span><span>3 at a venue</span></div>
+    </div>
+    <p class="desc">
+      No dot, no chip. Each friend is a flame anchored at its geo point, with the monogram floating inside the brightest layer like initials carved into a candle. Differentiator from self: <i>self has the white-ring dot, friends are bare flames.</i>
+    </p>
+    <div class="pros">
+      <span class="plus">Most distinctly "a presence" rather than a UI element — flame literally <i>is</i> the person</span>
+      <span class="plus">Smaller silhouette than Option A (no pill); anchor offsets stay close to today's</span>
+      <span class="minus">Monogram-on-flame legibility depends on contrast at small sizes — risk on busy tiles</span>
+      <span class="minus">Self and friend silhouettes both end in flame; only the base disambiguates</span>
+    </div>
+  </div>
+</div>
+
+<h2>Option C — Campfire (logs + flames)</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Tiny log silhouette + 1–3 flames rising <span class="tag">most narrative</span></h3>
+    <div class="stage">
+      <div class="row">
+        <!-- single friend = single flame over a single log -->
+        <div class="optC">
+          <div class="gHalo"></div>
+          <div class="flameStack">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-dusk)"/></svg></div>
+          </div>
+          <svg class="logs" viewBox="0 0 30 10">
+            <rect x="1"  y="2" width="28" height="4" rx="2" fill="#5e3a2b" transform="rotate(-6 15 4)"/>
+            <rect x="2"  y="5" width="26" height="4" rx="2" fill="#7a4a35" transform="rotate(5 15 7)"/>
+            <circle cx="2" cy="4" r="1.6" fill="var(--ember)"/>
+            <circle cx="28" cy="7" r="1.2" fill="var(--emberGlow)"/>
+          </svg>
+          <div class="monogram">AB</div>
+        </div>
+
+        <!-- venue = THREE flames over wider logs, single shared monogram for the group -->
+        <div class="optC" style="width: 70px;">
+          <div class="gHalo" style="width: 70px;"></div>
+          <div class="flameStack left">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-clay)"/></svg></div>
+          </div>
+          <div class="flameStack">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-amber)"/></svg></div>
+          </div>
+          <div class="flameStack right">
+            <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+            <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+            <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-rose)"/></svg></div>
+          </div>
+          <svg class="logs" viewBox="0 0 60 12" style="width: 56px; height: 12px;">
+            <rect x="1"  y="2" width="58" height="4" rx="2" fill="#5e3a2b" transform="rotate(-4 30 4)"/>
+            <rect x="2"  y="6" width="56" height="4" rx="2" fill="#7a4a35" transform="rotate(3 30 8)"/>
+            <circle cx="6" cy="5" r="1.6" fill="var(--ember)"/>
+            <circle cx="30" cy="9" r="1.4" fill="var(--emberGlow)"/>
+            <circle cx="54" cy="6" r="1.2" fill="var(--dusk)"/>
+          </svg>
+          <div class="monogram">CK · JM · RT</div>
+        </div>
+      </div>
+      <div class="lbl"><span>1 person = 1 flame</span><span>venue = mini campfire</span></div>
+    </div>
+    <p class="desc">
+      Friends become little campfires. One flame = one person; clustered presences add more flames on a wider log stack. Visually answers "what does a hangout look like?" — a fire with more than one tongue. Differentiator from self: <i>self has a dot/ring base; friends have wood.</i>
+    </p>
+    <div class="pros">
+      <span class="plus">Strongest fit for the product metaphor — "where are people gathered around fires?"</span>
+      <span class="plus">Cluster size is encoded in the visual itself, not a "+N" overflow chip</span>
+      <span class="plus">Removes the need for <code>AvatarStack</code> on the map entirely</span>
+      <span class="minus">Biggest build — needs a new <code>CampfirePin</code> + <code>FlameCluster</code> component and changes to the venue-grouping logic</span>
+      <span class="minus">Largest footprint on the map; need to verify it doesn't crowd at low zoom</span>
+    </div>
+  </div>
+</div>
+
+<h2>All three at the same scale, beside self</h2>
+<div class="grid" style="grid-template-columns: 1fr;">
+  <div class="card">
+    <div class="stage" style="height: 220px;">
+      <div class="row" style="justify-content: space-around;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:18px;">
+          <div class="self">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberGlow)"/></svg></div>
+            </div>
+            <div class="dot"></div>
+          </div>
+          <div style="font-size:10px; color:var(--smoke); letter-spacing:1px;">SELF</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:18px;">
+          <div class="optA">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-dusk)"/></svg></div>
+            </div>
+            <div class="pill">AB</div>
+          </div>
+          <div style="font-size:10px; color:var(--smoke); letter-spacing:1px;">A · CANDLE</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:18px;">
+          <div class="optB">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-clay)"/></svg></div>
+            </div>
+            <div class="monogram">AB</div>
+          </div>
+          <div style="font-size:10px; color:var(--smoke); letter-spacing:1px;">B · FLOATING</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:18px;">
+          <div class="optC">
+            <div class="gHalo"></div>
+            <div class="flameStack">
+              <div class="layer outer"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--emberDeep)" fill-opacity="0.85"/></svg></div>
+              <div class="layer mid"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--ember)"/></svg></div>
+              <div class="layer inner"><svg viewBox="0 0 26 36" width="26" height="36"><path d="M 13 2 C 18 2, 25 10, 25 22 C 25 30, 20 36, 13 36 C 6 36, 1 30, 1 22 C 1 10, 8 2, 13 2 Z" fill="var(--tint-amber)"/></svg></div>
+            </div>
+            <svg class="logs" viewBox="0 0 30 10">
+              <rect x="1"  y="2" width="28" height="4" rx="2" fill="#5e3a2b" transform="rotate(-6 15 4)"/>
+              <rect x="2"  y="5" width="26" height="4" rx="2" fill="#7a4a35" transform="rotate(5 15 7)"/>
+              <circle cx="2" cy="4" r="1.6" fill="var(--ember)"/>
+              <circle cx="28" cy="7" r="1.2" fill="var(--emberGlow)"/>
+            </svg>
+            <div class="monogram">AB</div>
+          </div>
+          <div style="font-size:10px; color:var(--smoke); letter-spacing:1px;">C · CAMPFIRE</div>
+        </div>
+      </div>
+    </div>
+    <p class="desc" style="text-align: center;">
+      All four share the same flame silhouette and the same three-layer flicker as <code>SelfIndicator</code>. They differ only in <i>what sits at the base of the flame</i>: white-ring dot (self), monogram pill (A), nothing (B), or logs (C).
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

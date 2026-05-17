@@ -67,24 +67,27 @@ export default function VenueDetail() {
         }}
       >
         <IconButton
-          icon="chevron-back"
+          icon="close"
           variant="ghost"
-          iconSize={26}
+          size={40}
+          iconSize={22}
           onPress={() => router.back()}
-          accessibilityLabel="Back"
+          accessibilityLabel="Close"
         />
         <View style={{ flexDirection: "row", columnGap: 4 }}>
           <IconButton
             icon="bookmark-outline"
             variant="ghost"
-            iconSize={22}
+            size={40}
+            iconSize={20}
             onPress={() => {}}
             accessibilityLabel="Bookmark"
           />
           <IconButton
             icon="share-outline"
             variant="ghost"
-            iconSize={22}
+            size={40}
+            iconSize={20}
             onPress={() => {}}
             accessibilityLabel="Share"
           />

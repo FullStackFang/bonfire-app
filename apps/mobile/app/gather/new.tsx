@@ -111,7 +111,8 @@ export default function GatherNew() {
         <IconButton
           icon={step === 1 ? "close" : "chevron-back"}
           variant="ghost"
-          iconSize={26}
+          size={40}
+          iconSize={22}
           onPress={() => (step === 1 ? router.back() : setStep((s) => (s - 1) as Step))}
           accessibilityLabel={step === 1 ? "Close" : "Back"}
         />

@@ -79,8 +79,12 @@ export interface MapStageProps {
   initialZoom?: number;
   pins: PinSpec[];
   heatPoints: HeatPoint[];
+  // 0..1 scalar applied to heatmap opacity. Lower when bonfire radii are
+  // visible so two pulsing layers don't fight for the eye.
+  heatmapDim?: number;
   onZoomChange?: (zoom: number) => void;
   onLongPress?: (coords: { lat: number; lng: number }) => void;
+  onMapPress?: () => void;
   children?: React.ReactNode;
 }
 
@@ -179,15 +183,20 @@ const HTML_TEMPLATE = `<!doctype html>
   // halos. Time-driven so the cadence stays steady regardless of frame rate.
   const HEAT_PERIOD_MS = 3200;
   let breatheStart = 0;
+  let heatDim = 1;
   function breathe(now){
     if (!breatheStart) breatheStart = now;
     const phase = (Math.sin(((now - breatheStart) / HEAT_PERIOD_MS) * Math.PI * 2) + 1) / 2;
     if (map.getLayer('heat')) {
-      map.setPaintProperty('heat', 'heatmap-intensity', 1.0 + phase * 0.55);
-      map.setPaintProperty('heat', 'heatmap-opacity', 0.5 + phase * 0.22);
+      map.setPaintProperty('heat', 'heatmap-intensity', (1.0 + phase * 0.55) * heatDim);
+      map.setPaintProperty('heat', 'heatmap-opacity', (0.5 + phase * 0.22) * heatDim);
     }
     requestAnimationFrame(breathe);
   }
+  window.bonfireSetHeatmapDim = function(scale){
+    var v = Number(scale);
+    heatDim = isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  };
   map.on('load', function(){
     send({ type: 'ready' });
     requestAnimationFrame(breathe);
@@ -239,15 +248,32 @@ const HTML_TEMPLATE = `<!doctype html>
   var commitTimer = null;   // fires presscommit after the kindle window
   var lpStart = null;       // canvas point of the active touch
   var lpPhase = 0;          // 0 = idle, 1 = intent pending, 2 = kindling
+  var mapLocked = false;    // dragPan disabled while we own the gesture
   var LP_INTENT_DELAY = 100;
   var LP_TOTAL_DELAY = 600;
-  var LP_MOVE_TOLERANCE = 8;
   var LP_KINDLE_DURATION = LP_TOTAL_DELAY - LP_INTENT_DELAY; // 500
   var LP_WARM_LEAD = 100; // ms before commit to fire heads-up haptic
+  // Two-tier tolerance: during the 100ms intent window we're still trying to
+  // distinguish hold-vs-pan, so we're strict. Once intent is confirmed and
+  // we've taken the map offline, normal hand wobble shouldn't kill the press
+  // — only an obvious "I changed my mind" sweep does.
+  var LP_INTENT_TOLERANCE = 12;
+  var LP_KINDLE_TOLERANCE = 50;
+  function lockMap(){
+    if (mapLocked) return;
+    mapLocked = true;
+    map.dragPan.disable();
+  }
+  function unlockMap(){
+    if (!mapLocked) return;
+    mapLocked = false;
+    map.dragPan.enable();
+  }
   function clearLp(){
     if (intentTimer) { clearTimeout(intentTimer); intentTimer = null; }
     if (warmTimer) { clearTimeout(warmTimer); warmTimer = null; }
     if (commitTimer) { clearTimeout(commitTimer); commitTimer = null; }
+    unlockMap();
     lpStart = null;
     lpPhase = 0;
   }
@@ -272,6 +298,10 @@ const HTML_TEMPLATE = `<!doctype html>
       if (!lpStart) return;
       intentTimer = null;
       lpPhase = 2;
+      // Hand the map over to the press: stop MapLibre from treating
+      // subsequent finger drift as drag-pan. The kindle visual and the
+      // unproject() at commit both stay anchored to the original touch.
+      lockMap();
       send({ type: 'pressstart', x: lpStart.x, y: lpStart.y });
       warmTimer = setTimeout(function(){
         warmTimer = null;
@@ -283,6 +313,7 @@ const HTML_TEMPLATE = `<!doctype html>
         commitTimer = null;
         lpStart = null;
         lpPhase = 0;
+        unlockMap();
         send({ type: 'presscommit', lat: ll.lat, lng: ll.lng });
       }, LP_KINDLE_DURATION);
     }, LP_INTENT_DELAY);
@@ -292,21 +323,38 @@ const HTML_TEMPLATE = `<!doctype html>
     var p = getCanvasPoint(ev.touches[0]);
     var dx = p.x - lpStart.x;
     var dy = p.y - lpStart.y;
-    if (Math.hypot(dx, dy) > LP_MOVE_TOLERANCE) cancelLp();
+    var limit = lpPhase === 1 ? LP_INTENT_TOLERANCE : LP_KINDLE_TOLERANCE;
+    if (Math.hypot(dx, dy) > limit) cancelLp();
   }, { passive: true });
   map.getCanvasContainer().addEventListener('touchend', cancelLp, { passive: true });
   map.getCanvasContainer().addEventListener('touchcancel', cancelLp, { passive: true });
-  // MapLibre's own gesture system has its own thresholds — if it decides the
-  // user is panning/zooming/rotating, kill the press immediately even if our
-  // touch math hasn't tripped yet.
-  map.on('movestart', function(){ if (lpPhase !== 0) cancelLp(); });
+  // MapLibre's own gesture system — during the intent window it can pan
+  // before our touchmove tolerance trips, so it's the primary pan-detector
+  // there. After intent confirms, dragPan is disabled so movestart won't
+  // fire from drags; pinch/rotate still cancels in any phase.
+  map.on('movestart', function(){ if (lpPhase === 1) cancelLp(); });
   map.on('zoomstart', function(){ if (lpPhase !== 0) cancelLp(); });
   map.on('rotatestart', function(){ if (lpPhase !== 0) cancelLp(); });
+  // Quick tap on empty map → notify RN so the host screen can clear any
+  // transient selection (e.g. the tapped-to-show event title). Long-press
+  // and pin taps don't reach this — long-press commits via 'presscommit',
+  // and pin taps are absorbed by the RN overlay layer above the WebView.
+  map.on('click', function(){ if (lpPhase === 0) send({ type: 'mapclick' }); });
 </script>
 </body></html>`;
 
 export const MapStage = forwardRef<MapStageHandle, MapStageProps>(function MapStage(
-  { center, initialZoom = 14, pins, heatPoints, onZoomChange, onLongPress, children }: MapStageProps,
+  {
+    center,
+    initialZoom = 14,
+    pins,
+    heatPoints,
+    heatmapDim = 1,
+    onZoomChange,
+    onLongPress,
+    onMapPress,
+    children,
+  }: MapStageProps,
   ref,
 ) {
   const webRef = useRef<WebView>(null);
@@ -370,6 +418,13 @@ export const MapStage = forwardRef<MapStageHandle, MapStageProps>(function MapSt
 
   useEffect(() => {
     if (!ready) return;
+    webRef.current?.injectJavaScript(
+      `window.bonfireSetHeatmapDim(${Number(heatmapDim)}); true;`,
+    );
+  }, [heatmapDim, ready]);
+
+  useEffect(() => {
+    if (!ready) return;
     const lite = pins.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng }));
     webRef.current?.injectJavaScript(`window.bonfireSetPins(${JSON.stringify(lite)}); true;`);
   }, [pins, ready]);
@@ -385,6 +440,8 @@ export const MapStage = forwardRef<MapStageHandle, MapStageProps>(function MapSt
         setPinPositions(next);
       } else if (msg.type === "zoom" && typeof msg.zoom === "number") {
         onZoomChange?.(msg.zoom);
+      } else if (msg.type === "mapclick") {
+        onMapPress?.();
       } else if (
         msg.type === "pressstart" &&
         typeof msg.x === "number" &&

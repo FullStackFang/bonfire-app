@@ -126,26 +126,23 @@ export default function GoLive() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: light.cream }}>
-      <View
-        style={{
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <T variant="displayLg">Go live</T>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
         <IconButton
           icon="close"
+          variant="ghost"
+          size={40}
+          iconSize={22}
           onPress={() => router.back()}
           accessibilityLabel="Close"
         />
       </View>
 
-      <T variant="body" color={light.smoke} style={{ paddingHorizontal: 20, marginTop: 8 }}>
-        Broadcast availability to your circles. No event, no plan needed.
-      </T>
+      <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+        <T variant="displayLg">Go live</T>
+        <T variant="body" color={light.smoke} style={{ marginTop: 8 }}>
+          Broadcast availability to your circles. No event, no plan needed.
+        </T>
+      </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, rowGap: 12 }}>
         {ALL_INTENTS.map((i) => (

@@ -44,7 +44,8 @@ export default function FriendProfile() {
         <IconButton
           icon="chevron-back"
           variant="ghost"
-          iconSize={26}
+          size={40}
+          iconSize={22}
           onPress={() => router.back()}
           accessibilityLabel="Back"
         />
