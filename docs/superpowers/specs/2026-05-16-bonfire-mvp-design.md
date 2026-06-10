@@ -1,7 +1,9 @@
 # Bonfire MVP — Design Spec
 
+> **Superseded (June 9, 2026):** this is the v1 spec — the friend-graph presence app. Canonical spec: `docs/superpowers/specs/2026-06-09-bonfire-mvp-spec-v2.1.md`; migration plan: `docs/superpowers/plans/2026-06-09-v2-pivot-plan.md`.
+
 **Date:** 2026-05-16
-**Status:** Draft for review
+**Status:** Superseded by v2.1
 **Scope:** iOS-first MVP. Eight core screens, plus the supporting screens, flows, and empty states that are launch-critical but not visualized in the reference deck.
 **Source documents:** `.impeccable.md` (design context), `references/bonfire_mvp_ios_screens.html` (mock deck), the eight reference PNGs in `references/`.
 

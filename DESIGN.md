@@ -1,6 +1,6 @@
 ---
 name: Bonfire
-description: Warm, kinetic, intimate. A campfire on a screen — friends already out, found before the group text starts.
+description: Warm, kinetic, intimate. A small group's living fire — fed only by showing up, mapped in earned light.
 colors:
   ember: "#f05846"
   ember-deep: "#a52a24"
@@ -119,9 +119,9 @@ components:
 
 **Creative North Star: "The campfire on a screen."**
 
-Bonfire is the inside of a lit room rendered as a phone interface. The brand is **warm, kinetic, intimate** — three words from `PRODUCT.md` that are doctrine, not adjectives. Surfaces feel like a small-press lifestyle magazine that learned to render real-time heatmaps. Type is editorial. Numbers are typeset. The map is the hero and gets shader-quality treatment. Everything else is in service of the map or in service of the one required action: **Go live.**
+Bonfire is the inside of a lit room rendered as a phone interface. The brand is **warm, kinetic, intimate** — three words from `PRODUCT.md` that are doctrine, not adjectives. Surfaces feel like a small-press lifestyle magazine that learned to render real-time heatmaps. Type is editorial. Numbers are typeset. The fire is the hero — a single living flame the whole group keeps alive, fed only by bodies in the room. The map is the memory: dark until the group lights it, with shader-quality glow on every earned light. Everything else is in service of the one required action: **Check in.**
 
-Buttons are deliberately chunky — confident 3D press, ember on ember-deep, satisfying to tap. They borrow the tactile vocabulary of Duolingo applied with restraint, so the app feels physical and committed without becoming cartoon. The map heatmap breathes in a 3.2-second sine cadence; live avatars carry ember halos around them. The interface, taken in still frames, looks editorial. Taken in motion, it looks alive.
+Buttons are deliberately chunky — confident 3D press, ember on ember-deep, satisfying to tap. They borrow the tactile vocabulary of Duolingo applied with restraint, so the app feels physical and committed without becoming cartoon. The fire and the lit territory breathe in a 3.2-second sine cadence; checked-in members carry ember halos around them. The interface, taken in still frames, looks editorial. Taken in motion, it looks alive.
 
 This system explicitly rejects the visual cliches of the category. From `PRODUCT.md` anti-references, repeated here as design law: **no Instagram/Facebook gray-on-blue corporate flat. No Snap Map cartoon Bitmoji warmth. No dating-app gloss. No glassmorphism, no aurora gradients, no AI-purple. No BeReal brutalist black-and-yellow.** "Friends finder that looks like a Silicon Valley pitch deck" is the exact failure mode to avoid.
 
@@ -129,7 +129,7 @@ This system explicitly rejects the visual cliches of the category. From `PRODUCT
 - Cream-on-ember palette with strict 60/30/10 distribution.
 - Editorial Source Serif italic for display + Onest for UI + Geist Mono for live data.
 - Chunky 3D-press buttons with ember-deep shadows. Never a flat material button.
-- Map as hero, with breathing heatmap and pulsing avatars.
+- Fire as hero — a state-machine flame (Roaring → Burning → Dimming → Embers → Out). Map as memory: a fog-of-war dark surface with breathing pools of earned light.
 - Light pools, doesn't flood. Full ember saturation is reserved for live state and primary CTAs.
 - Motion is meaning. Reanimated 3 worklets on every state crossing. Spring physics, sine for pulses.
 
@@ -138,16 +138,16 @@ This system explicitly rejects the visual cliches of the category. From `PRODUCT
 The system is tinted toward ember (~30°) across all neutrals so every surface reads as living in the same room as the brand color. Built in OKLCH (canonical values below); hex values in the frontmatter are sRGB approximations for Stitch compliance.
 
 ### Primary
-- **Ember** (`#f05846` / `oklch(66% 0.19 30)`): the bonfire color. Used for the primary CTA face, go-live state, the heatmap core, and the active "live" indicator. Never used as decoration.
+- **Ember** (`#f05846` / `oklch(66% 0.19 30)`): the bonfire color. Used for the primary CTA face, the living fire, the heat core of lit territory, and the active "here now" indicator. Never used as decoration.
 - **Ember Deep** (`#a52a24` / `oklch(48% 0.16 28)`): the shadow under every ember button. Carries the 3D press effect. Also used for pressed/dark surface states.
-- **Ember Glow** (`#fa9b82` / `oklch(78% 0.12 35)`): the breathing halo around live avatars at ~22–54% opacity. Heatmap falloff color.
+- **Ember Glow** (`#fa9b82` / `oklch(78% 0.12 35)`): the breathing halo around checked-in members and lit venues at ~22–54% opacity. Heat falloff color.
 
 ### Secondary
-- **Spark** (`#54b05a` / `oklch(68% 0.15 145)`): sage-leaning green for the "available now" indicator dot. **Not iOS green.** Used only as a state marker, never as a fill.
+- **Spark** (`#54b05a` / `oklch(68% 0.15 145)`): sage-leaning green for the "happening now" dot — active pulses, live check-ins. **Not iOS green.** Used only as a state marker, never as a fill.
 
 ### Tertiary
-- **Dusk** (`#e0843e` / `oklch(70% 0.14 55)`): sunset amber for "out today" intent. Used only as a state marker.
-- **Night** (`#1d293d` / `oklch(28% 0.04 260)`): true deep blue-black for "out tonight" intent and the dark/after-sunset map surface. **Contextual mode, not a dark-mode toggle.**
+- **Dusk** (`#e0843e` / `oklch(70% 0.14 55)`): sunset amber for embers — venues staked by a member, awaiting ignition. Used only as a state marker.
+- **Night** (`#1d293d` / `oklch(28% 0.04 260)`): true deep blue-black for the fog-of-war group map — the unlit city the group lights up. **The game board, not a dark-mode toggle.**
 
 ### Neutral
 - **Coal** (`#231715` / `oklch(22% 0.02 30)`): warm near-black for body text on light surfaces. Never pure black.
@@ -174,8 +174,8 @@ The system is tinted toward ember (~30°) across all neutrals so every surface r
 **Character:** the serif carries warmth and editorial confidence. The italic in particular is the workhorse of display copy — "Build your bonfire", "Around you" — and gives the system its small-press magazine voice. Onest is a clean modern grotesk with enough character in its lowercase `a` and `g` to not read as Inter. Geist Mono grounds activity feeds and timestamps in a technical register.
 
 ### Hierarchy
-- **Display** (italic, 34/40, `SourceSerif4_400Regular_Italic`): screen titles. "Build your bonfire", "Around you".
-- **Headline** (regular, 28/34, `SourceSerif4_400Regular`): section openers and large numeric data (Bonfire scores, friend counts as typography).
+- **Display** (italic, 34/40, `SourceSerif4_400Regular_Italic`): screen titles. "The fire is burning", "Lit March 12".
+- **Headline** (regular, 28/34, `SourceSerif4_400Regular`): section openers and large numeric data (heat, head-counts — "12 of you" — as typography).
 - **Title** (medium, 22/28, `SourceSerif4_500Medium`): card titles, modal headers.
 - **Body Lg** (regular, 17/24, Onest): primary reading copy.
 - **Body** (regular, 15/22, Onest): default UI copy, list rows.
@@ -185,7 +185,7 @@ The system is tinted toward ember (~30°) across all neutrals so every surface r
 
 ### Named Rules
 
-**The Numbers-As-Typography Rule.** Bonfire scores, distances, friends-here counts: set them in display italic at a generous size. **Forbidden:** chips wrapping numeric data.
+**The Numbers-As-Typography Rule.** Heat, head-counts, nights-lit tallies: set them in display italic at a generous size. **Forbidden:** chips wrapping numeric data.
 
 **The One-Italic Rule.** Italic is reserved for display copy. Body copy is never italic. Italics in UI labels are forbidden.
 
@@ -196,7 +196,7 @@ Bonfire uses **structural depth, not ambient shadow.** Most surfaces are flat by
 There are no ambient drop shadows on cards, modals, or chips. Depth is conveyed entirely by the coloured offset under interactive elements.
 
 ### Shadow Vocabulary
-- **Chunky depth — primary action** (face: ember; shadow: ember-deep; offset 5–6px): Go-live FAB, primary CTAs.
+- **Chunky depth — primary action** (face: ember; shadow: ember-deep; offset 5–6px): Check-in FAB, primary CTAs.
 - **Chunky depth — secondary action** (face: hearth; shadow: shadow-warm `#c8b8b1`; offset 4–5px): Recenter button, Continue buttons in outline variant.
 
 ### Named Rules
@@ -216,7 +216,7 @@ The full reference implementation lives in `apps/mobile/components/ui/` and `app
 - **Outline** (`<CTAButton variant="outline">`): hearth face on shadow-warm shadow, depth 5, hairline 1.5px shadow-warm border, ember text label.
 - **Ghost** (`<CTAButton variant="ghost">`): flat text button, no shadow, used only for "skip" / "not now" affordances.
 - **Map controls** (FAB, recenter): use `ChunkyPressable` directly with `depth: 4`, `radius: 26`. 52×52 face. Right-edge stack at `right: 18`.
-- **Press behaviour:** spring (`houseSpring`: mass 1, damping 22, stiffness 220). Haptic on every commit (selection by default; medium for go-live).
+- **Press behaviour:** spring (`houseSpring`: mass 1, damping 22, stiffness 220). Haptic on every commit (selection by default; medium for check-in).
 
 ### Chips (`Chip`)
 - **Style:** pill shape, four variants — `solid` (ember fill, hearth text), `outline` (hearth fill, ash 1px border, coal text), `ghost` (transparent, smoke text), `tinted` (tint at 12% opacity, tint as text).
@@ -240,7 +240,7 @@ The full reference implementation lives in `apps/mobile/components/ui/` and `app
 ### Avatars (`Avatar`, `AvatarStack`)
 - **Shape:** circle. Sizes `xs` 24, `sm` 32, `md` 40, `lg` 48, `xl` 64, `hero` 96.
 - **Color:** one of six avatar accents from `avatarAccents` (blue / green / purple / orange / amber / slate). Assigned deterministically by user id hash.
-- **Letter pair:** two characters (initials), Onest 600 SemiBold, hearth on accent.
+- **Photo-first:** real faces, required at onboarding — faces must repeat. Letter pair (two initials, Onest 600 SemiBold, hearth on accent) only as a fallback for missing photos.
 - **Live state:** animated emberGlow halo around the avatar at 22–54% opacity, scale 1.12–1.30, 3.2s sine cycle. Reduce Motion collapses to static glow.
 
 ### Map Controls
@@ -250,7 +250,7 @@ The full reference implementation lives in `apps/mobile/components/ui/` and `app
 - **Placement:** right edge stack at `right: 18`, above the tab bar. FAB sits lowest; auxiliary controls (recenter, etc.) stack above with 8pt gaps.
 
 ### Signature: Pulsing Map Pin (`PulsingMapPin`)
-The defining moment of the brand. Wide ember halo (2.2× the pin diameter) sits behind every live avatar on the map, breathing in a 3.2s sine cycle, in phase with the heatmap layer. Opacity 16–38%, scale 0.85–1.25. **This is the thing users should remember.** Reduce Motion collapses it to a static halo at half-phase.
+The defining moment of the brand. Wide ember halo (2.2× the pin diameter) sits behind every active pulse and freshly lit venue on the map, breathing in a 3.2s sine cycle, in phase with the fire. Opacity 16–38%, scale 0.85–1.25. **This is the thing users should remember.** Reduce Motion collapses it to a static halo at half-phase.
 
 ## 6. Do's and Don'ts
 
@@ -258,16 +258,16 @@ The defining moment of the brand. Wide ember halo (2.2× the pin diameter) sits 
 - **Do** use `CTAButton` from `@bonfire/components/ui` for every primary or outline button across every screen. Never inline a styled `<Pressable>` with rounded corners and a colored background.
 - **Do** use `ChunkyPressable` for round map controls and any one-off action button. Pick `depth` 4 for ≤52pt buttons, 5–6 for ≥56pt buttons.
 - **Do** set every interactive press to spring physics via `houseSpring`. No linear easing, no bounce.
-- **Do** fire a haptic on every commit: `selection` for filter chips, `light` for general buttons, `medium` for go-live, `success` after a commit lands.
-- **Do** treat numeric data as display typography. Bonfire score, distance, friend count: `SourceSerif4_400Regular_Italic`, 34/40 or larger.
-- **Do** use ember only for live state, primary CTA, and the heatmap. Idle ember is forbidden.
+- **Do** fire a haptic on every commit: `selection` for filter chips, `light` for general buttons, `medium` for check-in, `success` on ignition (a venue lighting).
+- **Do** treat numeric data as display typography. Heat, head-count, nights lit: `SourceSerif4_400Regular_Italic`, 34/40 or larger.
+- **Do** use ember only for the fire, lit/live state, and primary CTAs. Idle ember is forbidden.
 - **Do** honor `prefers-reduced-motion`: collapse pulses to static glows; keep haptics; keep state colors.
-- **Do** keep the map as the hero. Every other screen should make returning to the map feel like coming home.
+- **Do** keep the fire as the front door and the map as the memory. Opening the app should feel like checking the hearth; opening the map should feel like opening a box of photographs, not a directory.
 
 ### Don't:
 - **Don't** ship glassmorphism. **Forbidden by `PRODUCT.md`:** no `BlurView` as decoration, no frosted-glass overlays, no aurora gradients. The chunky 3D press is the depth vocabulary; blur is not.
 - **Don't** use pure black (`#000`) or pure white as the body text or background. Use **coal** and **cream**.
-- **Don't** use cartoon warmth (Bitmoji, Snap Map energy). Avatars are characters — letter pairs as type, not faces.
+- **Don't** use cartoon warmth (Bitmoji, Snap Map energy). Avatars are real faces — photo-first; letter pairs only as a fallback, never illustration.
 - **Don't** wrap numeric data in a chip. Numbers get the typography treatment.
 - **Don't** add ambient drop shadows to cards or modals. Depth comes from the chunky press, not from blur.
 - **Don't** use linear or cubic-bezier easing on interactive transitions. Spring physics only, with `houseSpring` as the house default.

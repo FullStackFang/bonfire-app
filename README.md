@@ -1,10 +1,12 @@
 # Bonfire
 
-See the friends you already have, the moment they're out.
+Explore alone → ember it → ignite it together → keep the fire alive.
 
-A real-time, circle-scoped presence app for iOS. This monorepo contains the mobile client, the shared types package, the design tokens package, and the Postgres schema.
+A small, gated neighborhood group keeps one mortal fire alive by showing up — a weekly ritual, a fog-of-war map, and a flame fed only by bodies in the room. This monorepo contains the Expo universal client (iOS + web PWA), the shared types package, the design tokens package, and the Postgres schema.
 
 ## Status
+
+> **June 9, 2026 — v2 pivot.** Bonfire pivoted from a friend-graph presence app (v1, below) to gated neighborhood groups with a weekly ritual and a mortal collective fire. Canonical spec: `docs/superpowers/specs/2026-06-09-bonfire-mvp-spec-v2.1.md`. Kill/keep/repurpose plan: `docs/superpowers/plans/2026-06-09-v2-pivot-plan.md`. The milestone table below records the v1 build — see the pivot plan for what carries forward.
 
 | Milestone | What landed | What's stubbed |
 |---|---|---|
@@ -76,6 +78,8 @@ docs/superpowers/
 
 ## Design references
 
-- `.impeccable.md` — design context (tone, palette, typography)
-- `docs/superpowers/specs/2026-05-16-bonfire-mvp-design.md` — full MVP spec
+- `PRODUCT.md` — design context (tone, palette, typography)
+- `docs/superpowers/specs/2026-06-09-bonfire-mvp-spec-v2.1.md` — canonical MVP spec (v2.1)
+- `docs/superpowers/plans/2026-06-09-v2-pivot-plan.md` — v2 pivot: kill / keep / repurpose
+- `docs/superpowers/specs/2026-05-16-bonfire-mvp-design.md` — v1 spec (superseded)
 - `references/` — original deck mockups (8 screens)
