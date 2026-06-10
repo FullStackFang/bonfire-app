@@ -10,10 +10,12 @@
 // Lit territory breathes ember; embers glow faint dusk; an active pulse
 // breathes spark. During the anchor-night sim, tonight's venue grows with
 // each arrival and blooms open at ignition (3+ co-present).
+// The self marker (userPos) rides the heat canvas: finding yourself never
+// reveals territory — only co-presence does.
 // Native gets components/map/FogMap.tsx (the ledger list) until the
 // maplibre-react-native build lands.
 
-import { useEffect, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { View, Text } from "react-native";
 import maplibregl from "maplibre-gl";
 import { light } from "@bonfire/ui-tokens";
@@ -33,8 +35,13 @@ export interface FogMapSelection {
   subtitle: string;
 }
 
+export interface FogMapHandle {
+  flyTo: (target: { lng: number; lat: number; zoom?: number }) => void;
+}
+
 export interface FogMapProps {
   mode: "group" | "self";
+  userPos?: { lng: number; lat: number } | null;
   onSelect?: (sel: FogMapSelection | null) => void;
 }
 
@@ -89,7 +96,10 @@ function fitCanvas(canvas: HTMLCanvasElement, w: number, h: number, dpr: number)
   return ctx;
 }
 
-export function FogMap({ mode, onSelect }: FogMapProps) {
+export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
+  { mode, userPos, onSelect },
+  ref,
+) {
   const sim = useLiveSim();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const desatRef = useRef<HTMLCanvasElement | null>(null);
@@ -97,8 +107,21 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const rafRef = useRef<number>(0);
   const poolsRef = useRef<Pool[]>([]);
+  const userPosRef = useRef<typeof userPos>(userPos);
+  userPosRef.current = userPos;
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+
+  useImperativeHandle(ref, () => ({
+    flyTo: (target) => {
+      mapRef.current?.flyTo({
+        center: [target.lng, target.lat],
+        zoom: target.zoom ?? 15,
+        duration: 1400,
+        essential: true,
+      });
+    },
+  }));
 
   // Rebuild the pool inventory whenever mode or sim state changes.
   const pools = useMemo<Pool[]>(() => {
@@ -317,6 +340,34 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
         hctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
         hctx.fill();
       }
+
+      // You are here — a breathing self marker. Drawn last so it rides above
+      // mist and pools; deliberately never punches the fog (finding yourself
+      // doesn't reveal territory — co-presence does).
+      const u = userPosRef.current;
+      if (u) {
+        const pt = map.project([u.lng, u.lat]);
+        if (pt.x > -60 && pt.y > -60 && pt.x < w + 60 && pt.y < h + 60) {
+          const haloR = 24 * (1 + 0.3 * breath);
+          const halo = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, haloR);
+          halo.addColorStop(0, light.emberGlow + "73");
+          halo.addColorStop(1, light.emberGlow + "00");
+          hctx.globalCompositeOperation = "source-over";
+          hctx.fillStyle = halo;
+          hctx.beginPath();
+          hctx.arc(pt.x, pt.y, haloR, 0, Math.PI * 2);
+          hctx.fill();
+
+          hctx.fillStyle = light.hearth;
+          hctx.beginPath();
+          hctx.arc(pt.x, pt.y, 9, 0, Math.PI * 2);
+          hctx.fill();
+          hctx.fillStyle = light.ember;
+          hctx.beginPath();
+          hctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+          hctx.fill();
+        }
+      }
     };
     rafRef.current = requestAnimationFrame(draw);
 
@@ -369,4 +420,4 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
       </Text>
     </View>
   );
-}
+});
