@@ -11,5 +11,8 @@
     "dev:mobile": "npm run start --workspace=apps/mobile",
     "build:web": "npm run build --workspace=apps/web",
     "lint:web": "npm run lint --workspace=apps/web"
+  },
+  "devDependencies": {
+    "web-push": "^3.6.7"
   }
 }

@@ -46,6 +46,9 @@ coverage/
 emanu-el-calendar-*.pdf
 expo-qr.png
 
+# push spike — VAPID private key + device subscriptions, never commit
+spike/
+
 # debug logs
 npm-debug.log*
 yarn-debug.log*
