@@ -267,9 +267,10 @@ Tab shell is three tabs — **Fire / Map / Group** — plus modals (venue detail
 
 ## Open decisions
 
-1. **Cornell fork** (deadline ~June 15 — decide deliberately, not by default). Decision rule: **does the survey play feed the same mechanics, or does it fork product surface?** Graduating seniors moving to NYC are "people who lost ambient institutional community" — the same loneliness mechanic as the WFH wedge, and June is a once-a-year window. If the survey is a few days' effort yielding a list of NYC-bound grads (seed pool for a future vertical), it's cheap optionality — take it. If it demands *any* product surface before group #1 exists, kill it.
-2. **Heat constants** — initial values set above; calibrate against alpha capture-rate data before group #1.
-3. **Seasonal grace ("banked coals")** — largely resolved by the Labor Day calendar rule; default remains real stakes.
+1. **Heat constants** — initial values set above; calibrate against alpha capture-rate data before group #1.
+2. **Seasonal grace ("banked coals")** — largely resolved by the Labor Day calendar rule; default remains real stakes.
+
+*(Dropped June 10: the Cornell fork. Off the table for MVP — full focus on the WFH neighborhood wedge.)*
 
 ---
 

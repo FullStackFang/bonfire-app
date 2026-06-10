@@ -2,25 +2,13 @@
 // (and v1's WebView approach has no place in v2) — so native renders the
 // ledger until the maplibre-react-native dev build lands in phase 2.
 // Metro resolves FogMap.web.tsx on web, this file everywhere else.
-// The interface (including the flyTo handle) matches the web file exactly.
+// The interface (types in ./fogTypes) matches the web file exactly.
 
 import { forwardRef, useImperativeHandle } from "react";
 import { MapLedger } from "./MapLedger";
+import type { FogMapHandle, FogMapProps } from "./fogTypes";
 
-export interface FogMapSelection {
-  title: string;
-  subtitle: string;
-}
-
-export interface FogMapHandle {
-  flyTo: (target: { lng: number; lat: number; zoom?: number }) => void;
-}
-
-export interface FogMapProps {
-  mode: "group" | "self";
-  userPos?: { lng: number; lat: number } | null;
-  onSelect?: (sel: FogMapSelection | null) => void;
-}
+export type { FogMapHandle, FogMapProps, FogMapSelection } from "./fogTypes";
 
 export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
   { mode },

@@ -1,11 +1,12 @@
-// Map = the memory. (spec §Screens 2, §Fog of war)
+// Map = the memory. (spec §Screens 2–3, §Fog of war)
 // Full-bleed fog-of-war map (FogMap.web on web, ledger fallback on native)
 // with the My Map / Group Map toggle floating above it, chunky map controls
 // on the right edge (locate me, back to the neighborhood — DESIGN.md §5),
-// a tap card for whatever light you touch, and the anchor-night demo trigger.
+// the venue card for whatever light you touch — with the real verbs (Pulse
+// here, Drop ember, I'm coming) — and the anchor-night demo trigger.
 
 import { useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -16,10 +17,219 @@ import {
   type FogMapHandle,
   type FogMapSelection,
 } from "../../components/map/FogMap";
-import { mapCenter } from "../../lib/mockV2";
+import { mapCenter, embers, litTerritory, group } from "../../lib/mockV2";
 import { useLiveSim, startAnchorNight } from "../../lib/liveSim";
+import {
+  useMapActions,
+  startPulse,
+  dropEmber,
+  joinPulse,
+  EMBER_WEEKLY_CAP,
+} from "../../lib/mapActions";
 
 type Mode = "group" | "self";
+
+function NoteInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (s: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor={light.smoke}
+      maxLength={50}
+      autoFocus
+      style={{
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: light.warmShadow,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontFamily: "Onest_400Regular",
+        fontSize: 15,
+        color: light.coal,
+        backgroundColor: light.cream,
+      }}
+    />
+  );
+}
+
+// The venue card (spec §Screens 3) — what tapping any light opens.
+// Lit territory carries its credit and "the move"; embers carry their stake;
+// pulses can be joined; personal spots can be staked as embers (cap 2/week).
+function SelectionCard({
+  sel,
+  onClose,
+  onViewGroupMap,
+}: {
+  sel: FogMapSelection;
+  onClose: () => void;
+  onViewGroupMap: () => void;
+}) {
+  const act = useMapActions();
+  const [composing, setComposing] = useState<"pulse" | "ember" | null>(null);
+  const [note, setNote] = useState("");
+  const [confirmed, setConfirmed] = useState<"pulse" | "ember" | null>(null);
+
+  const isOwnPulse = sel.kind === "pulse" && sel.id === act.myPulse?.id;
+  const joined = sel.kind === "pulse" && !!sel.id && act.joinedPulseIds.includes(sel.id);
+
+  // Personal spots already glowing on the group map can't be staked twice.
+  const alreadyOnGroupMap =
+    sel.kind === "personal" &&
+    !!sel.venue &&
+    ([...embers, ...act.droppedEmbers].some((e) => e.venueName === sel.venue!.name) ||
+      litTerritory.some((v) => v.name === sel.venue!.name));
+  const emberCapLeft = EMBER_WEEKLY_CAP - act.droppedEmbers.length;
+
+  const canPulseHere = (sel.kind === "lit" || sel.kind === "ember") && !!sel.venue;
+  const canDropEmber =
+    sel.kind === "personal" && !!sel.venue && !alreadyOnGroupMap;
+
+  return (
+    <Card padding={16}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        <View style={{ flex: 1 }}>
+          <T variant="title">{sel.title}</T>
+          <T variant="bodySm" color={light.smoke} style={{ marginTop: 4 }}>
+            {sel.subtitle}
+          </T>
+          {sel.detail ? (
+            <T variant="body" style={{ marginTop: 6 }}>
+              {sel.detail}
+            </T>
+          ) : null}
+        </View>
+        <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close">
+          <Ionicons name="close" size={18} color={light.smoke} />
+        </Pressable>
+      </View>
+
+      {/* Confirmations */}
+      {confirmed === "pulse" && (
+        <T variant="bodySm" color={light.ember} style={{ marginTop: 12 }}>
+          Pulse is live — {group.name} can see you for 90 minutes.
+        </T>
+      )}
+      {confirmed === "ember" && (
+        <View style={{ marginTop: 12 }}>
+          <T variant="bodySm" color={light.ember}>
+            Ember staked — glowing on the group map until someone bites.
+          </T>
+          <View style={{ flexDirection: "row", marginTop: 10 }}>
+            <Chip label="See the group map" variant="solid" onPress={onViewGroupMap} />
+          </View>
+        </View>
+      )}
+
+      {/* Compose: pulse note / ember note */}
+      {composing && !confirmed && (
+        <View>
+          <NoteInput
+            value={note}
+            onChange={setNote}
+            placeholder={
+              composing === "pulse"
+                ? "optional — “big table in the back”"
+                : "why this place? one line"
+            }
+          />
+          <View style={{ flexDirection: "row", columnGap: 10, marginTop: 10 }}>
+            <Chip
+              label={composing === "pulse" ? "I'm here — light it" : "Stake it"}
+              variant="solid"
+              onPress={() => {
+                if (!sel.venue) return;
+                if (composing === "pulse") {
+                  startPulse(sel.venue, note);
+                  setConfirmed("pulse");
+                } else if (dropEmber(sel.venue, note)) {
+                  setConfirmed("ember");
+                }
+                setComposing(null);
+              }}
+            />
+            <Chip label="Cancel" variant="outline" onPress={() => setComposing(null)} />
+          </View>
+        </View>
+      )}
+
+      {/* Actions */}
+      {!composing && !confirmed && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            columnGap: 10,
+            marginTop: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          {sel.kind === "pulse" && !isOwnPulse && (
+            <Chip
+              label={joined ? "You're coming" : "I'm coming"}
+              variant={joined ? "solid" : "outline"}
+              onPress={() => sel.id && joinPulse(sel.id)}
+            />
+          )}
+          {isOwnPulse && (
+            <T variant="bodySm" color={light.smoke}>
+              Your pulse — it expires on its own.
+            </T>
+          )}
+          {canPulseHere &&
+            (act.myPulse ? (
+              <T variant="bodySm" color={light.smoke}>
+                Your pulse is live at {act.myPulse.venueName}.
+              </T>
+            ) : (
+              <Chip
+                label="Pulse here"
+                variant="outline"
+                onPress={() => {
+                  setNote("");
+                  setComposing("pulse");
+                }}
+              />
+            ))}
+          {canDropEmber &&
+            (emberCapLeft > 0 ? (
+              <>
+                <Chip
+                  label="Drop ember"
+                  variant="outline"
+                  onPress={() => {
+                    setNote("");
+                    setComposing("ember");
+                  }}
+                />
+                <T variant="bodySm" color={light.smoke}>
+                  {emberCapLeft} of {EMBER_WEEKLY_CAP} this week
+                </T>
+              </>
+            ) : (
+              <T variant="bodySm" color={light.smoke}>
+                Both embers staked this week — make them count.
+              </T>
+            ))}
+          {sel.kind === "personal" && alreadyOnGroupMap && (
+            <T variant="bodySm" color={light.smoke}>
+              Already glowing on the group map.
+            </T>
+          )}
+        </View>
+      )}
+    </Card>
+  );
+}
 
 function MapControl({
   icon,
@@ -80,6 +290,7 @@ export default function MapScreen() {
       }
       if (!perm.granted) {
         setSel({
+          kind: "info",
           title: "Location unavailable",
           subtitle: "Allow location access to find yourself on the map.",
         });
@@ -93,6 +304,7 @@ export default function MapScreen() {
       fogRef.current?.flyTo({ ...p, zoom: 15 });
     } catch {
       setSel({
+        kind: "info",
         title: "Location unavailable",
         subtitle: "Couldn't read your position — try again.",
       });
@@ -150,19 +362,16 @@ export default function MapScreen() {
         <MapControl icon="bonfire" label="Back to the neighborhood" onPress={goHome} />
       </View>
 
-      {/* Tap card */}
+      {/* Venue card (spec §Screens 3) — keyed by selection so compose state resets */}
       {sel ? (
-        <Pressable
-          onPress={() => setSel(null)}
-          style={{ position: "absolute", left: 20, right: 20, bottom: 76 }}
-        >
-          <Card padding={16}>
-            <T variant="title">{sel.title}</T>
-            <T variant="body" color={light.smoke} style={{ marginTop: 4 }}>
-              {sel.subtitle}
-            </T>
-          </Card>
-        </Pressable>
+        <View style={{ position: "absolute", left: 20, right: 20, bottom: 76 }}>
+          <SelectionCard
+            key={sel.id ?? sel.title}
+            sel={sel}
+            onClose={() => setSel(null)}
+            onViewGroupMap={() => setMode("group")}
+          />
+        </View>
       ) : null}
 
       {/* Demo: play a compressed anchor night through the real UI. */}

@@ -36,6 +36,8 @@ export interface LitVenue {
   lat: number;
   litLabel: string; // "Lit May 14"
   foundById: string;
+  /** "The move" — the one line that travels with the territory. */
+  move: string;
 }
 
 export interface Ember {
@@ -99,8 +101,12 @@ export const members: Member[] = [
   m("lena", "Lena", "stand-up, screen printing"),
 ];
 
+/** You — the person holding the phone. Kept out of the roster on purpose. */
+export const selfId = "you";
+export const self: Member = m(selfId, "You", "");
+
 export const memberById = (id: string): Member =>
-  members.find((x) => x.id === id) ?? members[0];
+  id === selfId ? self : (members.find((x) => x.id === id) ?? members[0]);
 
 export const group = {
   name: "Greenpoint Embers",
@@ -130,10 +136,10 @@ export const anchor: AnchorInstance = {
 export const mapCenter = { lng: -73.955, lat: 40.7302, zoom: 14.1 };
 
 export const litTerritory: LitVenue[] = [
-  { id: "v-blackrabbit", name: "Black Rabbit", lng: -73.9556, lat: 40.7302, litLabel: "Lit May 14", foundById: "maya" },
-  { id: "v-devocion", name: "Devoción", lng: -73.9514, lat: 40.7253, litLabel: "Lit May 21", foundById: "theo" },
-  { id: "v-ramona", name: "Ramona", lng: -73.9582, lat: 40.7297, litLabel: "Lit May 28", foundById: "priya" },
-  { id: "v-ona", name: "Oña", lng: -73.9536, lat: 40.727, litLabel: "Lit Jun 4", foundById: "sam" },
+  { id: "v-blackrabbit", name: "Black Rabbit", lng: -73.9556, lat: 40.7302, litLabel: "Lit May 14", foundById: "maya", move: "back booths by the fireplace" },
+  { id: "v-devocion", name: "Devoción", lng: -73.9514, lat: 40.7253, litLabel: "Lit May 21", foundById: "theo", move: "the big table under the skylight" },
+  { id: "v-ramona", name: "Ramona", lng: -73.9582, lat: 40.7297, litLabel: "Lit May 28", foundById: "priya", move: "happy hour till 7 — get the frozen one" },
+  { id: "v-ona", name: "Oña", lng: -73.9536, lat: 40.727, litLabel: "Lit Jun 4", foundById: "sam", move: "counter seats, ask for Manny" },
 ];
 
 export const embers: Ember[] = [

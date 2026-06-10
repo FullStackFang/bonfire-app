@@ -75,5 +75,5 @@ The 11 v1 migrations were never applied to a live project. Replace rather than m
 Follow the week-by-week table in spec §Build sequence. The three gates:
 
 1. **Gate 1 resolved June 10, 2026: GO.** Web push verified end-to-end on an installed iOS PWA from the Expo web export — subscribe via `web.push.apple.com`, VAPID-signed sends accepted (HTTP 201), notification delivered on the founder's device. Phase 1 ships Expo-universal; `apps/web` is demoted (delete when convenient). Spike artifacts kept as the real notification skeleton: `apps/mobile/public/sw.js`, `manifest.json`, `app/push-spike.tsx`, `scripts/send-push.mjs`, Vercel project `bonfire-pwa-spike`. Bonus finding: v1 MapStage hosts MapLibre GL JS in a `react-native-webview` (no web impl) — the v2 map must use the real platform fork (`maplibre-react-native` native / `maplibre-gl` web), confirming the prune.
-2. **June 15: Cornell decision** (spec §Open decisions — decision rule written there).
+2. ~~June 15: Cornell decision~~ — **dropped June 10**; full focus on the WFH neighborhood wedge.
 3. **Week of Sep 7: Group #1 onboards.** Soft alpha (founder's friends) runs from week 4 through August as the tuning cohort. No mortality clock starts in August.

@@ -21,9 +21,11 @@ import {
   anchor,
   pulses,
   memberById,
+  selfId,
   type FireState,
 } from "../../lib/mockV2";
 import { useLiveSim } from "../../lib/liveSim";
+import { useMapActions, joinPulse } from "../../lib/mapActions";
 
 const fireMeta: Record<FireState, { headline: string; disc: number; glow: number }> = {
   roaring: { headline: "The fire is roaring.", disc: 120, glow: 1.5 },
@@ -83,8 +85,8 @@ function FireDisc({ state }: { state: FireState }) {
 export default function FireHome() {
   const insets = useSafeAreaInsets();
   const [rsvp, setRsvp] = useState<"in" | "out" | null>(null);
-  const [coming, setComing] = useState(false);
   const sim = useLiveSim();
+  const act = useMapActions();
 
   const torch = memberById(anchor.torchHolderId);
   const inMembers = useMemo(() => anchor.inIds.map(memberById), []);
@@ -175,16 +177,20 @@ export default function FireHome() {
         <T variant="overline" color={light.smoke} style={{ letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 10 }}>
           Happening now
         </T>
-        {pulses.map((pulse) => {
+        {[...pulses, ...(act.myPulse ? [act.myPulse] : [])].map((pulse) => {
           const who = memberById(pulse.memberId);
+          const mine = pulse.memberId === selfId;
+          const joined = act.joinedPulseIds.includes(pulse.id);
           const comingCount =
-            pulse.comingIds.length + sim.pulseJoins.length + (coming ? 1 : 0);
+            pulse.comingIds.length +
+            (pulse.id === "p-1" ? sim.pulseJoins.length : 0) +
+            (joined ? 1 : 0);
           return (
-            <Card key={pulse.id} padding={16}>
+            <Card key={pulse.id} padding={16} style={{ marginBottom: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <LiveDot pulse />
                 <T variant="bodyLg" style={{ marginLeft: 8, flex: 1 }}>
-                  {who.name} is at {pulse.venueName}
+                  {mine ? `You’re at ${pulse.venueName}` : `${who.name} is at ${pulse.venueName}`}
                 </T>
                 <T variant="monoSm" color={light.smoke}>
                   {pulse.minutesLeft} min left
@@ -194,11 +200,17 @@ export default function FireHome() {
                 “{pulse.note}”
               </T>
               <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12, columnGap: 10 }}>
-                <Chip
-                  label={coming ? "You’re coming" : "I’m coming"}
-                  variant={coming ? "solid" : "outline"}
-                  onPress={() => setComing(true)}
-                />
+                {mine ? (
+                  <T variant="bodySm" color={light.smoke}>
+                    Your pulse — it expires on its own.
+                  </T>
+                ) : (
+                  <Chip
+                    label={joined ? "You’re coming" : "I’m coming"}
+                    variant={joined ? "solid" : "outline"}
+                    onPress={() => joinPulse(pulse.id)}
+                  />
+                )}
                 <T variant="bodySm" color={light.smoke}>
                   {comingCount} coming
                 </T>

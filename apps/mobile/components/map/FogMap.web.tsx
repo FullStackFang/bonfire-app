@@ -27,23 +27,13 @@ import {
   anchor,
   mapCenter,
   memberById,
+  selfId,
 } from "../../lib/mockV2";
 import { useLiveSim } from "../../lib/liveSim";
+import { useMapActions } from "../../lib/mapActions";
+import type { FogMapHandle, FogMapProps, FogMapSelection } from "./fogTypes";
 
-export interface FogMapSelection {
-  title: string;
-  subtitle: string;
-}
-
-export interface FogMapHandle {
-  flyTo: (target: { lng: number; lat: number; zoom?: number }) => void;
-}
-
-export interface FogMapProps {
-  mode: "group" | "self";
-  userPos?: { lng: number; lat: number } | null;
-  onSelect?: (sel: FogMapSelection | null) => void;
-}
+export type { FogMapHandle, FogMapProps, FogMapSelection } from "./fogTypes";
 
 interface Pool {
   lng: number;
@@ -59,8 +49,7 @@ interface Pool {
   breathes: boolean;
   /** Set while the ignition bloom animation runs. */
   ignitedAt?: number | null;
-  title: string;
-  subtitle: string;
+  sel: FogMapSelection;
 }
 
 // The undiscovered city: grayscale under morning mist — quiet, not menacing.
@@ -101,6 +90,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
   ref,
 ) {
   const sim = useLiveSim();
+  const act = useMapActions();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const desatRef = useRef<HTMLCanvasElement | null>(null);
   const heatRef = useRef<HTMLCanvasElement | null>(null);
@@ -123,7 +113,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
     },
   }));
 
-  // Rebuild the pool inventory whenever mode or sim state changes.
+  // Rebuild the pool inventory whenever mode, sim, or your own actions change.
   const pools = useMemo<Pool[]>(() => {
     if (mode === "self") {
       return personalSpots.map((s) => ({
@@ -134,8 +124,13 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         color: light.emberGlow,
         dot: light.ember,
         breathes: true,
-        title: s.name,
-        subtitle: "On your map · only you can see this",
+        sel: {
+          kind: "personal",
+          id: s.id,
+          title: s.name,
+          subtitle: "On your map · only you can see this",
+          venue: { name: s.name, lng: s.lng, lat: s.lat },
+        },
       }));
     }
 
@@ -150,11 +145,17 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
       color: light.ember,
       dot: light.ember,
       breathes: true,
-      title: v.name,
-      subtitle: `${v.litLabel} · found by ${memberById(v.foundById).name}`,
+      sel: {
+        kind: "lit",
+        id: v.id,
+        title: v.name,
+        subtitle: `${v.litLabel} · found by ${memberById(v.foundById).name}`,
+        detail: `The move: ${v.move}`,
+        venue: { name: v.name, lng: v.lng, lat: v.lat },
+      },
     }));
 
-    const emberPools: Pool[] = embers
+    const emberPools: Pool[] = [...embers, ...act.droppedEmbers]
       // Once tonight is underway, the anchor pool replaces Le Fanfare's ember.
       .filter((e) => !(tonightActive && e.lng === anchor.lng && e.lat === anchor.lat))
       .map((e) => ({
@@ -165,12 +166,23 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         color: light.dusk,
         dot: light.dusk,
         breathes: true,
-        title: e.venueName,
-        subtitle: `“${e.note}” — ${memberById(e.droppedById).name} · ${e.fadesLabel}`,
+        sel: {
+          kind: "ember",
+          id: e.id,
+          title: e.venueName,
+          subtitle: `Staked by ${memberById(e.droppedById).name} · ${e.fadesLabel}`,
+          detail: `“${e.note}”`,
+          venue: { name: e.venueName, lng: e.lng, lat: e.lat },
+        },
       }));
 
-    const pulsePools: Pool[] = pulses.map((p) => {
-      const coming = p.comingIds.length + sim.pulseJoins.length;
+    const livePulses = [...pulses, ...(act.myPulse ? [act.myPulse] : [])];
+    const pulsePools: Pool[] = livePulses.map((p) => {
+      const coming =
+        p.comingIds.length +
+        (p.id === "p-1" ? sim.pulseJoins.length : 0) +
+        (act.joinedPulseIds.includes(p.id) ? 1 : 0);
+      const who = memberById(p.memberId);
       return {
         lng: p.lng,
         lat: p.lat,
@@ -179,8 +191,17 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         color: light.spark,
         dot: light.spark,
         breathes: true,
-        title: `${memberById(p.memberId).name} is at ${p.venueName}`,
-        subtitle: `“${p.note}” · ${p.minutesLeft} min left · ${coming} coming`,
+        sel: {
+          kind: "pulse",
+          id: p.id,
+          title:
+            p.memberId === selfId
+              ? `You're at ${p.venueName}`
+              : `${who.name} is at ${p.venueName}`,
+          subtitle: `${p.minutesLeft} min left · ${coming} coming`,
+          detail: `“${p.note}”`,
+          venue: { name: p.venueName, lng: p.lng, lat: p.lat },
+        },
       };
     });
 
@@ -195,16 +216,20 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
             dot: sim.ignited ? light.ember : light.dusk,
             breathes: true,
             ignitedAt: sim.ignitedAt,
-            title: anchor.venueName,
-            subtitle: sim.ignited
-              ? `Lit tonight · found by Noor · ${arrivalsN} here`
-              : `Tonight's anchor · ${arrivalsN} checked in`,
+            sel: {
+              kind: "tonight",
+              id: "tonight",
+              title: anchor.venueName,
+              subtitle: sim.ignited
+                ? `Lit tonight · found by Noor · ${arrivalsN} here`
+                : `Tonight's anchor · ${arrivalsN} checked in`,
+            },
           },
         ]
       : [];
 
     return [...lit, ...emberPools, ...pulsePools, ...tonight];
-  }, [mode, sim]);
+  }, [mode, sim, act]);
   poolsRef.current = pools;
 
   // Map + fog lifecycle (created once).
@@ -252,7 +277,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
           hit = p;
         }
       }
-      onSelectRef.current?.(hit ? { title: hit.title, subtitle: hit.subtitle } : null);
+      onSelectRef.current?.(hit ? hit.sel : null);
     });
 
     const ro = new ResizeObserver(() => map.resize());
