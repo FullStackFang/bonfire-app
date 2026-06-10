@@ -1,0 +1,6 @@
+{
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

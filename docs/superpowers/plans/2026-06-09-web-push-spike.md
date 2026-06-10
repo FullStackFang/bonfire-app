@@ -423,29 +423,41 @@ Desktop end-to-end proves: SW, subscribe flow, VAPID signing, payload encryption
 
 ### Task 5: Deploy to Vercel
 
-**Files:**
-- Create: `apps/mobile/web-deploy/vercel.json` (copied into `dist/` after each export)
+**Files (as built — two gotchas reshaped this task, see note):**
+- Create: `apps/mobile/vercel.json` (deploy-root config: skip install/build, `outputDirectory: dist`, SPA rewrite)
+- Create: `apps/mobile/.vercelignore` (upload only `dist/` + `vercel.json`)
 
-- [ ] **Step 1: Write the deploy config**
+- [x] **Step 1: Write the deploy config**
 
-Create `apps/mobile/web-deploy/vercel.json`:
+Create `apps/mobile/vercel.json`:
 
 ```json
 {
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
 ```
 
-(Static files — `sw.js`, `manifest.json`, icons — take precedence over rewrites on Vercel; everything else falls through to the SPA shell.)
+Create `apps/mobile/.vercelignore`:
 
-- [ ] **Step 2: Export fresh and deploy**
-
-Run (bash, from `apps/mobile`):
-```bash
-npx expo export --platform web && cp web-deploy/vercel.json dist/vercel.json && npx vercel deploy dist --prod
 ```
-When the CLI asks, create a **new** project named `bonfire-pwa-spike` (don't link to any existing project). If not logged in, run `npx vercel login` first — **YOU** may need to complete the browser auth.
-Expected: a production URL like `https://bonfire-pwa-spike.vercel.app`.
+*
+!dist
+!dist/**
+!vercel.json
+```
+
+> **As-built note — why not the original `dist/vercel.json` approach:** (1) `vercel link`/`deploy` walk **up** from `dist/` and anchor the project at `apps/mobile`, so the upload root is `apps/mobile` regardless of cwd — and the framework-Other default "Output Directory: `public` if it exists" then serves *only* `apps/mobile/public/` (sw.js/manifest 200, index.html 404). Fix: configure the `apps/mobile` root explicitly with `outputDirectory: dist`. (2) `cleanUrls: true` conflicts with a rewrite destination of `/index.html` (cleanUrls strips `.html` paths, the rewrite target stops existing → 404). Don't combine them.
+
+- [x] **Step 2: Export fresh and deploy**
+
+Run (bash, from `apps/mobile`; one-time `npx vercel link --yes --project bonfire-pwa-spike` first, `npx vercel login` if unauthenticated):
+```bash
+npx expo export --platform web && npx vercel deploy --prod --yes
+```
+Expected: `Aliased: https://bonfire-pwa-spike.vercel.app`.
 
 - [ ] **Step 3: Verify the deployed assets**
 
@@ -458,7 +470,7 @@ Expected: `HTTP/2 200` and the manifest JSON (not the SPA HTML — confirms stat
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/mobile/web-deploy/vercel.json
+git add apps/mobile/vercel.json apps/mobile/.vercelignore
 git commit -m "feat(spike): vercel deploy config for web export"
 ```
 
