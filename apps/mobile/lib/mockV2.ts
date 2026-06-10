@@ -2,6 +2,7 @@
 // Self-contained on purpose — v1 mockSeeds describes a friend-graph world that
 // no longer exists. This file is the offline stand-in until the v2 Supabase
 // schema lands; shapes mirror the spec's data model, not the v1 tables.
+// Coordinates are real-ish Greenpoint, Brooklyn — the launch neighborhood.
 
 import { avatarColorFor } from "@bonfire/ui-tokens";
 
@@ -19,6 +20,8 @@ export interface AnchorInstance {
   dayLabel: string; // "Thursday"
   timeLabel: string; // "6:30 PM"
   venueName: string;
+  lng: number;
+  lat: number;
   /** Torch holder's one line. */
   note: string;
   torchHolderId: string;
@@ -29,6 +32,8 @@ export interface AnchorInstance {
 export interface LitVenue {
   id: string;
   name: string;
+  lng: number;
+  lat: number;
   litLabel: string; // "Lit May 14"
   foundById: string;
 }
@@ -36,6 +41,8 @@ export interface LitVenue {
 export interface Ember {
   id: string;
   venueName: string;
+  lng: number;
+  lat: number;
   note: string;
   droppedById: string;
   fadesLabel: string; // "fades in 3 weeks"
@@ -45,9 +52,18 @@ export interface Pulse {
   id: string;
   memberId: string;
   venueName: string;
+  lng: number;
+  lat: number;
   note: string;
   minutesLeft: number;
   comingIds: string[];
+}
+
+export interface PersonalSpot {
+  id: string;
+  name: string;
+  lng: number;
+  lat: number;
 }
 
 const m = (id: string, name: string, hook: string): Member => ({
@@ -98,26 +114,34 @@ export const group = {
   vouchesAvailable: 2,
 };
 
+// Tonight's torch pick is a glowing ember — Noor's stake. If 3+ check in,
+// the demo plays the core loop on the map: ember → co-presence → territory.
 export const anchor: AnchorInstance = {
   dayLabel: "Thursday",
   timeLabel: "6:30 PM",
-  venueName: "Black Rabbit",
-  note: "back patio, order the mortadella",
+  venueName: "Le Fanfare",
+  lng: -73.9546,
+  lat: 40.7338,
+  note: "Noor staked an ember on the back garden — tonight we find out",
   torchHolderId: "maya",
   inIds: ["maya", "theo", "priya", "noor", "felix", "iris", "omar"],
 };
 
+export const mapCenter = { lng: -73.955, lat: 40.7302, zoom: 14.1 };
+
 export const litTerritory: LitVenue[] = [
-  { id: "v-blackrabbit", name: "Black Rabbit", litLabel: "Lit May 14", foundById: "maya" },
-  { id: "v-devocion", name: "Devoción", litLabel: "Lit May 21", foundById: "theo" },
-  { id: "v-ramona", name: "Ramona", litLabel: "Lit May 28", foundById: "priya" },
-  { id: "v-ona", name: "Oña", litLabel: "Lit Jun 4", foundById: "sam" },
+  { id: "v-blackrabbit", name: "Black Rabbit", lng: -73.9556, lat: 40.7302, litLabel: "Lit May 14", foundById: "maya" },
+  { id: "v-devocion", name: "Devoción", lng: -73.9514, lat: 40.7253, litLabel: "Lit May 21", foundById: "theo" },
+  { id: "v-ramona", name: "Ramona", lng: -73.9582, lat: 40.7297, litLabel: "Lit May 28", foundById: "priya" },
+  { id: "v-ona", name: "Oña", lng: -73.9536, lat: 40.727, litLabel: "Lit Jun 4", foundById: "sam" },
 ];
 
 export const embers: Ember[] = [
   {
     id: "e-fanfare",
     venueName: "Le Fanfare",
+    lng: -73.9546,
+    lat: 40.7338,
     note: "best back garden in Greenpoint, dead quiet on weeknights",
     droppedById: "noor",
     fadesLabel: "fades in 3 weeks",
@@ -125,6 +149,8 @@ export const embers: Ember[] = [
   {
     id: "e-pencil",
     venueName: "Pencil Factory",
+    lng: -73.9579,
+    lat: 40.729,
     note: "old-man-bar energy, perfect post-anchor",
     droppedById: "dev",
     fadesLabel: "fades in 2 weeks",
@@ -136,8 +162,20 @@ export const pulses: Pulse[] = [
     id: "p-1",
     memberId: "theo",
     venueName: "Devoción",
+    lng: -73.9514,
+    lat: 40.7253,
     note: "big table in the back until 3",
     minutesLeft: 38,
     comingIds: ["june"],
   },
+];
+
+// My Map — private personal territory (solo check-ins). Includes the two
+// ember venues: you scouted them alone before staking them for the group.
+export const personalSpots: PersonalSpot[] = [
+  { id: "s-fanfare", name: "Le Fanfare", lng: -73.9546, lat: 40.7338 },
+  { id: "s-pencil", name: "Pencil Factory", lng: -73.9579, lat: 40.729 },
+  { id: "s-bakeri", name: "Bakeri", lng: -73.956, lat: 40.7349 },
+  { id: "s-arche", name: "Archestratus", lng: -73.9555, lat: 40.732 },
+  { id: "s-transmitter", name: "Transmitter Park", lng: -73.9613, lat: 40.7297 },
 ];

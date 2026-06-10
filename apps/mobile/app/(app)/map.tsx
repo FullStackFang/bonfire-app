@@ -1,113 +1,74 @@
 // Map = the memory. (spec §Screens 2, §Fog of war)
-// v1 of this screen is deliberately a list on the night surface: the doctrine
-// requires every map fact to have a non-map equivalent, and the MapLibre
-// platform fork (native maplibre-react-native / web maplibre-gl) is a later
-// task. Darkness is the correct starting state — this screen renders the dark.
+// Full-bleed fog-of-war map (FogMap.web on web, ledger fallback on native)
+// with the My Map / Group Map toggle floating above it, a tap card for
+// whatever light you touch, and the anchor-night demo trigger.
 
-import { ScrollView, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { night } from "@bonfire/ui-tokens";
-import { T } from "../../components/ui";
-import { litTerritory, embers, memberById } from "../../lib/mockV2";
+import { light, night } from "@bonfire/ui-tokens";
+import { T, Card, Chip, SegmentedControl } from "../../components/ui";
+import { FogMap, type FogMapSelection } from "../../components/map/FogMap";
+import { useLiveSim, startAnchorNight } from "../../lib/liveSim";
 
-export default function GroupMap() {
+type Mode = "group" | "self";
+
+export default function MapScreen() {
   const insets = useSafeAreaInsets();
+  const [mode, setMode] = useState<Mode>("group");
+  const [sel, setSel] = useState<FogMapSelection | null>(null);
+  const sim = useLiveSim();
+
+  // Switching layers clears the tap card; so does the sim ending.
+  useEffect(() => setSel(null), [mode]);
+
+  const demoLabel = sim.running
+    ? `Anchor night underway — ${sim.arrivals.length} there`
+    : sim.done
+      ? "Replay anchor night"
+      : "Play anchor night";
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: night.cream }}
-      contentContainerStyle={{
-        paddingTop: insets.top + 24,
-        paddingBottom: 32,
-        paddingHorizontal: 20,
-      }}
-    >
-      <T variant="displayXl" color={night.coal}>
-        The map is dark until you light it.
-      </T>
-      <T variant="body" color={night.smoke} style={{ marginTop: 8 }}>
-        A venue lights only when you’re there together — three or more of you.
-      </T>
+    <View style={{ flex: 1, backgroundColor: night.cream }}>
+      <FogMap mode={mode} onSelect={setSel} />
 
-      <T
-        variant="overline"
-        color={night.smoke}
-        style={{ letterSpacing: 1.1, textTransform: "uppercase", marginTop: 32, marginBottom: 4 }}
-      >
-        Lit territory
-      </T>
-      {litTerritory.map((v) => (
-        <View
-          key={v.id}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 14,
-            borderBottomWidth: 1,
-            borderBottomColor: night.ash,
-          }}
-        >
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: night.ember,
-              marginRight: 12,
-            }}
-          />
-          <View style={{ flex: 1 }}>
-            <T variant="bodyLg" color={night.coal}>
-              {v.name}
-            </T>
-            <T variant="bodySm" color={night.smoke} style={{ marginTop: 2 }}>
-              {v.litLabel} · found by {memberById(v.foundById).name}
-            </T>
-          </View>
-        </View>
-      ))}
+      {/* Floating layer toggle */}
+      <View style={{ position: "absolute", top: insets.top + 12, left: 20, right: 20 }}>
+        <SegmentedControl<Mode>
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "group", label: "Group map" },
+            { value: "self", label: "My map" },
+          ]}
+        />
+      </View>
 
-      <T
-        variant="overline"
-        color={night.smoke}
-        style={{ letterSpacing: 1.1, textTransform: "uppercase", marginTop: 32, marginBottom: 4 }}
-      >
-        Embers
-      </T>
-      {embers.map((e) => (
-        <View
-          key={e.id}
-          style={{
-            flexDirection: "row",
-            alignItems: "flex-start",
-            paddingVertical: 14,
-            borderBottomWidth: 1,
-            borderBottomColor: night.ash,
-          }}
+      {/* Tap card */}
+      {sel ? (
+        <Pressable
+          onPress={() => setSel(null)}
+          style={{ position: "absolute", left: 20, right: 20, bottom: 76 }}
         >
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: night.dusk,
-              marginRight: 12,
-              marginTop: 5,
-            }}
-          />
-          <View style={{ flex: 1 }}>
-            <T variant="bodyLg" color={night.coal}>
-              {e.venueName}
+          <Card padding={16}>
+            <T variant="title">{sel.title}</T>
+            <T variant="body" color={light.smoke} style={{ marginTop: 4 }}>
+              {sel.subtitle}
             </T>
-            <T variant="body" color={night.smoke} style={{ marginTop: 2 }}>
-              “{e.note}” — {memberById(e.droppedById).name}
-            </T>
-            <T variant="monoSm" color={night.dusk} style={{ marginTop: 4 }}>
-              {e.fadesLabel}
-            </T>
-          </View>
-        </View>
-      ))}
-    </ScrollView>
+          </Card>
+        </Pressable>
+      ) : null}
+
+      {/* Demo: play a compressed anchor night through the real UI. */}
+      <View style={{ position: "absolute", bottom: 24, alignSelf: "center" }}>
+        <Chip
+          label={demoLabel}
+          variant={sim.running ? "solid" : "outline"}
+          onPress={() => {
+            if (!sim.running) startAnchorNight();
+          }}
+        />
+      </View>
+    </View>
   );
 }

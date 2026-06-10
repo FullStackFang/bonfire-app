@@ -23,6 +23,7 @@ import {
   memberById,
   type FireState,
 } from "../../lib/mockV2";
+import { useLiveSim } from "../../lib/liveSim";
 
 const fireMeta: Record<FireState, { headline: string; disc: number; glow: number }> = {
   roaring: { headline: "The fire is roaring.", disc: 120, glow: 1.5 },
@@ -83,10 +84,16 @@ export default function FireHome() {
   const insets = useSafeAreaInsets();
   const [rsvp, setRsvp] = useState<"in" | "out" | null>(null);
   const [coming, setComing] = useState(false);
+  const sim = useLiveSim();
 
   const torch = memberById(anchor.torchHolderId);
   const inMembers = useMemo(() => anchor.inIds.map(memberById), []);
   const inCount = anchor.inIds.length + (rsvp === "in" ? 1 : 0);
+  const fireState = sim.fireState ?? group.fireState;
+  const recap =
+    sim.fireState === "roaring"
+      ? `Roaring right now — ${sim.arrivals.length} of you at ${anchor.venueName}.`
+      : group.recap;
 
   return (
     <ScrollView
@@ -101,12 +108,12 @@ export default function FireHome() {
       <T variant="overline" color={light.smoke} align="center" style={{ letterSpacing: 1.1, textTransform: "uppercase" }}>
         {group.name}
       </T>
-      <FireDisc state={group.fireState} />
+      <FireDisc state={fireState} />
       <T variant="displayXl" align="center">
-        {fireMeta[group.fireState].headline}
+        {fireMeta[fireState].headline}
       </T>
       <T variant="body" color={light.smoke} align="center" style={{ marginTop: 6 }}>
-        {group.recap}
+        {recap}
       </T>
 
       {/* The anchor */}
@@ -150,6 +157,16 @@ export default function FireHome() {
               />
             </View>
           </View>
+
+          {/* Day-of, present tense: joining something in motion. */}
+          {sim.arrivals.length > 0 && (
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 14 }}>
+              <LiveDot pulse />
+              <T variant="bodySm" color={light.ember} style={{ marginLeft: 8 }}>
+                {sim.arrivals.length} {sim.arrivals.length === 1 ? "is" : "are"} already there
+              </T>
+            </View>
+          )}
         </Card>
       </View>
 
@@ -160,7 +177,8 @@ export default function FireHome() {
         </T>
         {pulses.map((pulse) => {
           const who = memberById(pulse.memberId);
-          const comingCount = pulse.comingIds.length + (coming ? 1 : 0);
+          const comingCount =
+            pulse.comingIds.length + sim.pulseJoins.length + (coming ? 1 : 0);
           return (
             <Card key={pulse.id} padding={16}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
