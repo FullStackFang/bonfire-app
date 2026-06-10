@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { light, night } from "@bonfire/ui-tokens";
+import { light } from "@bonfire/ui-tokens";
 import { T, Card, Chip, SegmentedControl } from "../../components/ui";
 import { FogMap, type FogMapSelection } from "../../components/map/FogMap";
 import { useLiveSim, startAnchorNight } from "../../lib/liveSim";
@@ -29,7 +29,7 @@ export default function MapScreen() {
       : "Play anchor night";
 
   return (
-    <View style={{ flex: 1, backgroundColor: night.cream }}>
+    <View style={{ flex: 1, backgroundColor: light.cream }}>
       <FogMap mode={mode} onSelect={setSel} />
 
       {/* Floating layer toggle */}

@@ -22,7 +22,7 @@ The competing behavior is staying home, and the group chat that never converges 
 
 ## Aesthetic Direction
 
-**Theme: warm light against earned darkness.** Day surfaces are cream and ember on near-white. The group map is true night — fog-of-war ink that only co-presence lights. Not a dark-mode toggle: darkness is the game board.
+**Theme: earned color.** Day surfaces are cream and ember on near-white. The group map's fog of war is desaturation, not darkness: the undiscovered city is black-and-white under pale mist — quiet, not menacing — and color + heat return only where the group has actually been. Kansas → Oz, one venue at a time. The contrast between gray and warm is the game board.
 
 **Visual tone: editorial warmth × kinetic data.** Think a small-press lifestyle magazine that learned to render a living fire. Generous serif headlines. Clean sans for UI. Numeric data (heat, "12 of you," nights lit) treated as typographic events, not chips. The fire is the hero object and gets the most craft; the map is the memory and gets shader-quality glow on every light the group has earned.
 
@@ -51,7 +51,7 @@ The competing behavior is staying home, and the group chat that never converges 
 
 3. **The scoreboard must not lie — in either direction.** Fake warmth is worse than a calendar. But lost check-ins that make a warm night read cold are just as fatal. Capture every body in the room; never inflate, never deflate.
 
-4. **Darkness is correct.** The unlit map is not an empty state — it's the game board. Light is earned by co-presence only. Empty states elsewhere teach the next gesture; the dark map *is* the teaching.
+4. **Gray is correct.** The colorless map is not an empty state — it's the game board. Color and heat are earned by co-presence only. Empty states elsewhere teach the next gesture; the black-and-white city *is* the teaching.
 
 5. **Blame the group, credit the person.** Credit is individual and named — *found by Maya*, the torch, "Maya's in." Stakes are collective — the fire dims for everyone. **Absence is never displayed.** No out-lists, no flake records, no individual streaks, no guilt UI.
 
@@ -89,7 +89,7 @@ Built in OKLCH, tinted toward the ember hue (~30°) across all neutrals so the e
 - **Hearth** (card surface): pure white softened by cream surroundings
 - **Spark** (happening now): `oklch(68% 0.15 145)` — sage-leaning green, not iOS green. Active pulses, live check-ins.
 - **Dusk** (embers): `oklch(70% 0.14 55)` — sunset amber. Venues staked by a member, awaiting ignition.
-- **Night** (the fog of war): `oklch(28% 0.04 260)` — true deep blue-black. The unlit group map; the dark the group lights up.
+- **Night** (after dark): `oklch(28% 0.04 260)` — true deep blue-black. Reserved for late-night surfaces; the fog of war itself is desaturation + mist, not this.
 
 The 60-30-10 split: 60% cream/hearth, 30% coal/smoke, 10% ember. Spark/Dusk/Night are state accents, not part of the everyday palette.
 

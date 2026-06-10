@@ -23,7 +23,7 @@ export function MapLedger({ mode }: { mode: "group" | "self" }) {
       {mode === "group" ? (
         <>
           <T variant="displayXl" color={night.coal}>
-            The map is dark until you light it.
+            The city is black-and-white until you light it.
           </T>
           <T variant="body" color={night.smoke} style={{ marginTop: 8 }}>
             A venue lights only when you’re there together — three or more of you.

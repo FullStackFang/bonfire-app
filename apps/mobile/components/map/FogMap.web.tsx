@@ -1,16 +1,22 @@
 // Fog of war — web implementation. (spec §Fog of war, §Platform)
-// A real MapLibre GL map of the neighborhood under a canvas fog layer:
-// the city sits in darkness; light is punched out only where the group has
-// actually been. Lit territory breathes ember; embers glow faint dusk;
-// an active pulse breathes spark. During the anchor-night sim, tonight's
-// venue grows with each arrival and blooms open at ignition (3+ co-present).
+// The undiscovered city is black-and-white under a pale mist; color and heat
+// return only where the group has actually been. Three stacked layers:
+//   1. Colored raster tiles (Carto voyager) — the city as it really is.
+//   2. A desaturation veil (canvas with mix-blend-mode: saturation, filled
+//      gray) — renders the whole map grayscale. Light pools are punched out,
+//      so discovered places keep their true color.
+//   3. A heat canvas (normal blending) — pale mist over the undiscovered,
+//      punched by the same pools, plus warm ember glow and venue dots inside.
+// Lit territory breathes ember; embers glow faint dusk; an active pulse
+// breathes spark. During the anchor-night sim, tonight's venue grows with
+// each arrival and blooms open at ignition (3+ co-present).
 // Native gets components/map/FogMap.tsx (the ledger list) until the
 // maplibre-react-native build lands.
 
 import { useEffect, useMemo, useRef } from "react";
 import { View, Text } from "react-native";
 import maplibregl from "maplibre-gl";
-import { light, night } from "@bonfire/ui-tokens";
+import { light } from "@bonfire/ui-tokens";
 import {
   litTerritory,
   embers,
@@ -35,11 +41,11 @@ export interface FogMapProps {
 interface Pool {
   lng: number;
   lat: number;
-  /** Fog-hole radius in px at zoom 14 (scales 2^Δz). */
+  /** Reveal radius in px at zoom 14 (scales 2^Δz). */
   radius: number;
-  /** Max alpha removed from the fog at the hole's core (0–1). */
+  /** How fully color + clarity return at the pool core (0–1). */
   strength: number;
-  /** Glow color drawn inside the hole. */
+  /** Heat color drawn inside the pool. */
   color: string;
   /** Dot color at the exact venue point. */
   dot: string;
@@ -50,9 +56,11 @@ interface Pool {
   subtitle: string;
 }
 
-const FOG = "rgba(4, 9, 17, 0.93)"; // night.cream family — the unlit city
+// The undiscovered city: grayscale under morning mist — quiet, not menacing.
+const MIST = "rgba(250, 247, 243, 0.48)";
+const GRAY = "#808080"; // zero-saturation fill for the blend veil
 const TILES = ["a", "b", "c", "d"].map(
-  (s) => `https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`,
+  (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png`,
 );
 
 let cssInjected = false;
@@ -71,10 +79,21 @@ function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
 }
 
+function fitCanvas(canvas: HTMLCanvasElement, w: number, h: number, dpr: number) {
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+  }
+  const ctx = canvas.getContext("2d");
+  if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
 export function FogMap({ mode, onSelect }: FogMapProps) {
   const sim = useLiveSim();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const desatRef = useRef<HTMLCanvasElement | null>(null);
+  const heatRef = useRef<HTMLCanvasElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const rafRef = useRef<number>(0);
   const poolsRef = useRef<Pool[]>([]);
@@ -88,7 +107,7 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
         lng: s.lng,
         lat: s.lat,
         radius: 44,
-        strength: 0.85,
+        strength: 0.9,
         color: light.emberGlow,
         dot: light.ember,
         breathes: true,
@@ -104,7 +123,7 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
       lng: v.lng,
       lat: v.lat,
       radius: 64,
-      strength: 0.95,
+      strength: 1,
       color: light.ember,
       dot: light.ember,
       breathes: true,
@@ -119,7 +138,7 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
         lng: e.lng,
         lat: e.lat,
         radius: 24,
-        strength: 0.42,
+        strength: 0.5,
         color: light.dusk,
         dot: light.dusk,
         breathes: true,
@@ -133,7 +152,7 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
         lng: p.lng,
         lat: p.lat,
         radius: 30,
-        strength: 0.55,
+        strength: 0.6,
         color: light.spark,
         dot: light.spark,
         breathes: true,
@@ -148,7 +167,7 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
             lng: anchor.lng,
             lat: anchor.lat,
             radius: sim.ignited ? 78 : 24 + arrivalsN * 9,
-            strength: sim.ignited ? 0.95 : 0.5 + arrivalsN * 0.12,
+            strength: sim.ignited ? 1 : 0.55 + arrivalsN * 0.12,
             color: sim.ignited ? light.ember : light.dusk,
             dot: sim.ignited ? light.ember : light.dusk,
             breathes: true,
@@ -168,8 +187,9 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
   // Map + fog lifecycle (created once).
   useEffect(() => {
     const container = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!container || !canvas) return;
+    const desatCanvas = desatRef.current;
+    const heatCanvas = heatRef.current;
+    if (!container || !desatCanvas || !heatCanvas) return;
     injectMapCss();
 
     const map = new maplibregl.Map({
@@ -215,36 +235,56 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(container);
 
+    const punchPool = (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      r: number,
+      strength: number,
+    ) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(0,0,0,${strength})`);
+      g.addColorStop(0.6, `rgba(0,0,0,${strength * 0.55})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
       const w = container.clientWidth;
       const h = container.clientHeight;
       if (!w || !h) return;
       const dpr = window.devicePixelRatio || 1;
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const dctx = fitCanvas(desatCanvas, w, h, dpr);
+      const hctx = fitCanvas(heatCanvas, w, h, dpr);
+      if (!dctx || !hctx) return;
 
       const now = performance.now();
       const breath = 0.5 + 0.5 * Math.sin((now / 3200) * Math.PI * 2); // 3.2s house cadence
       const z = map.getZoom();
       const scale = Math.pow(2, z - 14);
 
-      // 1. The fog — the unlit city.
-      ctx.globalCompositeOperation = "source-over";
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = FOG;
-      ctx.fillRect(0, 0, w, h);
+      // Layer 2 — the desaturation veil: gray everywhere color hasn't been earned.
+      dctx.globalCompositeOperation = "source-over";
+      dctx.clearRect(0, 0, w, h);
+      dctx.fillStyle = GRAY;
+      dctx.fillRect(0, 0, w, h);
+
+      // Layer 3 — mist over the undiscovered city.
+      hctx.globalCompositeOperation = "source-over";
+      hctx.clearRect(0, 0, w, h);
+      hctx.fillStyle = MIST;
+      hctx.fillRect(0, 0, w, h);
 
       for (const p of poolsRef.current) {
         const pt = map.project([p.lng, p.lat]);
         if (pt.x < -150 || pt.y < -150 || pt.x > w + 150 || pt.y > h + 150) continue;
 
-        // Ignition bloom: ease the hole open over 1.4s.
+        // Ignition bloom: ease the pool open over 1.4s.
         let bloom = 1;
         if (p.ignitedAt) {
           bloom = easeOutCubic(Math.min(1, (Date.now() - p.ignitedAt) / 1400));
@@ -253,33 +293,29 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
           p.radius * scale * bloom * (p.breathes ? 1 + 0.06 * (breath * 2 - 1) : 1);
         if (r <= 1) continue;
 
-        // 2. Punch the hole.
-        const hole = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
-        hole.addColorStop(0, `rgba(0,0,0,${p.strength})`);
-        hole.addColorStop(0.6, `rgba(0,0,0,${p.strength * 0.55})`);
-        hole.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.fillStyle = hole;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-        ctx.fill();
+        // Color and clarity return together.
+        punchPool(dctx, pt.x, pt.y, r, p.strength);
+        punchPool(hctx, pt.x, pt.y, r, Math.min(1, p.strength + 0.1));
 
-        // 3. The glow that lives in the hole.
-        const glowAlpha = (0.16 + 0.2 * breath) * (p.strength / 0.95);
-        const glow = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r * 0.9);
-        glow.addColorStop(0, p.color + Math.round(glowAlpha * 255).toString(16).padStart(2, "0"));
+        // Heat: the warm glow that lives in the pool.
+        const glowAlpha = (0.14 + 0.18 * breath) * p.strength;
+        const glow = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r * 0.9);
+        glow.addColorStop(
+          0,
+          p.color + Math.round(glowAlpha * 255).toString(16).padStart(2, "0"),
+        );
         glow.addColorStop(1, p.color + "00");
-        ctx.globalCompositeOperation = "source-over";
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, r * 0.9, 0, Math.PI * 2);
-        ctx.fill();
+        hctx.globalCompositeOperation = "source-over";
+        hctx.fillStyle = glow;
+        hctx.beginPath();
+        hctx.arc(pt.x, pt.y, r * 0.9, 0, Math.PI * 2);
+        hctx.fill();
 
-        // 4. The venue point itself.
-        ctx.fillStyle = p.dot;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
-        ctx.fill();
+        // The venue point itself.
+        hctx.fillStyle = p.dot;
+        hctx.beginPath();
+        hctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+        hctx.fill();
       }
     };
     rafRef.current = requestAnimationFrame(draw);
@@ -293,24 +329,38 @@ export function FogMap({ mode, onSelect }: FogMapProps) {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: night.cream }}>
-      <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          pointerEvents: "none",
-        }}
-      />
+    <View style={{ flex: 1, backgroundColor: light.cream }}>
+      {/* isolation keeps the saturation blend scoped to the map stack */}
+      <div style={{ position: "absolute", inset: 0, isolation: "isolate" }}>
+        <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
+        <canvas
+          ref={desatRef}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+            mixBlendMode: "saturation",
+          }}
+        />
+        <canvas
+          ref={heatRef}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
       <Text
         style={{
           position: "absolute",
           bottom: 4,
           left: 8,
-          color: night.smoke,
+          color: light.smoke,
           fontSize: 9,
           fontFamily: "Onest_400Regular",
         }}
