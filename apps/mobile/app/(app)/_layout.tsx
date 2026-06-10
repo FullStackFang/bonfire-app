@@ -27,29 +27,22 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          title: "Fire",
+          tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="map"
+        options={{
           title: "Map",
           tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="around"
+        name="group"
         options={{
-          title: "Around",
-          tabBarIcon: ({ color, size }) => <Ionicons name="location" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="network"
-        options={{
-          title: "Network",
+          title: "Group",
           tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: "Inbox",
-          tabBarIcon: ({ color, size }) => <Ionicons name="mail" size={size} color={color} />,
         }}
       />
       {/* Routes that exist but shouldn't appear in the tab bar. Expo Router
@@ -58,9 +51,6 @@ export default function AppLayout() {
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="profile/settings" options={{ href: null }} />
-      <Tabs.Screen name="profile/[id]" options={{ href: null }} />
-      <Tabs.Screen name="network/add" options={{ href: null }} />
-      <Tabs.Screen name="network/circle/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
