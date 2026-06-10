@@ -1,0 +1,13 @@
+{
+  "name": "Bonfire",
+  "short_name": "Bonfire",
+  "id": "/push-spike",
+  "start_url": "/push-spike",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff7f1",
+  "theme_color": "#f05846",
+  "icons": [
+    { "src": "/icons/icon.png", "sizes": "any", "type": "image/png" }
+  ]
+}

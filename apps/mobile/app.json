@@ -27,6 +27,11 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.fullstackfang.bonfire"
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
     "plugins": [
       "expo-router",
       [
