@@ -44,8 +44,10 @@ interface Pool {
   strength: number;
   /** Heat color drawn inside the pool. */
   color: string;
-  /** Dot color at the exact venue point. */
+  /** Flame color at the exact venue point. */
   dot: string;
+  /** Engagement 0–1 — drives flame size, flicker brightness, glow. */
+  heat: number;
   breathes: boolean;
   /** Set while the ignition bloom animation runs. */
   ignitedAt?: number | null;
@@ -73,6 +75,47 @@ function injectMapCss() {
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
+}
+
+/** Stable per-pool phase so every flame flickers on its own rhythm. */
+function flickerPhase(lng: number, lat: number) {
+  return ((lng * 7919 + lat * 104729) % (Math.PI * 2)) + Math.PI * 2;
+}
+
+/** Candle flicker: fast, small, irregular — layered sines, no randomness. */
+function flickerAt(now: number, phase: number) {
+  return (
+    0.84 +
+    0.11 * Math.sin(now / 95 + phase) +
+    0.06 * Math.sin(now / 41 + phase * 1.7) +
+    0.04 * Math.sin(now / 23 + phase * 2.9)
+  );
+}
+
+/** A little teardrop flame with a warm core, base anchored at (x, y). */
+function drawFlame(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  h: number,
+  tipDx: number,
+  color: string,
+  core: string,
+) {
+  const w = h * 0.58;
+  const flame = (s: number, fill: string) => {
+    const hh = h * s;
+    const ww = w * s;
+    const by = y + hh * 0.28; // base sits just below the anchor point
+    ctx.beginPath();
+    ctx.moveTo(x + tipDx * s, by - hh * 1.3); // tip, leaning with the flicker
+    ctx.bezierCurveTo(x + ww, by - hh * 0.55, x + ww, by - hh * 0.05, x, by);
+    ctx.bezierCurveTo(x - ww, by - hh * 0.05, x - ww * 0.55, by - hh * 0.6, x + tipDx * s, by - hh * 1.3);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  };
+  flame(1, color);
+  flame(0.52, core);
 }
 
 function fitCanvas(canvas: HTMLCanvasElement, w: number, h: number, dpr: number) {
@@ -123,6 +166,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         strength: 0.9,
         color: light.emberGlow,
         dot: light.ember,
+        heat: 0.5,
         breathes: true,
         sel: {
           kind: "personal",
@@ -144,6 +188,8 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
       strength: 1,
       color: light.ember,
       dot: light.ember,
+      // Brighter the more nights the group has burned here.
+      heat: Math.min(1, 0.45 + v.nights * 0.14),
       breathes: true,
       sel: {
         kind: "lit",
@@ -165,6 +211,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         strength: 0.5,
         color: light.dusk,
         dot: light.dusk,
+        heat: 0.25, // a stake, not a fire — small and patient
         breathes: true,
         sel: {
           kind: "ember",
@@ -190,6 +237,8 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         strength: 0.6,
         color: light.spark,
         dot: light.spark,
+        // Each "coming" feeds the flame.
+        heat: Math.min(1, 0.4 + coming * 0.18),
         breathes: true,
         sel: {
           kind: "pulse",
@@ -214,6 +263,8 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
             strength: sim.ignited ? 1 : 0.55 + arrivalsN * 0.12,
             color: sim.ignited ? light.ember : light.dusk,
             dot: sim.ignited ? light.ember : light.dusk,
+            // Every arrival stokes it; ignition maxes it out.
+            heat: sim.ignited ? 1 : Math.min(1, 0.3 + arrivalsN * 0.12),
             breathes: true,
             ignitedAt: sim.ignitedAt,
             sel: {
@@ -345,8 +396,14 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         punchPool(dctx, pt.x, pt.y, r, p.strength);
         punchPool(hctx, pt.x, pt.y, r, Math.min(1, p.strength + 0.1));
 
-        // Heat: the warm glow that lives in the pool.
-        const glowAlpha = (0.14 + 0.18 * breath) * p.strength;
+        // Heat: the warm glow that lives in the pool — brighter with
+        // engagement, trembling like real firelight.
+        const phase = flickerPhase(p.lng, p.lat);
+        const flick = flickerAt(now, phase);
+        const glowAlpha = Math.min(
+          0.55,
+          (0.14 + 0.18 * breath) * p.strength * (0.6 + 0.8 * p.heat) * flick,
+        );
         const glow = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r * 0.9);
         glow.addColorStop(
           0,
@@ -359,11 +416,22 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         hctx.arc(pt.x, pt.y, r * 0.9, 0, Math.PI * 2);
         hctx.fill();
 
-        // The venue point itself.
-        hctx.fillStyle = p.dot;
+        // The venue point: a flickering flame, taller and brighter the more
+        // people engage. Tip leans with its own wobble.
+        const flameH =
+          (7 + 9 * p.heat) *
+          Math.min(1.25, Math.max(0.85, scale)) *
+          (0.92 + 0.16 * (flick - 0.84));
+        const tipDx = flameH * 0.16 * Math.sin(now / 70 + phase * 3);
+        // Soft halo right behind the flame so it pops on busy tiles.
+        const halo = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, flameH * 1.7);
+        halo.addColorStop(0, light.hearth + "b3");
+        halo.addColorStop(1, light.hearth + "00");
+        hctx.fillStyle = halo;
         hctx.beginPath();
-        hctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+        hctx.arc(pt.x, pt.y, flameH * 1.7, 0, Math.PI * 2);
         hctx.fill();
+        drawFlame(hctx, pt.x, pt.y, flameH, tipDx, p.dot, light.hearth);
       }
 
       // You are here — a breathing self marker. Drawn last so it rides above
