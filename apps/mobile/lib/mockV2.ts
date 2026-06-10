@@ -8,6 +8,9 @@ import { avatarColorFor } from "@bonfire/ui-tokens";
 
 export type FireState = "roaring" | "burning" | "dimming" | "embers" | "out";
 
+/** What a venue is — drives the marker icon so the map reads before you tap. */
+export type VenueKind = "restaurant" | "bar" | "cafe" | "park";
+
 export interface Member {
   id: string;
   name: string;
@@ -20,6 +23,7 @@ export interface AnchorInstance {
   dayLabel: string; // "Thursday"
   timeLabel: string; // "6:30 PM"
   venueName: string;
+  venueKind: VenueKind;
   lng: number;
   lat: number;
   /** Torch holder's one line. */
@@ -32,6 +36,7 @@ export interface AnchorInstance {
 export interface LitVenue {
   id: string;
   name: string;
+  kind: VenueKind;
   lng: number;
   lat: number;
   litLabel: string; // "Lit May 14"
@@ -45,6 +50,7 @@ export interface LitVenue {
 export interface Ember {
   id: string;
   venueName: string;
+  venueKind: VenueKind;
   lng: number;
   lat: number;
   note: string;
@@ -66,6 +72,7 @@ export interface Pulse {
 export interface PersonalSpot {
   id: string;
   name: string;
+  kind: VenueKind;
   lng: number;
   lat: number;
 }
@@ -128,6 +135,7 @@ export const anchor: AnchorInstance = {
   dayLabel: "Thursday",
   timeLabel: "6:30 PM",
   venueName: "Le Fanfare",
+  venueKind: "restaurant",
   lng: -73.9546,
   lat: 40.7338,
   note: "Noor staked an ember on the back garden — tonight we find out",
@@ -138,16 +146,17 @@ export const anchor: AnchorInstance = {
 export const mapCenter = { lng: -73.955, lat: 40.7302, zoom: 14.1 };
 
 export const litTerritory: LitVenue[] = [
-  { id: "v-blackrabbit", name: "Black Rabbit", lng: -73.9556, lat: 40.7302, litLabel: "Lit May 14", foundById: "maya", move: "back booths by the fireplace", nights: 4 },
-  { id: "v-devocion", name: "Devoción", lng: -73.9514, lat: 40.7253, litLabel: "Lit May 21", foundById: "theo", move: "the big table under the skylight", nights: 3 },
-  { id: "v-ramona", name: "Ramona", lng: -73.9582, lat: 40.7297, litLabel: "Lit May 28", foundById: "priya", move: "happy hour till 7 — get the frozen one", nights: 2 },
-  { id: "v-ona", name: "Oña", lng: -73.9536, lat: 40.727, litLabel: "Lit Jun 4", foundById: "sam", move: "counter seats, ask for Manny", nights: 1 },
+  { id: "v-blackrabbit", name: "Black Rabbit", kind: "bar", lng: -73.9556, lat: 40.7302, litLabel: "Lit May 14", foundById: "maya", move: "back booths by the fireplace", nights: 4 },
+  { id: "v-devocion", name: "Devoción", kind: "cafe", lng: -73.9514, lat: 40.7253, litLabel: "Lit May 21", foundById: "theo", move: "the big table under the skylight", nights: 3 },
+  { id: "v-ramona", name: "Ramona", kind: "bar", lng: -73.9582, lat: 40.7297, litLabel: "Lit May 28", foundById: "priya", move: "happy hour till 7 — get the frozen one", nights: 2 },
+  { id: "v-ona", name: "Oña", kind: "restaurant", lng: -73.9536, lat: 40.727, litLabel: "Lit Jun 4", foundById: "sam", move: "counter seats, ask for Manny", nights: 1 },
 ];
 
 export const embers: Ember[] = [
   {
     id: "e-fanfare",
     venueName: "Le Fanfare",
+    venueKind: "restaurant",
     lng: -73.9546,
     lat: 40.7338,
     note: "best back garden in Greenpoint, dead quiet on weeknights",
@@ -157,6 +166,7 @@ export const embers: Ember[] = [
   {
     id: "e-pencil",
     venueName: "Pencil Factory",
+    venueKind: "bar",
     lng: -73.9579,
     lat: 40.729,
     note: "old-man-bar energy, perfect post-anchor",
@@ -181,9 +191,9 @@ export const pulses: Pulse[] = [
 // My Map — private personal territory (solo check-ins). Includes the two
 // ember venues: you scouted them alone before staking them for the group.
 export const personalSpots: PersonalSpot[] = [
-  { id: "s-fanfare", name: "Le Fanfare", lng: -73.9546, lat: 40.7338 },
-  { id: "s-pencil", name: "Pencil Factory", lng: -73.9579, lat: 40.729 },
-  { id: "s-bakeri", name: "Bakeri", lng: -73.956, lat: 40.7349 },
-  { id: "s-arche", name: "Archestratus", lng: -73.9555, lat: 40.732 },
-  { id: "s-transmitter", name: "Transmitter Park", lng: -73.9613, lat: 40.7297 },
+  { id: "s-fanfare", name: "Le Fanfare", kind: "restaurant", lng: -73.9546, lat: 40.7338 },
+  { id: "s-pencil", name: "Pencil Factory", kind: "bar", lng: -73.9579, lat: 40.729 },
+  { id: "s-bakeri", name: "Bakeri", kind: "cafe", lng: -73.956, lat: 40.7349 },
+  { id: "s-arche", name: "Archestratus", kind: "cafe", lng: -73.9555, lat: 40.732 },
+  { id: "s-transmitter", name: "Transmitter Park", kind: "park", lng: -73.9613, lat: 40.7297 },
 ];

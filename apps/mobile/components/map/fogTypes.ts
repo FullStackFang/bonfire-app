@@ -1,6 +1,8 @@
 // Shared FogMap contract — one source of truth for both platform files
 // (FogMap.web.tsx and the native FogMap.tsx fallback must never drift).
 
+import type { VenueKind } from "../../lib/mockV2";
+
 export type FogSelectionKind =
   | "lit" // group territory — permanent, credited
   | "ember" // a staked scout flag, waiting for co-presence
@@ -17,7 +19,7 @@ export interface FogMapSelection {
   /** Optional third line — the move, the ember note, the pulse note. */
   detail?: string;
   /** Venue identity, present when actions (pulse here / drop ember) apply. */
-  venue?: { name: string; lng: number; lat: number };
+  venue?: { name: string; lng: number; lat: number; kind: VenueKind };
 }
 
 export interface FogMapHandle {

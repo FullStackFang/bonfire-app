@@ -4,7 +4,7 @@
 // writes replace this in week 3; the UI surfaces it drives don't change.
 
 import { useSyncExternalStore } from "react";
-import type { Ember, Pulse } from "./mockV2";
+import type { Ember, Pulse, VenueKind } from "./mockV2";
 import { selfId } from "./mockV2";
 
 /** Spec §5 — scarcity keeps each ember a genuine "I'd stake a Thursday on this." */
@@ -52,7 +52,7 @@ export function startPulse(
 }
 
 export function dropEmber(
-  venue: { name: string; lng: number; lat: number },
+  venue: { name: string; lng: number; lat: number; kind: VenueKind },
   note: string,
 ): boolean {
   if (state.droppedEmbers.length >= EMBER_WEEKLY_CAP) return false;
@@ -62,6 +62,7 @@ export function dropEmber(
       {
         id: `e-you-${state.droppedEmbers.length + 1}`,
         venueName: venue.name,
+        venueKind: venue.kind,
         lng: venue.lng,
         lat: venue.lat,
         note: note.trim() || "trust me on this one",

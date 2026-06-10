@@ -18,7 +18,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { View, Text } from "react-native";
 import maplibregl from "maplibre-gl";
+import { Ionicons } from "@expo/vector-icons";
 import { light } from "@bonfire/ui-tokens";
+import type { VenueKind } from "../../lib/mockV2";
 import {
   litTerritory,
   embers,
@@ -48,6 +50,10 @@ interface Pool {
   dot: string;
   /** Engagement 0–1 — drives flame size, flicker brightness, glow. */
   heat: number;
+  /** Ionicons glyph codepoint shown in the badge — what this place is. */
+  icon?: number;
+  /** Live headcount bubble (pulse "coming", tonight's arrivals/ins). */
+  count?: number;
   breathes: boolean;
   /** Set while the ignition bloom animation runs. */
   ignitedAt?: number | null;
@@ -60,6 +66,25 @@ const GRAY = "#808080"; // zero-saturation fill for the blend veil
 const TILES = ["a", "b", "c", "d"].map(
   (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png`,
 );
+
+// What-it-is icons. Pulses get "flash" (happening now), the anchor gets
+// "bonfire" (the ritual); everything else shows its venue kind.
+const KIND_GLYPH: Record<VenueKind, number> = {
+  restaurant: Number(Ionicons.glyphMap["restaurant"]),
+  bar: Number(Ionicons.glyphMap["wine"]),
+  cafe: Number(Ionicons.glyphMap["cafe"]),
+  park: Number(Ionicons.glyphMap["leaf"]),
+};
+const GLYPH_FLASH = Number(Ionicons.glyphMap["flash"]);
+const GLYPH_BONFIRE = Number(Ionicons.glyphMap["bonfire"]);
+
+/** The Ionicons web font family once it's loaded, else null (skip icons). */
+function iconFontFamily(): string | null {
+  if (typeof document === "undefined" || !document.fonts) return null;
+  if (document.fonts.check("12px Ionicons")) return "Ionicons";
+  if (document.fonts.check("12px ionicons")) return "ionicons";
+  return null;
+}
 
 let cssInjected = false;
 function injectMapCss() {
@@ -82,13 +107,13 @@ function flickerPhase(lng: number, lat: number) {
   return ((lng * 7919 + lat * 104729) % (Math.PI * 2)) + Math.PI * 2;
 }
 
-/** Candle flicker: fast, small, irregular — layered sines, no randomness. */
+/** Candle flicker: slow, small, irregular — layered sines, no randomness. */
 function flickerAt(now: number, phase: number) {
   return (
-    0.84 +
-    0.11 * Math.sin(now / 95 + phase) +
-    0.06 * Math.sin(now / 41 + phase * 1.7) +
-    0.04 * Math.sin(now / 23 + phase * 2.9)
+    0.88 +
+    0.08 * Math.sin(now / 520 + phase) +
+    0.05 * Math.sin(now / 230 + phase * 1.7) +
+    0.02 * Math.sin(now / 120 + phase * 2.9)
   );
 }
 
@@ -116,6 +141,32 @@ function drawFlame(
   };
   flame(1, color);
   flame(0.52, core);
+}
+
+/** The what-it-is badge: warm disc, colored ring, category icon. */
+function drawBadge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  ring: string,
+  glyph: number | undefined,
+  font: string | null,
+) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = light.hearth;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = ring;
+  ctx.stroke();
+  if (glyph && font) {
+    ctx.fillStyle = ring;
+    ctx.font = `${Math.round(r * 1.3)}px ${font}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String.fromCodePoint(glyph), x, y + 0.5);
+  }
 }
 
 function fitCanvas(canvas: HTMLCanvasElement, w: number, h: number, dpr: number) {
@@ -167,13 +218,14 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         color: light.emberGlow,
         dot: light.ember,
         heat: 0.5,
+        icon: KIND_GLYPH[s.kind],
         breathes: true,
         sel: {
           kind: "personal",
           id: s.id,
           title: s.name,
           subtitle: "On your map · only you can see this",
-          venue: { name: s.name, lng: s.lng, lat: s.lat },
+          venue: { name: s.name, lng: s.lng, lat: s.lat, kind: s.kind },
         },
       }));
     }
@@ -190,20 +242,21 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
       dot: light.ember,
       // Brighter the more nights the group has burned here.
       heat: Math.min(1, 0.45 + v.nights * 0.14),
+      icon: KIND_GLYPH[v.kind],
       breathes: true,
       sel: {
         kind: "lit",
         id: v.id,
         title: v.name,
-        subtitle: `${v.litLabel} · found by ${memberById(v.foundById).name}`,
+        subtitle: `${v.litLabel} · found by ${memberById(v.foundById).name} · ${v.nights} ${v.nights === 1 ? "night" : "nights"}`,
         detail: `The move: ${v.move}`,
-        venue: { name: v.name, lng: v.lng, lat: v.lat },
+        venue: { name: v.name, lng: v.lng, lat: v.lat, kind: v.kind },
       },
     }));
 
     const emberPools: Pool[] = [...embers, ...act.droppedEmbers]
-      // Once tonight is underway, the anchor pool replaces Le Fanfare's ember.
-      .filter((e) => !(tonightActive && e.lng === anchor.lng && e.lat === anchor.lat))
+      // The anchor venue always renders as tonight's marker, not its ember.
+      .filter((e) => !(e.lng === anchor.lng && e.lat === anchor.lat))
       .map((e) => ({
         lng: e.lng,
         lat: e.lat,
@@ -212,6 +265,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         color: light.dusk,
         dot: light.dusk,
         heat: 0.25, // a stake, not a fire — small and patient
+        icon: KIND_GLYPH[e.venueKind],
         breathes: true,
         sel: {
           kind: "ember",
@@ -219,7 +273,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
           title: e.venueName,
           subtitle: `Staked by ${memberById(e.droppedById).name} · ${e.fadesLabel}`,
           detail: `“${e.note}”`,
-          venue: { name: e.venueName, lng: e.lng, lat: e.lat },
+          venue: { name: e.venueName, lng: e.lng, lat: e.lat, kind: e.venueKind },
         },
       }));
 
@@ -239,6 +293,8 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         dot: light.spark,
         // Each "coming" feeds the flame.
         heat: Math.min(1, 0.4 + coming * 0.18),
+        icon: GLYPH_FLASH,
+        count: coming + 1, // the broadcaster is a body in the room too
         breathes: true,
         sel: {
           kind: "pulse",
@@ -249,35 +305,38 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
               : `${who.name} is at ${p.venueName}`,
           subtitle: `${p.minutesLeft} min left · ${coming} coming`,
           detail: `“${p.note}”`,
-          venue: { name: p.venueName, lng: p.lng, lat: p.lat },
         },
       };
     });
 
-    const tonight: Pool[] = tonightActive
-      ? [
-          {
-            lng: anchor.lng,
-            lat: anchor.lat,
-            radius: sim.ignited ? 78 : 24 + arrivalsN * 9,
-            strength: sim.ignited ? 1 : 0.55 + arrivalsN * 0.12,
-            color: sim.ignited ? light.ember : light.dusk,
-            dot: sim.ignited ? light.ember : light.dusk,
-            // Every arrival stokes it; ignition maxes it out.
-            heat: sim.ignited ? 1 : Math.min(1, 0.3 + arrivalsN * 0.12),
-            breathes: true,
-            ignitedAt: sim.ignitedAt,
-            sel: {
-              kind: "tonight",
-              id: "tonight",
-              title: anchor.venueName,
-              subtitle: sim.ignited
-                ? `Lit tonight · found by Noor · ${arrivalsN} here`
-                : `Tonight's anchor · ${arrivalsN} checked in`,
-            },
-          },
-        ]
-      : [];
+    // Tonight's anchor is always on the group map — the soonest thing.
+    const tonight: Pool[] = [
+      {
+        lng: anchor.lng,
+        lat: anchor.lat,
+        radius: !tonightActive ? 24 : sim.ignited ? 78 : 24 + arrivalsN * 9,
+        strength: !tonightActive ? 0.5 : sim.ignited ? 1 : 0.55 + arrivalsN * 0.12,
+        color: sim.ignited ? light.ember : light.dusk,
+        dot: sim.ignited ? light.ember : light.dusk,
+        // Every arrival stokes it; ignition maxes it out.
+        heat: !tonightActive ? 0.4 : sim.ignited ? 1 : Math.min(1, 0.3 + arrivalsN * 0.12),
+        icon: GLYPH_BONFIRE,
+        count: tonightActive ? arrivalsN : anchor.inIds.length,
+        breathes: true,
+        ignitedAt: sim.ignitedAt,
+        sel: {
+          kind: "tonight",
+          id: "tonight",
+          title: anchor.venueName,
+          subtitle: !tonightActive
+            ? `Tonight's anchor · ${anchor.dayLabel} ${anchor.timeLabel} · ${anchor.inIds.length} in`
+            : sim.ignited
+              ? `Lit tonight · found by Noor · ${arrivalsN} here`
+              : `Tonight's anchor · ${arrivalsN} checked in`,
+          detail: !tonightActive ? `“${anchor.note}”` : undefined,
+        },
+      },
+    ];
 
     return [...lit, ...emberPools, ...pulsePools, ...tonight];
   }, [mode, sim, act]);
@@ -364,6 +423,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
 
       const now = performance.now();
       const breath = 0.5 + 0.5 * Math.sin((now / 3200) * Math.PI * 2); // 3.2s house cadence
+      const iconFont = iconFontFamily();
       const z = map.getZoom();
       const scale = Math.pow(2, z - 14);
 
@@ -416,22 +476,44 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
         hctx.arc(pt.x, pt.y, r * 0.9, 0, Math.PI * 2);
         hctx.fill();
 
-        // The venue point: a flickering flame, taller and brighter the more
-        // people engage. Tip leans with its own wobble.
+        // The marker: a what-it-is badge with a flame rising behind it.
+        // Icon says what this place is; flame height says how alive it is.
+        const sizeK = Math.min(1.25, Math.max(0.85, scale));
+        const badgeR = (10 + 3.5 * p.heat) * sizeK;
         const flameH =
-          (7 + 9 * p.heat) *
-          Math.min(1.25, Math.max(0.85, scale)) *
-          (0.92 + 0.16 * (flick - 0.84));
-        const tipDx = flameH * 0.16 * Math.sin(now / 70 + phase * 3);
-        // Soft halo right behind the flame so it pops on busy tiles.
-        const halo = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, flameH * 1.7);
+          (6 + 13 * p.heat) * sizeK * (0.92 + 0.16 * (flick - 0.88));
+        const tipDx = flameH * 0.14 * Math.sin(now / 340 + phase * 3);
+
+        // Soft halo behind the marker so it pops on busy tiles.
+        const halo = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, badgeR * 2.1);
         halo.addColorStop(0, light.hearth + "b3");
         halo.addColorStop(1, light.hearth + "00");
         hctx.fillStyle = halo;
         hctx.beginPath();
-        hctx.arc(pt.x, pt.y, flameH * 1.7, 0, Math.PI * 2);
+        hctx.arc(pt.x, pt.y, badgeR * 2.1, 0, Math.PI * 2);
         hctx.fill();
-        drawFlame(hctx, pt.x, pt.y, flameH, tipDx, p.dot, light.hearth);
+
+        // Flame first (base tucked behind the badge's top edge), then badge.
+        drawFlame(hctx, pt.x, pt.y - badgeR * 0.85, flameH, tipDx, p.dot, light.hearth);
+        drawBadge(hctx, pt.x, pt.y, badgeR, p.dot, p.icon, iconFont);
+
+        // Live headcount — who's engaged right now.
+        if (p.count != null && p.count > 0) {
+          const bx = pt.x + badgeR * 0.95;
+          const by = pt.y - badgeR * 0.95;
+          hctx.beginPath();
+          hctx.arc(bx, by, 7.5, 0, Math.PI * 2);
+          hctx.fillStyle = light.coal;
+          hctx.fill();
+          hctx.lineWidth = 1.5;
+          hctx.strokeStyle = light.hearth;
+          hctx.stroke();
+          hctx.fillStyle = light.hearth;
+          hctx.font = "9px Onest_700Bold, system-ui, sans-serif";
+          hctx.textAlign = "center";
+          hctx.textBaseline = "middle";
+          hctx.fillText(String(p.count), bx, by + 0.5);
+        }
       }
 
       // You are here — a breathing self marker. Drawn last so it rides above
