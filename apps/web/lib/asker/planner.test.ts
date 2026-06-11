@@ -60,6 +60,15 @@ describe('planKindleRelease', () => {
   it('holds kindles outside windows', () => {
     expect(planKindleRelease(circle, new Date('2026-06-10T21:05:00Z'), [queued('k1', 60)], 0, 0)).toEqual([])
   })
+  it('never releases a stale kindle — it expires silently instead', () => {
+    const stale: Round = {
+      ...queued('k-stale', 0),
+      proposedAt: new Date('2026-06-09T01:00:00Z'),
+      closesAt: new Date('2026-06-08T23:00:00Z'),
+    }
+    expect(planKindleRelease(circle, TUE_1705, [stale, queued('k2', 5)], 0, 0)).toEqual(['k2'])
+    expect(planKindleRelease(circle, TUE_1705, [stale], 0, 0)).toEqual([])
+  })
 })
 
 describe('planHoldDecision', () => {

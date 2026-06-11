@@ -72,6 +72,10 @@ export async function runTick(now: Date): Promise<TickSummary> {
   const dayStart = nyDayStartUtc(now)
   const weekStart = nyWeekStartUtc(now)
 
+  // 0. Expire first — a stale open round must reject replies and a stale queued
+  // kindle must die silently before any release could broadcast it.
+  s.roundsExpired = await repo.expireOpenRoundsPast(now)
+
   for (const circle of circles) {
     try {
       const members = await repo.listMembers(circle.id)
@@ -105,9 +109,6 @@ export async function runTick(now: Date): Promise<TickSummary> {
       console.error(`tick: circle ${circle.id} failed`, err)
     }
   }
-
-  // 3. Expire rounds past close. Silent — no SMS, ever.
-  s.roundsExpired = await repo.expireOpenRoundsPast(now)
 
   // 3.5 Re-broadcast recent strikes — claims dedupe, so this only repairs sends a
   // crashed route handler lost; steady-state it is a no-op.

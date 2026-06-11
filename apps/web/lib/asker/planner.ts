@@ -33,10 +33,11 @@ export function planScheduledRounds(
 export function planKindleRelease(
   circle: Circle, now: Date, queued: Round[], releasedToday: number, releasedThisWeek: number,
 ): string[] {
-  if (queued.length === 0) return []
+  const live = queued.filter((r) => r.closesAt.getTime() > now.getTime())
+  if (live.length === 0) return []
   if (releasedToday >= MAX_ROUNDS_PER_DAY || releasedThisWeek >= MAX_ROUNDS_PER_WEEK) return []
   if (!circle.cadence.some((t) => matchesAskWindow(t, now))) return []
-  return [queued[0].id]
+  return [live[0].id]
 }
 
 /** true = fell through */

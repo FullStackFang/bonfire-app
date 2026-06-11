@@ -108,9 +108,10 @@ export async function releaseRound(id: string): Promise<void> {
   await sql()`update asker.rounds set state = 'open', created_at = now() where id = ${id} and state = 'queued'`
 }
 export async function expireOpenRoundsPast(now: Date): Promise<number> {
+  // Covers queued too: a stale kindle must expire silently, never release into the past.
   const rows = await sql()`
     update asker.rounds set state = 'expired'
-    where state = 'open' and closes_at <= ${now} returning id`
+    where state in ('open','queued') and closes_at <= ${now} returning id`
   return rows.length
 }
 export async function allCircles(): Promise<Circle[]> {
@@ -187,6 +188,8 @@ export async function setAttendance(
     on conflict (event_id, member_id) do update set state = ${state}, eta_minutes = ${etaMinutes}, updated_at = now()`
 }
 export async function eventsNeedingHoldOpen(now: Date): Promise<EventRow[]> {
+  // happens_at > now is intentional: after a multi-hour scheduler outage we skip the
+  // confirm rather than ask "still in?" for a night already underway. T-0 still fires.
   const rows = await sql()`
     select * from asker.events where state = 'on' and needs_hold and hold_opened_at is null
     and happens_at - interval '5 hours' <= ${now} and happens_at > ${now}`
