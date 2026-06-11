@@ -1,6 +1,5 @@
-import type { Status } from "@bonfire/shared";
-
-export type { Status };
+// v1 prototype presence status; was imported from @bonfire/shared, which never shipped it.
+export type Status = "available" | "down" | "out" | "place" | "invisible";
 
 export type User = {
   id: string;
