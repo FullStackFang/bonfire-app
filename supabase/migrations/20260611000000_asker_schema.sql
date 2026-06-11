@@ -32,7 +32,7 @@ create table asker.rounds (
   closes_at timestamptz not null,
   detail text, -- kindler's one unattributed line
   source text not null check (source in ('scheduled','kindled')), -- NEVER serialized
-  state text not null default 'open' check (state in ('queued','open','struck','expired')),
+  state text not null check (state in ('queued','open','struck','expired')),
   cadence_slot text, -- idempotency key for scheduled rounds, e.g. '2026-W25-t0'
   created_at timestamptz not null default now(),
   unique (circle_id, cadence_slot)
@@ -103,3 +103,4 @@ create table asker.sms_log (
   unique (member_id, kind, context_id)
 );
 create index sms_log_member_sent_idx on asker.sms_log (member_id, sent_at);
+create index members_circle_idx on asker.members (circle_id, joined_at);
