@@ -1992,6 +1992,84 @@ Suite after amendment: 41 tests (30 prior + 4 serialize + 7 sms).
 
 ---
 
+## AMENDMENT A2 (June 11, post Batch-D quality review) — T0 latch + truly concurrent integration test
+
+Finding 1: `eventsAtT0`'s bounded 15-minute window is the only finite-edge window query; GitHub-cron jitter (>15 min between ticks) can skip it entirely and the moment-of-truth nudge is silently lost. Fix: fire-once latch, open-ended window — like every other tick step. Finding 2: `db.ts` pins `max: 1`, so the integration test's 4 "parallel" replies serialize client-side and would pass even without `FOR UPDATE`; a pool-size knob makes the test genuinely concurrent.
+
+**A2.1 — Migration:** in `asker.events`, after `hold_decided_at timestamptz,` add:
+
+```sql
+  t0_sent_at timestamptz,
+```
+
+**A2.2 — `types.ts`:** `EventRow` gains `t0SentAt: Date | null` (after `holdDecidedAt`).
+
+**A2.3 — `repo.ts`:** `toEvent` maps `t0SentAt: r.t0SentAt`; replace `eventsAtT0` with:
+
+```ts
+export async function eventsNeedingT0(now: Date): Promise<EventRow[]> {
+  const rows = await sql()`
+    select * from asker.events where state = 'on' and t0_sent_at is null and happens_at <= ${now}`
+  return rows.map(toEvent)
+}
+export async function markT0Sent(eventId: string, now: Date): Promise<void> {
+  await sql()`update asker.events set t0_sent_at = ${now} where id = ${eventId}`
+}
+```
+
+**A2.4 — `db.ts`:** pool size becomes an env knob (production default stays 1):
+
+```ts
+    client = postgres(url, {
+      prepare: false,
+      max: Number(process.env.PG_POOL_MAX ?? 1),
+      transform: postgres.camel,
+    })
+```
+
+**A2.5 — `repo.integration.test.ts`:** in `beforeAll`, set the knob before any `sql()` use so the 4 replies truly overlap and contend the row lock:
+
+```ts
+  beforeAll(() => {
+    process.env.DATABASE_URL = url
+    process.env.PG_POOL_MAX = '4'
+  })
+```
+
+**A2.6 — Task 11 tick step 6 becomes (latch-marked, otherwise unchanged):**
+
+```ts
+  // 6. T-0 status nudges — latch per event so cron jitter can never skip them.
+  for (const e of await repo.eventsNeedingT0(now)) {
+    if (e.holdOpenedAt && !e.holdDecidedAt) continue
+    const members = await repo.listMembers(e.circleId)
+    const round = await repo.getRound(e.roundId)
+    const attendance = await repo.attendanceForEvent(e.id)
+    const hereIds = attendance.filter((a) => a.state === 'here').map((a) => a.memberId)
+    const nameOf = new Map(members.map((m) => [m.id, m.name]))
+    const firstHere = hereIds.length ? nameOf.get(hereIds[0])! : null
+    for (const id of t0Recipients(attendance)) {
+      const m = members.find((mm) => mm.id === id)!
+      const body = firstHere
+        ? copy.t0Someone(firstHere, eventLink(m, e))
+        : copy.t0Nobody(round!.verbEmoji, e.happensAt, now, eventLink(m, e))
+      s.t0Sent += await send(m, 't0', e.id, body, now)
+    }
+    await repo.markT0Sent(e.id, now)
+  }
+```
+
+**A2.7 — Part 2 Task 18 attendance route:** add a server-side anti-downgrade guard after the event lookup (metrics integrity — 'here' is the primary metric key and must not be silently overwritten by a late Join tap):
+
+```ts
+  const existing = (await repo.attendanceForEvent(eventId)).find((a) => a.memberId === session.member.id)
+  if (state === 'in' && existing && ['confirmed', 'omw', 'here'].includes(existing.state)) {
+    return Response.json({ error: 'already in' }, { status: 409 })
+  }
+```
+
+---
+
 ## Part 1 self-review checklist (run before starting Part 2)
 
 - [ ] All unit tests green: `npm run test --workspace=apps/web`
