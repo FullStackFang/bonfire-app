@@ -109,6 +109,12 @@ export async function runTick(now: Date): Promise<TickSummary> {
   // 3. Expire rounds past close. Silent — no SMS, ever.
   s.roundsExpired = await repo.expireOpenRoundsPast(now)
 
+  // 3.5 Re-broadcast recent strikes — claims dedupe, so this only repairs sends a
+  // crashed route handler lost; steady-state it is a no-op.
+  for (const e of await repo.recentStruckEvents(now)) {
+    s.smsSent += await sendStrikeBroadcast(e.id, now)
+  }
+
   // 4. Open holds at T-5h for early strikes.
   for (const e of await repo.eventsNeedingHoldOpen(now)) {
     const members = await repo.listMembers(e.circleId)

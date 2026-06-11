@@ -309,3 +309,9 @@ export async function getMemberByPhone(circleId: string, phone: string): Promise
   const [row] = await sql()`select * from asker.members where circle_id = ${circleId} and phone = ${phone}`
   return row ? toMember(row) : null
 }
+
+export async function recentStruckEvents(now: Date): Promise<EventRow[]> {
+  const rows = await sql()`
+    select * from asker.events where state = 'on' and created_at > ${now}::timestamptz - interval '24 hours'`
+  return rows.map(toEvent)
+}

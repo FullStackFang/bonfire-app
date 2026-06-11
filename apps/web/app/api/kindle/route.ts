@@ -15,9 +15,13 @@ export async function POST(request: Request) {
   }
   const now = new Date()
   const proposedAt = nextOccurrence(now, dow, hour)
+  const closesAt = new Date(proposedAt.getTime() - 2 * 3600_000)
+  if (closesAt.getTime() <= now.getTime()) {
+    return Response.json({ error: 'too soon — pick a time at least 2h out' }, { status: 400 })
+  }
   const round = await repo.insertRound({
     circleId: session.circle.id, verbEmoji: verb.emoji, verbLabel: verb.label,
-    proposedAt, closesAt: new Date(proposedAt.getTime() - 2 * 3600_000),
+    proposedAt, closesAt,
     detail, source: 'kindled', state: 'queued', cadenceSlot: null,
   })
   if (!round) return Response.json({ error: 'could not kindle' }, { status: 500 })

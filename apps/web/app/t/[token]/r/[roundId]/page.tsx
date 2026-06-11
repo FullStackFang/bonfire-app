@@ -15,6 +15,7 @@ export default async function RoundPage({ params }: { params: Promise<{ token: s
   if (round.state === 'struck') {
     const event = await repo.getEventByRoundId(round.id)
     if (event) redirect(`/t/${token}/e/${event.id}`)
+    notFound()
   }
   const pub = serializeRound(round, await repo.getMyReply(round.id, session.member.id))
   const now = new Date()

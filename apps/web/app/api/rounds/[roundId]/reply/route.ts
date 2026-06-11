@@ -17,7 +17,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ rou
   const now = new Date()
   const result = await repo.replyAndMaybeStrike(roundId, session.member.id, answer, now)
   if (result.kind === 'struck') {
-    await sendStrikeBroadcast(result.eventId, now)
+    // Broadcast errors must not 500 a committed strike; the tick re-broadcasts via idempotent claims.
+    await sendStrikeBroadcast(result.eventId, now).catch((err) =>
+      console.error('strike broadcast failed', result.eventId, err),
+    )
     return Response.json({ state: 'struck', eventId: result.eventId })
   }
   return Response.json({ state: result.kind }) // 'recorded' | 'closed'

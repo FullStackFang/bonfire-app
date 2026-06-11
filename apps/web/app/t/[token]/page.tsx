@@ -18,10 +18,10 @@ export default async function CircleHome({ params }: { params: Promise<{ token: 
     open.map(async (r) => serializeRound(r, await repo.getMyReply(r.id, member.id))),
   )
   const events = await repo.eventsForCircle(circle.id, ['on'])
-  const upcoming = await Promise.all(events.map(async (e) => {
+  const upcoming = (await Promise.all(events.map(async (e) => {
     const round = await repo.getRound(e.roundId)
-    return { id: e.id, emoji: round!.verbEmoji, when: whenShort(e.happensAt, now) }
-  }))
+    return round ? { id: e.id, emoji: round.verbEmoji, when: whenShort(e.happensAt, now) } : null
+  }))).filter((e): e is { id: string; emoji: string; when: string } => e !== null)
   return (
     <main className="mx-auto min-h-screen max-w-md bg-neutral-950 p-6 text-neutral-100">
       <div className="flex items-baseline justify-between">

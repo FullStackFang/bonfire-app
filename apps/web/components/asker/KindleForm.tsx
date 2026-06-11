@@ -25,7 +25,7 @@ export function KindleForm({ token, verbs }: { token: string; verbs: Verb[] }) {
         const res = await fetch('/api/kindle', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token, verbEmoji: verb, proposeDow: dow, proposeHour: hour, detail }),
+          body: JSON.stringify({ token, verbEmoji: verb, proposeDow: dow, proposeHour: hour, detail: detail.trim() || undefined }),
         })
         setBusy(false)
         if (res.ok) setDone(true)
