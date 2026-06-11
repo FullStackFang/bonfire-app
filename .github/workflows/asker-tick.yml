@@ -1,0 +1,12 @@
+name: asker-tick
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the tick endpoint
+        run: |
+          curl -fsS -X POST -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" "${{ secrets.TICK_URL }}"
