@@ -9,7 +9,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (!auth) return Response.json({ error: 'unauthorized' }, { status: 401 })
   const { session, body } = auth
   const state = body?.state
-  const eta = Number.isInteger(body?.etaMinutes) ? (body.etaMinutes as number) : null
+  const eta = Number.isInteger(body?.etaMinutes) && body.etaMinutes > 0 && body.etaMinutes <= 180
+    ? (body.etaMinutes as number) : null
   if (!ALLOWED.includes(state)) return Response.json({ error: 'bad state' }, { status: 400 })
   const event = await repo.getEvent(eventId).catch(() => null)
   if (!event || event.circleId !== session.circle.id) return Response.json({ error: 'not found' }, { status: 404 })
@@ -17,6 +18,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   const existing = (await repo.attendanceForEvent(eventId)).find((a) => a.memberId === session.member.id)
   if (state === 'in' && existing && ['confirmed', 'omw', 'here'].includes(existing.state)) {
     return Response.json({ error: 'already in' }, { status: 409 })
+  }
+  if (existing?.state === 'here' && state !== 'here') {
+    return Response.json({ error: 'already here' }, { status: 409 })
   }
   await repo.setAttendance(eventId, session.member.id, state, state === 'omw' ? eta : null)
   return Response.json({ ok: true })
