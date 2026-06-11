@@ -11,8 +11,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@bonfire/shared": "*",
-    "@bonfire/ui-tokens": "*",
     "@supabase/supabase-js": "^2.105.3",
     "next": "16.2.5",
     "postgres": "^3.4.9",
