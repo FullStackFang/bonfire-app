@@ -1776,6 +1776,222 @@ git commit -m "feat(asker): idempotent tick - releases, asks, holds, t0, laters,
 
 ---
 
+## AMENDMENT A1 (June 11, post Batch-C quality review) — claim-first SMS sending
+
+**Supersedes the `alreadySent`/`log` design in Tasks 8, 9, 11 and the join-route SmsDeps in Part 2 Task 15.** Finding: check-then-act (`alreadySent` → `deliver` → `log`) lets (1) a `[FAILED]` log row permanently block retries, (2) a failed send burn the daily budget, (3) overlapping ticks double-deliver, (4) a post-delivery log error trigger re-delivery. Fix: the `sms_log` unique key becomes a distributed mutex via insert-as-claim with a `status` lifecycle (`claimed` → `sent` | `failed`); failed and stale (>10 min) claims are re-claimable, so transient Twilio errors retry on a later tick instead of silencing a member.
+
+**A1.1 — Migration (`supabase/migrations/20260611000000_asker_schema.sql`):** in `asker.sms_log`, after `body text not null,` add:
+
+```sql
+  status text not null check (status in ('claimed','sent','failed')),
+```
+
+**A1.2 — `apps/web/lib/asker/types.ts`:** `NON_EVENT_KINDS` becomes `readonly`:
+
+```ts
+export const NON_EVENT_KINDS: readonly SmsKind[] = ['welcome', 'ask', 'later_nudge']
+```
+
+**A1.3 — `apps/web/lib/asker/sms.ts` (full replacement):**
+
+```ts
+import type { Member, SmsKind } from './types'
+import { NON_EVENT_KINDS } from './types'
+import { nyDayStartUtc } from './time'
+
+export type SmsDeps = {
+  /** Atomically claim the (member, kind, context) send slot. True = we own delivery.
+   *  Re-claimable when a prior attempt failed or a claim went stale (crashed mid-send). */
+  claim(memberId: string, kind: SmsKind, contextId: string, body: string): Promise<boolean>
+  markSent(memberId: string, kind: SmsKind, contextId: string): Promise<void>
+  markFailed(memberId: string, kind: SmsKind, contextId: string): Promise<void>
+  /** count of non-failed NON_EVENT_KINDS rows for member since the given instant */
+  nonEventCountSince(memberId: string, since: Date): Promise<number>
+  deliver(phone: string, body: string): Promise<void>
+}
+
+export type SendArgs = { member: Member; kind: SmsKind; contextId: string; body: string; now: Date }
+export type SendResult = 'sent' | 'deduped' | 'budget_suppressed' | 'delivery_failed'
+
+const DAILY_NON_EVENT_CAP = 1
+
+/** Claim-first send: the sms_log unique key is the distributed mutex, so concurrent
+ *  callers (overlapping ticks, parallel route handlers) can never double-deliver. */
+export async function sendSms(deps: SmsDeps, a: SendArgs): Promise<SendResult> {
+  if (NON_EVENT_KINDS.includes(a.kind)) {
+    const used = await deps.nonEventCountSince(a.member.id, nyDayStartUtc(a.now))
+    if (used >= DAILY_NON_EVENT_CAP) return 'budget_suppressed'
+  }
+  if (!(await deps.claim(a.member.id, a.kind, a.contextId, a.body))) return 'deduped'
+  try {
+    await deps.deliver(a.member.phone, a.body)
+  } catch {
+    await deps.markFailed(a.member.id, a.kind, a.contextId).catch(() => {})
+    return 'delivery_failed'
+  }
+  await deps.markSent(a.member.id, a.kind, a.contextId).catch(() => {})
+  return 'sent'
+}
+```
+
+Known accepted gap: the budget check is still check-then-act across DIFFERENT contextIds (two concurrent non-event sends for one member can both pass). Round release is capped at 1/day/circle, so the only collision is welcome+ask on join day — bounded overshoot of 1, accepted for the test.
+
+**A1.4 — `apps/web/lib/asker/sms.test.ts` (full replacement):**
+
+```ts
+import { describe, it, expect, vi } from 'vitest'
+import { sendSms, type SmsDeps } from './sms'
+import { nyDayStartUtc } from './time'
+import type { Member } from './types'
+
+const member: Member = { id: 'm1', circleId: 'c1', name: 'Maya', phone: '+19175550142', token: 'tok' }
+const NOW = new Date('2026-06-11T18:00:00Z')
+
+function fakeDeps(over: Partial<SmsDeps> = {}): SmsDeps {
+  return {
+    claim: vi.fn(async () => true),
+    markSent: vi.fn(async () => {}),
+    markFailed: vi.fn(async () => {}),
+    nonEventCountSince: vi.fn(async () => 0),
+    deliver: vi.fn(async () => {}),
+    ...over,
+  }
+}
+
+describe('sendSms', () => {
+  it('claims, delivers, then marks sent — in that order', async () => {
+    const order: string[] = []
+    const deps = fakeDeps({
+      claim: vi.fn(async () => { order.push('claim'); return true }),
+      deliver: vi.fn(async () => { order.push('deliver') }),
+      markSent: vi.fn(async () => { order.push('markSent') }),
+    })
+    const res = await sendSms(deps, { member, kind: 'ask', contextId: 'r1', body: 'hi', now: NOW })
+    expect(res).toBe('sent')
+    expect(order).toEqual(['claim', 'deliver', 'markSent'])
+    expect(deps.claim).toHaveBeenCalledWith('m1', 'ask', 'r1', 'hi')
+    expect(deps.deliver).toHaveBeenCalledWith('+19175550142', 'hi')
+  })
+  it('checks the budget against the NY day start', async () => {
+    const deps = fakeDeps()
+    await sendSms(deps, { member, kind: 'ask', contextId: 'r1', body: 'hi', now: NOW })
+    expect(deps.nonEventCountSince).toHaveBeenCalledWith('m1', nyDayStartUtc(NOW))
+  })
+  it('dedupes when the claim is lost — no delivery, no marks', async () => {
+    const deps = fakeDeps({ claim: vi.fn(async () => false) })
+    const res = await sendSms(deps, { member, kind: 'strike', contextId: 'e1', body: 'x', now: NOW })
+    expect(res).toBe('deduped')
+    expect(deps.deliver).not.toHaveBeenCalled()
+    expect(deps.markSent).not.toHaveBeenCalled()
+  })
+  it('suppresses non-event kinds past the daily budget without claiming', async () => {
+    const deps = fakeDeps({ nonEventCountSince: vi.fn(async () => 1) })
+    const res = await sendSms(deps, { member, kind: 'ask', contextId: 'r2', body: 'x', now: NOW })
+    expect(res).toBe('budget_suppressed')
+    expect(deps.claim).not.toHaveBeenCalled()
+    expect(deps.deliver).not.toHaveBeenCalled()
+  })
+  it('event kinds are exempt from the daily budget and still deliver', async () => {
+    const deps = fakeDeps({ nonEventCountSince: vi.fn(async () => 5) })
+    const res = await sendSms(deps, { member, kind: 't0', contextId: 'e1', body: 'x', now: NOW })
+    expect(res).toBe('sent')
+    expect(deps.deliver).toHaveBeenCalled()
+    expect(deps.markSent).toHaveBeenCalled()
+  })
+  it('marks failed and reports when delivery throws', async () => {
+    const deps = fakeDeps({ deliver: vi.fn(async () => { throw new Error('twilio down') }) })
+    const res = await sendSms(deps, { member, kind: 'ask', contextId: 'r3', body: 'x', now: NOW })
+    expect(res).toBe('delivery_failed')
+    expect(deps.markFailed).toHaveBeenCalledWith('m1', 'ask', 'r3')
+    expect(deps.markSent).not.toHaveBeenCalled()
+  })
+  it('still reports sent when the post-delivery mark fails (no retry storm)', async () => {
+    const deps = fakeDeps({ markSent: vi.fn(async () => { throw new Error('db blip') }) })
+    const res = await sendSms(deps, { member, kind: 'ask', contextId: 'r4', body: 'x', now: NOW })
+    expect(res).toBe('sent')
+  })
+})
+```
+
+**A1.5 — `apps/web/lib/asker/serialize.test.ts`:** add one test inside the existing describe:
+
+```ts
+  it('throws on queued rounds — they are invisible by definition', () => {
+    expect(() => serializeRound({ ...base, source: 'kindled', state: 'queued' }, null))
+      .toThrow('queued rounds are not visible')
+  })
+```
+
+**A1.6 — Task 9 repo.ts sms section (replaces smsAlreadySent/smsInsert):**
+
+```ts
+// ---- sms log (SmsDeps implementation) ----
+export async function smsClaim(memberId: string, kind: SmsKind, contextId: string, body: string): Promise<boolean> {
+  const rows = await sql()`
+    insert into asker.sms_log (member_id, kind, context_id, body, status)
+    values (${memberId}, ${kind}, ${contextId}, ${body}, 'claimed')
+    on conflict (member_id, kind, context_id) do update
+      set status = 'claimed', body = excluded.body, sent_at = now()
+      where asker.sms_log.status = 'failed'
+         or (asker.sms_log.status = 'claimed' and asker.sms_log.sent_at < now() - interval '10 minutes')
+    returning id`
+  return rows.length > 0
+}
+export async function smsMarkSent(memberId: string, kind: SmsKind, contextId: string): Promise<void> {
+  await sql()`update asker.sms_log set status = 'sent'
+    where member_id = ${memberId} and kind = ${kind} and context_id = ${contextId}`
+}
+export async function smsMarkFailed(memberId: string, kind: SmsKind, contextId: string): Promise<void> {
+  await sql()`update asker.sms_log set status = 'failed'
+    where member_id = ${memberId} and kind = ${kind} and context_id = ${contextId}`
+}
+export async function smsNonEventCountSince(memberId: string, since: Date): Promise<number> {
+  const [row] = await sql()`
+    select count(*)::int as n from asker.sms_log
+    where member_id = ${memberId} and sent_at >= ${since} and status <> 'failed'
+      and kind = any(${[...NON_EVENT_KINDS]})`
+  return row.n
+}
+```
+
+**A1.7 — Task 11 tick.ts deps block becomes:**
+
+```ts
+const deps: SmsDeps = {
+  claim: repo.smsClaim,
+  markSent: repo.smsMarkSent,
+  markFailed: repo.smsMarkFailed,
+  nonEventCountSince: repo.smsNonEventCountSince,
+  deliver: deliverSms,
+}
+```
+
+**A1.8 — Part 2 Task 15 join route:** the welcome block becomes (lost-link recovery resends directly; the claim mutex would otherwise dedupe the re-send):
+
+```ts
+  let member = await repo.getMemberByPhone(circleId, phone)
+  const isNew = !member
+  if (!member) member = await repo.insertMember(circleId, name, phone, newToken())
+
+  const base = process.env.APP_BASE_URL ?? 'http://localhost:3000'
+  const link = `${base}/t/${member.token}`
+  const body = copy.welcome(circle.name, link)
+  if (isNew) {
+    await sendSms(
+      { claim: repo.smsClaim, markSent: repo.smsMarkSent, markFailed: repo.smsMarkFailed, nonEventCountSince: async () => 0, deliver: deliverSms },
+      { member, kind: 'welcome', contextId: member.id, body, now: new Date() },
+    )
+  } else {
+    // Lost-link recovery: explicit user request — resend directly, already logged once.
+    await deliverSms(member.phone, body).catch(() => {})
+  }
+  return Response.json({ link })
+```
+
+Suite after amendment: 41 tests (30 prior + 4 serialize + 7 sms).
+
+---
+
 ## Part 1 self-review checklist (run before starting Part 2)
 
 - [ ] All unit tests green: `npm run test --workspace=apps/web`
