@@ -1,174 +1,42 @@
-# Bonfire — Web App Starter
+# Bonfire — the Asker (B-test)
 
-This is the starter code that converts the static HTML mockup into a Next.js + TypeScript app. Drop these files into a freshly initialized Next.js project and you'll have a working pannable illustrated map with markers, simmer animations, and the bottom sheet — ready to wire up to Supabase.
+Spec: `docs/superpowers/specs/2026-06-10-bonfire-mvp-spec-v3.0.md`. SMS-railed, appless, server-side only.
 
-## 1. Initialize Next.js in your folder
+## Local dev
 
-Open the terminal in your project folder (the one VS Code has open) and run:
+1. `supabase start && supabase db reset` (Docker)
+2. `cp apps/web/.env.example apps/web/.env.local`, set `DATABASE_URL` to the local connection string
+   (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), keep `SMS_DRY_RUN=1`
+3. `npm run dev:web` → http://localhost:3000/new
+4. Tests: `npm run test --workspace=apps/web`. Integration tests need
+   `TEST_DATABASE_URL` set to the local connection string.
+5. To exercise the tick by hand:
+   `Invoke-WebRequest -Method POST -Uri http://localhost:3000/api/cron/tick -Headers @{'x-cron-secret'='change-me'}`
 
-```bash
-npx create-next-app@latest . \
-  --typescript \
-  --tailwind \
-  --app \
-  --src-dir false \
-  --import-alias "@/*" \
-  --eslint
-```
+## Deploy (Vercel)
 
-Answer "no" if it asks about Turbopack — easier debugging without it for now.
+1. Vercel project root: `apps/web`. Build command default; the repo pins webpack via `--webpack`.
+2. `supabase link --project-ref <ref> && supabase db push` (applies `20260611000000_asker_schema.sql`).
+3. Set env vars in Vercel: `DATABASE_URL` (transaction pooler URL), `APP_BASE_URL` (the deployment URL),
+   `CRON_SECRET`, Twilio trio, `SMS_DRY_RUN` (=1 until launch day, then remove).
+4. GitHub repo secrets: `TICK_URL=https://<deployment>/api/cron/tick`, `CRON_SECRET` (same value).
+   The workflow `.github/workflows/asker-tick.yml` fires every ~15 min (GitHub adds jitter; the engine tolerates it).
+5. Twilio: buy a US number. Honest note: unregistered 10DLC traffic can get carrier-filtered;
+   for ~40 testers either complete toll-free verification or accept some filtering risk and
+   watch `sms_log` for `[FAILED]` bodies on launch night.
 
-## 2. Install the extra dependencies
+## Launch checklist (per circle)
 
-```bash
-npm install @supabase/supabase-js zustand
-```
+1. Founder scrolls the group chat back 4 weeks, counts hangs that happened, logs the number in
+   `docs/superpowers/specs/2026-06-10-b-test-run-log.md` **before** inviting anyone.
+2. `/new` → create circle (K=2 unless the circle is >8 people).
+3. Adjust cadence/verbs in SQL if the defaults don't fit the group
+   (`update asker.circles set cadence = '[...]', verb_set = '[...]' where id = ...`).
+4. Paste the join link into the group chat — the only chat-paste, ever.
+5. Flip `SMS_DRY_RUN` off. Watch the first ask go out at the next send window.
 
-## 3. Drop these starter files into your project
+## Invariants (do not break)
 
-The folder structure of this starter mirrors what you want in your project. Copy these into the corresponding paths (overwriting `app/page.tsx`, `app/layout.tsx`, and `app/globals.css` from the create-next-app defaults):
-
-```
-your-project/
-├── app/
-│   ├── layout.tsx          ← from this starter
-│   ├── page.tsx            ← from this starter
-│   └── globals.css         ← from this starter (replaces default)
-├── components/
-│   ├── map/
-│   │   ├── MapView.tsx
-│   │   ├── PannableMap.tsx
-│   │   ├── UserMarker.tsx
-│   │   └── PlanCard.tsx
-│   └── sheet/
-│       └── PersonSheet.tsx
-├── lib/
-│   ├── types.ts
-│   └── mock-data.ts
-├── public/
-│   └── manhattan-map.jpg   ← the illustrated map background
-└── .env.local              ← copy from .env.local.example, fill in values
-```
-
-## 4. Run it
-
-```bash
-npm run dev
-```
-
-Visit `http://localhost:3000` — you should see the same mockup you've been iterating on, now in React. Pan around, click markers, the bottom sheet should slide up.
-
-## 5. Set up Supabase (next step)
-
-When you're ready to replace mock data with real auth and presence:
-
-1. Create a project at [supabase.com](https://app.supabase.com)
-2. Settings → API → copy the URL and `anon` public key into `.env.local`
-3. SQL editor → create the schema:
-
-```sql
--- profiles: one row per user, mirrors auth.users
-create table profiles (
-  id uuid primary key references auth.users on delete cascade,
-  name text,
-  initials text,
-  gradient text[2],
-  created_at timestamptz default now()
-);
-
--- presence: one row per user, upserted when they update status
-create table presence (
-  user_id uuid primary key references auth.users on delete cascade,
-  status text check (status in ('available','out','down','place','invisible')),
-  note text,
-  location geography(point),
-  expires_at timestamptz,
-  updated_at timestamptz default now()
-);
-
--- plans: ephemeral micro-events
-create table plans (
-  id uuid primary key default gen_random_uuid(),
-  short_id text unique default substring(md5(random()::text), 1, 8),
-  creator_id uuid references auth.users on delete cascade,
-  title text,
-  vibe text,
-  location geography(point),
-  expires_at timestamptz,
-  created_at timestamptz default now()
-);
-
--- plan_participants: who's in
-create table plan_participants (
-  plan_id uuid references plans on delete cascade,
-  user_id uuid references auth.users on delete cascade,
-  state text default 'in',
-  joined_at timestamptz default now(),
-  primary key (plan_id, user_id)
-);
-
--- pull_ups: when someone signals "I'm coming to you"
-create table pull_ups (
-  id uuid primary key default gen_random_uuid(),
-  from_user uuid references auth.users on delete cascade,
-  to_user uuid references auth.users on delete cascade,
-  created_at timestamptz default now()
-);
-
--- Enable RLS on all tables
-alter table profiles enable row level security;
-alter table presence enable row level security;
-alter table plans enable row level security;
-alter table plan_participants enable row level security;
-alter table pull_ups enable row level security;
-
--- For the closed team test: authenticated users can read everyone, write themselves
-create policy "anyone authed can read profiles"  on profiles  for select using (auth.role() = 'authenticated');
-create policy "users update own profile"         on profiles  for update using (id = auth.uid());
-
-create policy "anyone authed can read presence"  on presence  for select using (auth.role() = 'authenticated');
-create policy "users upsert own presence"        on presence  for all    using (user_id = auth.uid());
-
-create policy "anyone authed can read plans"     on plans     for select using (auth.role() = 'authenticated');
-create policy "users create plans"               on plans     for insert with check (creator_id = auth.uid());
-create policy "creator updates own plans"        on plans     for update using (creator_id = auth.uid());
-
--- (Tighten these when you add network layers / friend graph)
-```
-
-4. Authentication → Providers → enable "Email" with magic link
-5. Replace the `MOCK_USERS` import in `MapView.tsx` with a Supabase query + realtime subscription
-
-## File structure quick guide
-
-- **`app/layout.tsx`** — root layout, loads Geist font from Google Fonts
-- **`app/page.tsx`** — server component, just renders `<MapView />`
-- **`app/globals.css`** — CSS variables (brand colors, status colors), keyframe animations (simmer, noteFloat, livePulse), Tailwind base
-- **`components/map/MapView.tsx`** — top-level client component. Holds the `selectedUser` state. Composes the map, top bar, bottom bar, sheet.
-- **`components/map/PannableMap.tsx`** — drag-to-pan logic. Provides drag state via React Context so child markers can suppress clicks during drag.
-- **`components/map/UserMarker.tsx`** — avatar with simmer halo, status dot, optional floating note bubble.
-- **`components/map/PlanCard.tsx`** — the floating ephemeral plan card.
-- **`components/sheet/PersonSheet.tsx`** — bottom sheet with Pull up / Interested / Message buttons.
-- **`lib/types.ts`** — `User`, `Plan`, `Status` types.
-- **`lib/mock-data.ts`** — fake users + plans, replaceable with Supabase queries.
-
-## What to build next, in order
-
-1. **Set up Supabase project** + add env vars + run the schema above
-2. **Add a Supabase client** in `lib/supabase.ts`
-3. **Build the auth flow** — magic link signup/signin (one screen)
-4. **Replace mock data** with a Supabase query + realtime subscription on the `presence` table
-5. **Wire status setting** — modal to set your own status, writes to `presence`
-6. **Plans** — create, list, join, expire
-7. **Polish, deploy to Vercel** for the team test
-
-## Migration notes from the mockup
-
-- The static HTML's `position: fixed` markers became `position: absolute` within the canvas — important so they ride along when you pan.
-- Vanilla JS pointer event handlers became React event handlers in `PannableMap.tsx`. The "drag vs tap" suppression logic is preserved exactly: a 5px movement threshold, with `wasDragging` staying true through the click event.
-- The drag state is exposed via React Context (`useDragState()`) so any child marker can check it without prop drilling.
-- All animations (simmer, note float, live pulse) live in `globals.css` rather than inline styles, since they depend on `@keyframes`.
-
-## When you're ready to ship
-
-The illustrated map is fine for the team test (everyone's in NYC). When you scale to Cornell or other cities, swap `PannableMap`'s static image background for MapLibre GL JS — the marker components, sheet, and state management all stay the same. The interface boundary is just "where do I draw the map under these markers."
+- `rounds.source` and reply counts never reach a client. `serializeRound` is the only round serializer.
+- Absence is never displayed: no out-lists, no silence-lists, anywhere.
+- All sends dedupe on `(member, kind, context)`; non-event SMS ≤1/member/day; rounds ≤1/day, ≤3/week per circle.
