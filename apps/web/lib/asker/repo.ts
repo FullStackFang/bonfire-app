@@ -20,7 +20,8 @@ const toRound = (r: any): Round => ({
 const toEvent = (r: any): EventRow => ({
   id: r.id, roundId: r.roundId, circleId: r.circleId, happensAt: r.happensAt,
   venueId: r.venueId, state: r.state, needsHold: r.needsHold,
-  holdOpenedAt: r.holdOpenedAt, holdDecidedAt: r.holdDecidedAt, exitPollsSentAt: r.exitPollsSentAt,
+  holdOpenedAt: r.holdOpenedAt, holdDecidedAt: r.holdDecidedAt, t0SentAt: r.t0SentAt,
+  exitPollsSentAt: r.exitPollsSentAt,
 })
 const toAttendance = (r: any): Attendance => ({
   eventId: r.eventId, memberId: r.memberId, state: r.state, etaMinutes: r.etaMinutes,
@@ -204,11 +205,13 @@ export async function decideHold(eventId: string, fellThrough: boolean, now: Dat
     update asker.events set hold_decided_at = ${now}, state = ${fellThrough ? 'fell_through' : 'on'}
     where id = ${eventId}`
 }
-export async function eventsAtT0(now: Date): Promise<EventRow[]> {
+export async function eventsNeedingT0(now: Date): Promise<EventRow[]> {
   const rows = await sql()`
-    select * from asker.events where state = 'on'
-    and happens_at <= ${now} and happens_at + interval '15 minutes' > ${now}`
+    select * from asker.events where state = 'on' and t0_sent_at is null and happens_at <= ${now}`
   return rows.map(toEvent)
+}
+export async function markT0Sent(eventId: string, now: Date): Promise<void> {
+  await sql()`update asker.events set t0_sent_at = ${now} where id = ${eventId}`
 }
 export async function eventsToMarkDone(now: Date): Promise<EventRow[]> {
   const rows = await sql()`

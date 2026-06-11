@@ -64,6 +64,7 @@ create table asker.events (
   needs_hold boolean not null default false,
   hold_opened_at timestamptz,
   hold_decided_at timestamptz,
+  t0_sent_at timestamptz,
   exit_polls_sent_at timestamptz,
   created_at timestamptz not null default now()
 );

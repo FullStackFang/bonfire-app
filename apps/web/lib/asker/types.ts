@@ -53,6 +53,7 @@ export type EventRow = {
   needsHold: boolean
   holdOpenedAt: Date | null
   holdDecidedAt: Date | null
+  t0SentAt: Date | null
   exitPollsSentAt: Date | null
 }
 

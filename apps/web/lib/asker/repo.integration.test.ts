@@ -3,7 +3,10 @@ import { describe, it, expect, beforeAll } from 'vitest'
 const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('repo integration (requires TEST_DATABASE_URL)', () => {
-  beforeAll(() => { process.env.DATABASE_URL = url })
+  beforeAll(() => {
+    process.env.DATABASE_URL = url
+    process.env.PG_POOL_MAX = '4'
+  })
 
   it('strike fires exactly once under concurrent replies', async () => {
     const repo = await import('./repo')
