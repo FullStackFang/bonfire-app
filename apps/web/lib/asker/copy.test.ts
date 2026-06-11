@@ -46,6 +46,8 @@ describe('copy — frozen canon (spec v3.0 table)', () => {
       .toBe("It's ON: 🍜 Thursday 7pm — you, Maya and Dev. → " + L)
     expect(copy.strikeJoin('🍜', THU_7PM, TUE, ['Maya', 'Dev'], L))
       .toBe("It's ON: 🍜 Thursday 7pm. Maya and Dev are in — join? → " + L)
+    expect(copy.strikeJoin('🍜', THU_7PM, TUE, ['Maya'], L))
+      .toBe("It's ON: 🍜 Thursday 7pm. Maya is in — join? → " + L)
   })
   it('hold', () => {
     expect(copy.hold('🍜', THU_7PM, THU_2PM, L)).toBe('tonight 7pm: 🍜 — still in? → ' + L)

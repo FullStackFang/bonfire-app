@@ -78,9 +78,10 @@ export function nextOccurrence(now: Date, dow: number, hour: number, minute = 0)
   throw new Error('nextOccurrence: no slot found in 8 days')
 }
 
-/** True when `now` falls in [askHour:00, askHour+1:00) NY on askDow. Tick cadence is 15 min; the
- *  cadence_slot unique key makes a wide window safe (re-fires are no-ops). */
+/** True when `now` falls in [askHour:00, askHour+2:00) NY on askDow. Tick cadence is 15 min and the
+ *  scheduler (GitHub Actions) can delay ticks past the hour; the two-hour window plus the
+ *  cadence_slot unique key (re-fires are no-ops) means jitter can never silently skip a week. */
 export function matchesAskWindow(t: CadenceTemplate, now: Date): boolean {
   const p = nyParts(now)
-  return p.dow === t.askDow && p.hour === t.askHour
+  return p.dow === t.askDow && p.hour >= t.askHour && p.hour < t.askHour + 2
 }

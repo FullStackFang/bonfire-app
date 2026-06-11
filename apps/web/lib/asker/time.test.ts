@@ -42,12 +42,13 @@ describe('nextOccurrence', () => {
 
 describe('matchesAskWindow', () => {
   const t = { askDow: 2, askHour: 17, verb: 'rotate', proposeDow: 4, proposeHour: 19 }
-  it('matches within the hour after the slot', () => {
+  it('matches within two hours after the slot (jitter tolerance)', () => {
     expect(matchesAskWindow(t, TUE_1705)).toBe(true)
+    expect(matchesAskWindow(t, new Date('2026-06-09T22:01:00Z'))).toBe(true) // 18:01 NY — delayed tick still fires
   })
   it('does not match before the slot or after the window', () => {
     expect(matchesAskWindow(t, new Date('2026-06-09T20:59:00Z'))).toBe(false) // 16:59 NY
-    expect(matchesAskWindow(t, new Date('2026-06-09T22:01:00Z'))).toBe(false) // 18:01 NY
+    expect(matchesAskWindow(t, new Date('2026-06-09T23:05:00Z'))).toBe(false) // 19:05 NY
     expect(matchesAskWindow(t, new Date('2026-06-10T21:05:00Z'))).toBe(false) // Wed
   })
 })

@@ -30,6 +30,7 @@ export function whenShort(at: Date, now: Date): string {
 }
 
 export function joinNames(names: string[]): string {
+  if (names.length === 0) return ''
   if (names.length === 1) return names[0]
   if (names.length === 2) return `${names[0]} and ${names[1]}`
   if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`
@@ -42,7 +43,7 @@ export const copy = {
   strikeIn: (emoji: string, at: Date, now: Date, otherNames: string[], link: string) =>
     `It's ON: ${emoji} ${whenShort(at, now)} — ${joinNames(['you', ...otherNames])}. → ${link}`,
   strikeJoin: (emoji: string, at: Date, now: Date, inNames: string[], link: string) =>
-    `It's ON: ${emoji} ${whenShort(at, now)}. ${joinNames(inNames)} are in — join? → ${link}`,
+    `It's ON: ${emoji} ${whenShort(at, now)}. ${joinNames(inNames)} ${inNames.length === 1 ? 'is' : 'are'} in — join? → ${link}`,
   hold: (emoji: string, at: Date, now: Date, link: string) =>
     `${whenShort(at, now)}: ${emoji} — still in? → ${link}`,
   t0Someone: (hereName: string, link: string) => `${hereName}'s already there. → ${link}`,
