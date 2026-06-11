@@ -8,6 +8,6 @@ export async function POST(request: Request) {
     return Response.json({ error: 'name (≤60 chars) and kThreshold (2-4) required' }, { status: 400 })
   }
   const circle = await createCircle(name, k)
-  const base = process.env.APP_BASE_URL ?? 'http://localhost:3000'
+  const base = (process.env.APP_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
   return Response.json({ circleId: circle.id, joinUrl: `${base}/join/${circle.id}` })
 }

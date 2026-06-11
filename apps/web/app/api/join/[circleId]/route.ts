@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cir
   const isNew = !member
   if (!member) member = await repo.insertMember(circleId, name, phone, newToken())
 
-  const base = process.env.APP_BASE_URL ?? 'http://localhost:3000'
+  const base = (process.env.APP_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
   const link = `${base}/t/${member.token}`
   const welcomeBody = copy.welcome(circle.name, link)
   if (isNew) {

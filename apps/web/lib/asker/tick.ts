@@ -15,7 +15,7 @@ const deps: SmsDeps = {
 }
 
 function baseUrl(): string {
-  return process.env.APP_BASE_URL ?? 'http://localhost:3000'
+  return (process.env.APP_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 }
 const roundLink = (m: Member, r: { id: string }) => `${baseUrl()}/t/${m.token}/r/${r.id}`
 const eventLink = (m: Member, e: { id: string }) => `${baseUrl()}/t/${m.token}/e/${e.id}`

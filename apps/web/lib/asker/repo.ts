@@ -39,6 +39,7 @@ export async function getCircle(id: string): Promise<Circle | null> {
 export async function insertMember(circleId: string, name: string, phone: string, token: string): Promise<Member> {
   const [row] = await sql()`
     insert into asker.members (circle_id, name, phone, token) values (${circleId}, ${name}, ${phone}, ${token})
+    on conflict (circle_id, phone) do update set name = excluded.name
     returning *`
   return toMember(row)
 }

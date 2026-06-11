@@ -24,15 +24,20 @@ export function JoinForm({ circleId }: { circleId: string }) {
       onSubmit={async (e) => {
         e.preventDefault()
         setBusy(true); setError(null)
-        const res = await fetch(`/api/join/${circleId}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ name, phone, consent }),
-        })
-        const data = await res.json()
-        setBusy(false)
-        if (res.ok) setLink(data.link)
-        else setError(data.error ?? 'something broke')
+        try {
+          const res = await fetch(`/api/join/${circleId}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name, phone, consent }),
+          })
+          const data = await res.json()
+          if (res.ok) setLink(data.link)
+          else setError(data.error ?? 'something broke')
+        } catch {
+          setError('network hiccup — try again')
+        } finally {
+          setBusy(false)
+        }
       }}
     >
       <label className="block">

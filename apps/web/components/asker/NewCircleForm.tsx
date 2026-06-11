@@ -6,6 +6,7 @@ export function NewCircleForm() {
   const [k, setK] = useState(2)
   const [joinUrl, setJoinUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (joinUrl) {
     return (
@@ -20,15 +21,21 @@ export function NewCircleForm() {
       className="space-y-4"
       onSubmit={async (e) => {
         e.preventDefault()
-        setBusy(true)
-        const res = await fetch('/api/circles', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ name, kThreshold: k }),
-        })
-        const data = await res.json()
-        setBusy(false)
-        if (res.ok) setJoinUrl(data.joinUrl)
+        setBusy(true); setError(null)
+        try {
+          const res = await fetch('/api/circles', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name, kThreshold: k }),
+          })
+          const data = await res.json()
+          if (res.ok) setJoinUrl(data.joinUrl)
+          else setError(data.error ?? 'something broke')
+        } catch {
+          setError('network hiccup — try again')
+        } finally {
+          setBusy(false)
+        }
       }}
     >
       <label className="block">
@@ -44,6 +51,7 @@ export function NewCircleForm() {
           <option value={4}>4</option>
         </select>
       </label>
+      {error && <p className="text-sm text-red-400">{error}</p>}
       <button disabled={busy} className="rounded bg-amber-500 px-4 py-2 font-medium text-black disabled:opacity-50">
         {busy ? '…' : 'Create circle'}
       </button>
