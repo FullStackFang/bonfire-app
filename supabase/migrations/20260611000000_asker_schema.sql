@@ -99,6 +99,7 @@ create table asker.sms_log (
   kind text not null check (kind in ('welcome','ask','strike','hold','t0','fell_through','exit_poll','later_nudge')),
   context_id uuid not null, -- round/event/member id the message is about; dedupe key
   body text not null,
+  status text not null check (status in ('claimed','sent','failed')),
   sent_at timestamptz not null default now(),
   unique (member_id, kind, context_id)
 );

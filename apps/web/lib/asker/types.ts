@@ -69,4 +69,4 @@ export type SmsKind =
   | 'welcome' | 'ask' | 'strike' | 'hold' | 't0'
   | 'fell_through' | 'exit_poll' | 'later_nudge'
 
-export const NON_EVENT_KINDS: SmsKind[] = ['welcome', 'ask', 'later_nudge']
+export const NON_EVENT_KINDS: readonly SmsKind[] = ['welcome', 'ask', 'later_nudge']

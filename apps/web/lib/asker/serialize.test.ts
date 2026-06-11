@@ -24,4 +24,8 @@ describe('serializeRound — secrecy invariants', () => {
     expect(serializeRound({ ...base, source: 'scheduled' }, 'later').myAnswer).toBe('later')
     expect(serializeRound({ ...base, source: 'scheduled' }, null).myAnswer).toBeNull()
   })
+  it('throws on queued rounds — they are invisible by definition', () => {
+    expect(() => serializeRound({ ...base, source: 'kindled', state: 'queued' }, null))
+      .toThrow('queued rounds are not visible')
+  })
 })
