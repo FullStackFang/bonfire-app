@@ -289,3 +289,22 @@ export async function smsNonEventCountSince(memberId: string, since: Date): Prom
       and kind = any(${[...NON_EVENT_KINDS]})`
   return row.n
 }
+
+export async function getEventByRoundId(roundId: string): Promise<EventRow | null> {
+  const [row] = await sql()`select * from asker.events where round_id = ${roundId}`
+  return row ? toEvent(row) : null
+}
+export async function getVenueName(venueId: string): Promise<string | null> {
+  const [row] = await sql()`select name from asker.venues where id = ${venueId}`
+  return row ? (row.name as string) : null
+}
+/** Raw reply insert — used ONLY for the kindler's invisible auto-'in' on a queued round. */
+export async function insertReply(roundId: string, memberId: string, answer: 'in' | 'out' | 'later'): Promise<void> {
+  await sql()`
+    insert into asker.replies (round_id, member_id, answer) values (${roundId}, ${memberId}, ${answer})
+    on conflict (round_id, member_id) do update set answer = ${answer}, created_at = now()`
+}
+export async function getMemberByPhone(circleId: string, phone: string): Promise<Member | null> {
+  const [row] = await sql()`select * from asker.members where circle_id = ${circleId} and phone = ${phone}`
+  return row ? toMember(row) : null
+}
