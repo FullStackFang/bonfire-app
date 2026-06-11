@@ -44,14 +44,15 @@ from asker.events e join asker.circles c on c.id = e.circle_id
 group by 1;
 
 -- 6. later -> in conversion (two-tenses value): later-nudged members who ended up confirmed/here
-select count(distinct (l.member_id, l.context_id)) filter (
-         where exists (
-           select 1 from asker.events e
-           join asker.attendance a on a.event_id = e.id and a.member_id = l.member_id
-           where e.round_id = l.context_id and a.state in ('confirmed','here')))
-       as converted,
-       count(distinct (l.member_id, l.context_id)) as nudged
-from asker.sms_log l where l.kind = 'later_nudge';
+select
+  count(*) filter (where exists (
+    select 1 from asker.events e
+    join asker.attendance a on a.event_id = e.id and a.member_id = l.member_id
+    where e.round_id = l.context_id and a.state in ('confirmed','here')
+  )) as converted,
+  count(*) as nudged
+from (select distinct member_id, context_id from asker.sms_log
+      where kind = 'later_nudge' and status = 'sent') l;
 
 -- 7. Strike concentration (same two people eating the product? tune K / composition)
 select c.name, m.name as member,

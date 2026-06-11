@@ -10,6 +10,7 @@ export default async function ExitPollPage({ params }: { params: Promise<{ token
   if (!session) notFound()
   const event = await repo.getEvent(eventId).catch(() => null)
   if (!event || event.circleId !== session.circle.id) notFound()
+  if (event.state !== 'done') notFound()
   return (
     <main className="mx-auto min-h-screen max-w-md bg-neutral-950 p-6 text-neutral-100">
       <h1 className="text-2xl">Would last night have happened without this?</h1>
