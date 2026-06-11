@@ -188,7 +188,7 @@ export async function setAttendance(
 export async function eventsNeedingHoldOpen(now: Date): Promise<EventRow[]> {
   const rows = await sql()`
     select * from asker.events where state = 'on' and needs_hold and hold_opened_at is null
-    and happens_at - interval '5 hours' <= ${now}`
+    and happens_at - interval '5 hours' <= ${now} and happens_at > ${now}`
   return rows.map(toEvent)
 }
 export async function markHoldOpened(eventId: string, now: Date): Promise<void> {
