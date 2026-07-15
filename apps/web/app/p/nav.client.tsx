@@ -1,0 +1,73 @@
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { navCopy } from '@/lib/pulse/copy'
+
+// The shared bottom navbar for every /p surface: three icon-only chunky-chip tabs
+// (Home · Events · Groups). Active state derives from the route — detail pages count toward
+// the section they belong to (a pulse → Events, a crew → Groups) so one chip is always lit.
+// Icon-only, so the plain-word destination rides each tab's aria-label.
+
+// Icons are inline (currentColor) — the chip drives fill via its text color (white when active,
+// smoke when not). Simple, dependency-free line/solid marks that read at 22px.
+
+function FlameIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2c.6 3-1.4 4.6-2.9 6C7.4 9.6 6 11.3 6 14a6 6 0 0 0 12 0c0-2-.8-3.6-1.8-4.8-.3.9-.9 1.6-1.7 1.9.5-2.2-.3-4.6-2.5-6.4-.1 1.6-.9 2.5-1.8 3.2C10.4 6 11 4 12 2Z" />
+    </svg>
+  )
+}
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+    </svg>
+  )
+}
+function PeopleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+      <path d="M16 5.2a3 3 0 0 1 0 5.8M17 14.4c2.3.5 3.8 2.3 3.8 4.6" />
+    </svg>
+  )
+}
+
+type Tab = { href: string; label: string; icon: React.ReactNode; active: (p: string) => boolean }
+
+const TABS: Tab[] = [
+  // Home also owns /p/new and any surface not claimed by a section below.
+  { href: '/p', label: navCopy.home, icon: <FlameIcon />, active: (p) => p === '/p' || p.startsWith('/p/new') },
+  // A single pulse (/p/s/*) is an event detail.
+  { href: '/p/events', label: navCopy.events, icon: <CalendarIcon />, active: (p) => p === '/p/events' || p.startsWith('/p/s/') },
+  // A crew board (/p/c/*) is a group detail.
+  { href: '/p/groups', label: navCopy.groups, icon: <PeopleIcon />, active: (p) => p === '/p/groups' || p.startsWith('/p/c/') },
+]
+
+export function PulseTabBar({ live = false }: { live?: boolean }) {
+  const pathname = usePathname()
+  return (
+    <nav className="bp-nav" aria-label="Primary">
+      {TABS.map((tab) => {
+        const active = tab.active(pathname)
+        // The spark rides the Events tab: it points at the surface where a live pulse lives.
+        const showSpark = live && tab.href === '/p/events'
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-label={tab.label}
+            aria-current={active ? 'page' : undefined}
+            className={`bp-nav-tab${active ? ' bp-nav-tab--active' : ''}`}
+          >
+            {tab.icon}
+            {showSpark && <span className="bp-nav-spark" aria-hidden />}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}

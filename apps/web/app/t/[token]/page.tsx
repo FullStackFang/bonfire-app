@@ -45,13 +45,13 @@ export default async function CircleHome({ params }: { params: Promise<{ token: 
       </section>
 
       <section className="mt-6">
-        <h2 className="text-sm uppercase tracking-wide text-neutral-500">It's on</h2>
+        <h2 className="text-sm uppercase tracking-wide text-neutral-500">It&apos;s on</h2>
         {upcoming.length === 0 && <p className="mt-2 text-neutral-500">Nothing struck yet.</p>}
         <ul className="mt-2 space-y-2">
           {upcoming.map((e) => (
             <li key={e.id}>
               <Link href={`/t/${token}/e/${e.id}`} className="block rounded bg-amber-950/40 p-3">
-                {e.emoji} {e.when} — it's on →
+                {e.emoji} {e.when} — it&apos;s on →
               </Link>
             </li>
           ))}

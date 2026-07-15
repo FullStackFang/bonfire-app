@@ -1,0 +1,49 @@
+/* Bonfire — the warm palette.
+   Canonical values from the codebase (packages/ui-tokens/src/colors.ts + DESIGN.md).
+   Built in OKLCH, tinted toward the ember hue (~30deg) so every neutral reads
+   as living in the same room as the brand color. Hex shipped for RN compatibility. */
+:root {
+  /* ── Primary · ember family (the fire) ── */
+  --ember: #f05846;          /* oklch(66% 0.19 30)  — living fire, live state, primary CTA. Never decoration. */
+  --ember-deep: #a52a24;     /* oklch(48% 0.16 28)  — 3D shadow under ember buttons; pressed states. */
+  --ember-glow: #fa9b82;     /* oklch(78% 0.12 35)  — breathing halo, 22–54% opacity, around live members. */
+  --ember-tint: #fdeeea;     /* faint ember wash for pill / surface backgrounds (derived). */
+
+  /* ── State accents (markers only, never everyday fills) ── */
+  --spark: #54b05a;          /* oklch(68% 0.15 145) — sage "happening now" dot. NOT iOS green. */
+  --spark-tint: #ecf5ee;
+  --dusk: #e0843e;           /* oklch(70% 0.14 55)  — sunset amber; "on my way", staked/awaiting. */
+  --dusk-tint: #fbf1e7;
+  --night: #1d293d;          /* oklch(28% 0.04 260) — deep blue-black; late-night surfaces / fog-of-war. */
+
+  /* ── Neutrals (all tinted warm) ── */
+  --coal: #231715;           /* warm near-black body text. Pure #000 is forbidden. */
+  --smoke: #716664;          /* secondary text, placeholders, inactive icons. */
+  --ash: #ddd6d4;            /* hairline borders and dividers. */
+  --cream: #fff7f1;          /* base surface of every screen — "the room". */
+  --hearth: #ffffff;         /* card surface; reads warm against cream. */
+  --shadow-warm: #c8b8b1;    /* bottom layer under hearth-faced chunky buttons. */
+
+  /* ── Avatar accents — six intentional bands, hashed by user id ── */
+  --avatar-blue: #5E7FE5;
+  --avatar-green: #1A9E75;
+  --avatar-purple: #9D5BC2;
+  --avatar-orange: #E2843D;
+  --avatar-amber: #E2B33D;
+  --avatar-slate: #666f7d;
+
+  /* ── Semantic aliases ── */
+  --surface-page: var(--cream);
+  --surface-card: var(--hearth);
+  --surface-inverse: var(--coal);
+  --border-hairline: var(--ash);
+  --text-body: var(--coal);
+  --text-secondary: var(--smoke);
+  --text-on-ember: var(--hearth);
+  --accent: var(--ember);
+  --accent-press: var(--ember-deep);
+  --accent-halo: var(--ember-glow);
+  --state-live: var(--spark);      /* "here" / happening now */
+  --state-otw: var(--dusk);        /* "on my way" */
+  --state-idle: var(--smoke);      /* "out" / heading out */
+}

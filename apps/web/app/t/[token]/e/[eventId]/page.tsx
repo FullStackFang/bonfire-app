@@ -33,7 +33,7 @@ export default async function EventPage({ params }: { params: Promise<{ token: s
         <h1 className="mt-4 text-2xl">Tonight thinned out — happens. The asker will try again.</h1>
       ) : (
         <>
-          <h1 className="mt-4 text-3xl">It's ON: {round!.verbEmoji} {whenShort(event.happensAt, now)}</h1>
+          <h1 className="mt-4 text-3xl">It&apos;s ON: {round!.verbEmoji} {whenShort(event.happensAt, now)}</h1>
           {venueName && <p className="mt-1 text-lg text-amber-400">{venueName}</p>}
           <ul className="mt-6 space-y-1">
             {visible.map((a) => (
@@ -48,7 +48,7 @@ export default async function EventPage({ params }: { params: Promise<{ token: s
               <EventActions eventId={eventId} token={token} myState={mine?.state ?? null}
                 holdOpen={holdOpen} walkIn={walkIn} venueName={venueName} />
             )}
-            {event.state === 'done' && <p className="text-neutral-500">This one's in the books.</p>}
+            {event.state === 'done' && <p className="text-neutral-500">This one&apos;s in the books.</p>}
           </div>
         </>
       )}

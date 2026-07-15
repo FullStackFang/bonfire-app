@@ -1,28 +1,14 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { light } from "@bonfire/ui-tokens";
+import { ChunkyTabBar } from "../../components/ui";
 
 export default function AppLayout() {
   return (
+    // Custom chunky-chip bar replaces Expo's default flat tab bar. Destinations and Ionicons are
+    // unchanged; the bar is icon-only, so the per-screen `title` rides the accessibility label.
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: light.ember,
-        tabBarInactiveTintColor: light.smoke,
-        tabBarStyle: {
-          backgroundColor: light.hearth,
-          borderTopColor: light.ash,
-          borderTopWidth: 0.5,
-          height: 64,
-          paddingTop: 6,
-          paddingBottom: 12,
-        },
-        tabBarLabelStyle: {
-          fontFamily: "Onest_500Medium",
-          fontSize: 11,
-          marginTop: 0,
-        },
-      }}
+      tabBar={(props) => <ChunkyTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen
         name="index"

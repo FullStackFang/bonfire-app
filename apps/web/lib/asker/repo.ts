@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- row mappers take dynamically-shaped
+   postgres rows (camelCased); typing each as `any` is the established repo boundary idiom. */
 import { sql } from './db'
 import type {
   Attendance, AttendanceState, CadenceTemplate, Circle, EventRow, Member, Round, SmsKind, Verb,

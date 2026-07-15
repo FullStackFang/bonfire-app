@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# local dev Postgres (PGlite) data — see scripts/local-db.mjs
+/.local-db
+
 # next.js
 /.next/
 /out/
@@ -39,3 +42,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel

@@ -11,7 +11,7 @@ export function NewCircleForm() {
   if (joinUrl) {
     return (
       <div className="space-y-3">
-        <p className="text-amber-400">Circle created. Paste this into your group chat — it's the only chat-paste you'll ever do:</p>
+        <p className="text-amber-400">Circle created. Paste this into your group chat — it&apos;s the only chat-paste you&apos;ll ever do:</p>
         <code className="block break-all rounded bg-neutral-900 p-3 text-sm">{joinUrl}</code>
       </div>
     )
@@ -44,7 +44,7 @@ export function NewCircleForm() {
           className="mt-1 w-full rounded bg-neutral-900 p-3" placeholder="Park Slope crew" />
       </label>
       <label className="block">
-        <span className="text-sm text-neutral-400">Strike threshold (how many "in"s light it)</span>
+        <span className="text-sm text-neutral-400">Strike threshold (how many &quot;in&quot;s light it)</span>
         <select value={k} onChange={(e) => setK(Number(e.target.value))} className="mt-1 w-full rounded bg-neutral-900 p-3">
           <option value={2}>2 — strike easy (default)</option>
           <option value={3}>3</option>

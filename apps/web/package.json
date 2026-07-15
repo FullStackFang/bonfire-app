@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:local": "node scripts/dev-local.mjs",
+    "db:local": "node scripts/local-db.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
@@ -20,7 +22,9 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@tailwindcss/postcss": "^4",
+    "pg-gateway": "0.3.0-beta.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

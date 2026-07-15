@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- request bodies are unvalidated JSON
+   at this boundary; `any` is the established idiom before shape checks. */
 import { getMemberByToken } from './repo'
 import type { Circle, Member } from './types'
 

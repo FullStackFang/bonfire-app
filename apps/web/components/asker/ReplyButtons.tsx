@@ -35,7 +35,7 @@ export function ReplyButtons({ roundId, token, initial }: { roundId: string; tok
     }
   }
 
-  if (closed) return <p className="text-neutral-400">This one's closed.</p>
+  if (closed) return <p className="text-neutral-400">This one&apos;s closed.</p>
   const btn = (a: Answer, label: string) => (
     <button
       onClick={() => reply(a)}

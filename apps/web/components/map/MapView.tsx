@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PannableMap } from "./PannableMap";
 import { UserMarker } from "./UserMarker";
 import { PlanCard } from "./PlanCard";
@@ -84,7 +85,8 @@ export function MapView() {
         >
           B O N F I R E
         </div>
-        <button
+        <Link
+          href="/p/new"
           className="pointer-events-auto inline-flex items-center gap-2.5 pl-5 pr-7 py-4 rounded-full text-[15px] font-semibold text-white cursor-pointer transition-transform hover:-translate-y-px"
           style={{
             background: "linear-gradient(135deg, var(--accent-warm) 0%, var(--accent) 100%)",
@@ -100,7 +102,7 @@ export function MapView() {
             +
           </span>
           <span>Start something</span>
-        </button>
+        </Link>
       </div>
 
       <PersonSheet user={selectedUser} onClose={() => setSelectedUser(null)} />

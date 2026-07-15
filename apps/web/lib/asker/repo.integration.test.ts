@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test fixtures cast partial rows. */
 import { describe, it, expect, beforeAll } from 'vitest'
 
 const url = process.env.TEST_DATABASE_URL

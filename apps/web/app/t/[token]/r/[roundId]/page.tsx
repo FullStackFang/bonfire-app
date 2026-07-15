@@ -24,13 +24,13 @@ export default async function RoundPage({ params }: { params: Promise<{ token: s
       <p className="text-sm text-neutral-500">{session.circle.name}</p>
       <h1 className="mt-4 text-4xl">{pub.verbEmoji} <span className="text-2xl">{pub.verbLabel}</span></h1>
       <p className="mt-1 text-xl text-neutral-300">{whenLabel(new Date(pub.proposedAt), now)}</p>
-      {pub.detail && <p className="mt-2 text-neutral-400">"{pub.detail}"</p>}
+      {pub.detail && <p className="mt-2 text-neutral-400">&quot;{pub.detail}&quot;</p>}
       <div className="mt-8">
         {pub.state === 'expired'
           ? <p className="text-neutral-500">This one quietly passed.</p>
           : <ReplyButtons roundId={pub.id} token={token} initial={pub.myAnswer} />}
       </div>
-      <p className="mt-8 text-sm text-neutral-500">Nobody sees your answer till it's on.</p>
+      <p className="mt-8 text-sm text-neutral-500">Nobody sees your answer till it&apos;s on.</p>
     </main>
   )
 }

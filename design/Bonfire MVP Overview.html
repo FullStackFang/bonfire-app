@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bonfire · MVP Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500;1,8..60,600&family=Onest:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ember: #FF5C3A;
+    --ember-deep: #C7402A;
+    --ember-glow: #FFB7A4;
+    --ember-tint: #FFF1ED;
+    --here: #2FA060;
+    --here-tint: #EAF6EF;
+    --dusk: #E0843E;
+    --dusk-tint: #FBF0E6;
+    --coal: #231715;
+    --smoke: #716664;
+    --ash: #E4DEDB;
+    --cream: #FFF7F1;
+    --hearth: #FFFFFF;
+    --warm-shadow: #C8B8B1;
+
+    --serif: "Source Serif 4", Georgia, serif;
+    --sans: "Onest", system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; padding: 0; background: var(--cream); color: var(--coal); }
+  body { font-family: var(--sans); line-height: 1.5; }
+  a { color: inherit; }
+
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 64px 40px 96px;
+  }
+
+  /* ── ember teardrop mark ── */
+  .ember {
+    display: inline-block; flex-shrink: 0;
+    border-radius: 52% 52% 52% 8% / 60% 60% 40% 40%;
+    background: radial-gradient(120% 110% at 50% 78%, #FFD37A 0%, #FF8A3D 38%, #FF5C3A 70%, #E0431F 100%);
+  }
+  .ember.glow { box-shadow: 0 0 10px rgba(255,92,58,0.55); }
+
+  /* ── type primitives ── */
+  .overline {
+    font-family: var(--sans); font-weight: 600; font-size: 11px;
+    letter-spacing: 1.4px; text-transform: uppercase; color: var(--smoke);
+  }
+  .serif-display { font-family: var(--serif); font-style: italic; font-weight: 600; line-height: 1.08; }
+  .mono { font-family: var(--mono); }
+
+  /* ── header ── */
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand-name { font-family: var(--sans); font-weight: 700; font-size: 14px; letter-spacing: 1.8px; color: var(--coal); }
+  .doc-meta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--smoke); letter-spacing: 0.3px; }
+
+  h1.title {
+    font-family: var(--serif); font-style: italic; font-weight: 600;
+    font-size: 52px; line-height: 1.04; letter-spacing: -0.5px;
+    margin: 26px 0 0; text-wrap: balance;
+  }
+  h1.title .accent { color: var(--ember); }
+  .lede {
+    font-size: 18px; line-height: 1.55; color: var(--smoke);
+    max-width: 640px; margin: 20px 0 0; text-wrap: pretty;
+  }
+  .lede strong { color: var(--coal); font-weight: 600; }
+
+  .rule { height: 1px; background: var(--ash); border: none; margin: 44px 0; }
+
+  /* ── section headers ── */
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 12px; color: var(--ember);
+    border: 1px solid var(--ember-glow); border-radius: 999px; padding: 3px 9px; flex-shrink: 0;
+  }
+  h2.sec-title { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 30px; line-height: 1.1; margin: 0; }
+
+  p { margin: 0 0 16px; max-width: 660px; }
+  p:last-child { margin-bottom: 0; }
+  .tlead { color: var(--coal); }
+  .tmuted { color: var(--smoke); }
+  strong { font-weight: 600; }
+  em.term { font-style: normal; color: var(--ember); font-weight: 600; }
+
+  /* ── the loop diagram ── */
+  .loop {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    background: var(--hearth); border: 1px solid var(--ash); border-radius: 22px;
+    overflow: hidden;
+  }
+  .loop-step { padding: 22px 20px 24px; position: relative; }
+  .loop-step + .loop-step { border-left: 1px solid var(--ash); }
+  .loop-step .n { font-family: var(--mono); font-size: 11px; color: var(--ember); }
+  .loop-step .h { font-family: var(--serif); font-style: italic; font-size: 21px; margin: 8px 0 7px; line-height: 1.05; }
+  .loop-step .d { font-size: 12.5px; color: var(--smoke); line-height: 1.4; }
+  .loop-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ember); display: inline-block; }
+
+  /* ── flow cards ── */
+  .flow {
+    background: var(--hearth); border: 1px solid var(--ash); border-radius: 24px;
+    padding: 30px 32px 32px; margin-bottom: 22px;
+  }
+  .flow-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 4px; }
+  .flow-badge {
+    flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 15px; font-weight: 500;
+  }
+  .flow-title { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 27px; line-height: 1.08; margin: 0; }
+  .flow-role { font-size: 13px; color: var(--smoke); margin-top: 4px; font-weight: 500; }
+  .flow-link {
+    margin-left: auto; flex-shrink: 0; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-weight: 600; font-size: 13px; color: var(--ember);
+    border: 1.5px solid var(--ember-glow); border-radius: 999px; padding: 8px 15px;
+    white-space: nowrap; transition: background 0.15s, border-color 0.15s;
+  }
+  .flow-link:hover { background: var(--ember-tint); border-color: var(--ember); }
+  .flow-link .arr { font-size: 14px; line-height: 1; }
+
+  .flow-body { margin-top: 20px; display: grid; grid-template-columns: 1fr 0.85fr; gap: 30px; }
+  @media (max-width: 760px) { .flow-body { grid-template-columns: 1fr; gap: 22px; } .loop { grid-template-columns: 1fr; } .loop-step + .loop-step { border-left: none; border-top: 1px solid var(--ash); } }
+  .flow-prose p { font-size: 14.5px; line-height: 1.55; }
+
+  /* ── screen rail ── */
+  .screens { display: flex; flex-direction: column; gap: 7px; }
+  .screens .lbl { font-family: var(--sans); font-weight: 600; font-size: 11px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--smoke); margin-bottom: 4px; }
+  .screen-row { display: flex; align-items: center; gap: 11px; padding: 9px 12px; background: var(--cream); border: 1px solid var(--ash); border-radius: 12px; }
+  .screen-row .sn { font-family: var(--mono); font-size: 11px; color: var(--ember); width: 14px; flex-shrink: 0; }
+  .screen-row .st { font-size: 13px; color: var(--coal); font-weight: 500; }
+  .screen-row .sd { font-size: 12px; color: var(--smoke); margin-left: auto; text-align: right; }
+
+  /* ── vocabulary strip ── */
+  .vocab { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .vocab { grid-template-columns: 1fr; } }
+  .vocab-item { display: flex; gap: 13px; align-items: flex-start; padding: 16px 18px; background: var(--hearth); border: 1px solid var(--ash); border-radius: 16px; }
+  .vocab-item .vk { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 19px; color: var(--coal); flex-shrink: 0; min-width: 96px; }
+  .vocab-item .vv { font-size: 13px; color: var(--smoke); line-height: 1.45; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .pill.here { background: var(--here-tint); color: var(--here); }
+  .pill.otw { background: var(--dusk-tint); color: var(--dusk); }
+  .pill.out { background: #F1EEEC; color: var(--smoke); }
+  .pulse-live { width: 7px; height: 7px; border-radius: 50%; background: var(--here); display: inline-block; }
+
+  /* ── flag callout ── */
+  .flag {
+    background: var(--coal); color: var(--cream); border-radius: 24px;
+    padding: 32px 34px; position: relative; overflow: hidden;
+  }
+  .flag .halo { position: absolute; top: -60px; right: -40px; width: 280px; height: 220px; background: radial-gradient(circle, rgba(255,92,58,0.34) 0%, rgba(255,92,58,0) 68%); pointer-events: none; }
+  .flag-over { position: relative; }
+  .flag .overline { color: var(--ember-glow); }
+  .flag h3 { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 26px; line-height: 1.12; margin: 12px 0 14px; color: var(--cream); }
+  .flag p { color: #D9CEC9; font-size: 14.5px; line-height: 1.55; max-width: 100%; }
+  .flag .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 22px; }
+  @media (max-width: 640px) { .flag .compare { grid-template-columns: 1fr; } }
+  .cmp { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 16px 18px; }
+  .cmp .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.4px; margin-bottom: 9px; }
+  .cmp.v1 .tag { color: var(--ember-glow); }
+  .cmp.v2 .tag { color: #9DB4D6; }
+  .cmp ul { margin: 0; padding-left: 16px; }
+  .cmp li { font-size: 13px; color: #D9CEC9; line-height: 1.5; margin-bottom: 6px; }
+  .cmp li:last-child { margin-bottom: 0; }
+  .cmp b { color: var(--cream); font-weight: 600; }
+
+  /* ── open questions ── */
+  .q-list { display: flex; flex-direction: column; gap: 12px; }
+  .q-item { display: flex; gap: 13px; align-items: flex-start; padding: 16px 18px; background: var(--hearth); border: 1px solid var(--ash); border-radius: 16px; }
+  .q-item .qm { font-family: var(--mono); font-size: 13px; color: var(--ember); flex-shrink: 0; }
+  .q-item .qt { font-size: 14px; color: var(--coal); line-height: 1.5; }
+  .q-item .qt b { font-weight: 600; }
+
+  .footer-note { margin-top: 48px; font-size: 12.5px; color: var(--smoke); display: flex; align-items: center; gap: 8px; }
+
+  /* ── build-state pill ── */
+  .build { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.4px; white-space: nowrap; text-transform: uppercase; vertical-align: 2px; }
+  .build.done { background: var(--here-tint); color: var(--here); }
+  .build.spec { background: #F1EEEC; color: var(--smoke); }
+  .build .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  /* ── system bridge banner ── */
+  .sysbridge { display: flex; align-items: center; gap: 18px; background: var(--coal); color: var(--cream); border-radius: 18px; padding: 18px 22px; margin-top: 26px; text-decoration: none; transition: transform 0.15s; }
+  .sysbridge:hover { transform: translateY(-1px); }
+  .sysbridge .sb-ember { width: 30px; height: 30px; flex-shrink: 0; }
+  .sysbridge .sb-txt { flex: 1; }
+  .sysbridge .sb-k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ember-glow); }
+  .sysbridge .sb-h { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 18px; color: var(--cream); margin-top: 2px; line-height: 1.2; }
+  .sysbridge .sb-arr { font-weight: 600; font-size: 13px; color: var(--ember-glow); white-space: nowrap; flex-shrink: 0; }
+
+  /* ── next-up list ── */
+  .next-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width: 640px) { .next-list { grid-template-columns: 1fr; } }
+  .next-item { display: flex; flex-direction: column; gap: 7px; padding: 16px 18px; background: var(--hearth); border: 1px solid var(--ash); border-radius: 16px; }
+  .next-item .nk { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 18px; color: var(--coal); }
+  .next-item .nv { font-size: 13px; color: var(--smoke); line-height: 1.5; }
+
+  @media print {
+    body { background: #fff; }
+    .flow-link { display: none; }
+    .page { padding: 32px; max-width: 100%; }
+    .flow, .loop, .vocab-item, .q-item, .screen-row { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ───────── HEADER ───────── -->
+  <header class="brand">
+    <span class="ember glow" style="width:18px;height:18px;"></span>
+    <span class="brand-name">BONFIRE</span>
+    <span class="doc-meta">MVP MAP · THE BUILT SLICE · JUN 2026</span>
+  </header>
+
+  <h1 class="title">The spontaneous slice,<br />in <span class="accent">three flows</span>.</h1>
+  <p class="lede">Bonfire turns &ldquo;I&rsquo;m free&rdquo; into people next to you. The bet: loneliness is a <strong>repetition problem</strong> &mdash; connection forms through repeated co-presence with the same people, and the north star is <strong>repeat co-presence, 3+&times; a month</strong>. These three prototypes cover the <strong>spontaneous pulse</strong> and the <strong>two on-ramps</strong> onto it &mdash; one slice of a larger system.</p>
+
+  <a class="sysbridge" href="Bonfire — The System.html">
+    <span class="ember glow sb-ember"></span>
+    <span class="sb-txt">
+      <span class="sb-k">The full product thesis</span>
+      <span class="sb-h">The pulse is one layer. Read the whole system &mdash; ritual, matching, the &ldquo;again&rdquo; engine, crew lifecycle.</span>
+    </span>
+    <span class="sb-arr">Open The System &rarr;</span>
+  </a>
+
+  <hr class="rule" />
+
+  <!-- ───────── THE THESIS / LOOP ───────── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2 class="sec-title">The link is the seed</h2>
+    </div>
+    <p class="tlead">Bonfire&rsquo;s core mechanic and its growth loop are the same gesture. A <em class="term">pulse</em> is dropped into a group chat people already use, it <strong>opens to value for everyone</strong> &mdash; app or not &mdash; and the lightest possible join puts a curious tapper on the list. The app exists only to make the recurring signal <strong>louder</strong> (push) and <strong>persistent</strong> (every crew in one place).</p>
+
+    <div class="loop" style="margin-top:26px;">
+      <div class="loop-step">
+        <div class="n">01 · SPARK</div>
+        <div class="h">Drop a pulse</div>
+        <div class="d">Tap <span class="ember" style="width:11px;height:11px;vertical-align:-1px;"></span> in the group chat &rarr; activity, place &amp; time auto-filled &rarr; link drops in the thread.</div>
+      </div>
+      <div class="loop-step">
+        <div class="n">02 · SPREAD</div>
+        <div class="h">In the chat</div>
+        <div class="d">It rides the channel everyone&rsquo;s already in. No new surface to adopt, no app to download to see it.</div>
+      </div>
+      <div class="loop-step">
+        <div class="n">03 · OPEN</div>
+        <div class="h">To value</div>
+        <div class="d">Anyone who taps sees the live thing instantly &mdash; in-app, or the same view in Safari. Never a download gate.</div>
+      </div>
+      <div class="loop-step">
+        <div class="n">04 · JOIN</div>
+        <div class="h">Name only</div>
+        <div class="d">Set a name and you&rsquo;re on the list. A number is optional &mdash; only for a ping and saving your spot.</div>
+      </div>
+      <div class="loop-step">
+        <div class="n">05 · CONVERT</div>
+        <div class="h">Get the app</div>
+        <div class="d">Nudged softly, later. The app adds push and keeps crews together &mdash; it&rsquo;s louder, never a wall.</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ───────── VOCABULARY ───────── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2 class="sec-title">The vocabulary</h2>
+    </div>
+    <p class="tmuted" style="margin-bottom:22px;">Two atomic objects carry the product &mdash; the <em class="term">pulse</em> and the <em class="term">crew</em>. These prototypes use the first four; the last two are the system layers above them. <span class="build done"><span class="dot"></span>in these flows</span> &middot; <span class="build spec"><span class="dot"></span>spec only</span></p>
+    <div class="vocab">
+      <div class="vocab-item">
+        <span class="vk">Pulse <span class="build done" style="vertical-align:3px;"><span class="dot"></span></span></span>
+        <span class="vv">One ephemeral &ldquo;who&rsquo;s around&rdquo; link for a single moment &mdash; an activity, a place, a time. No RSVP, no replies, no chat. A live scoreboard, not an event.</span>
+      </div>
+      <div class="vocab-item">
+        <span class="vk">Crew <span class="build done" style="vertical-align:3px;"><span class="dot"></span></span></span>
+        <span class="vv">The durable group that forms when the same people keep showing up. The app keeps every crew in one place; the chat keeps the conversation.</span>
+      </div>
+      <div class="vocab-item">
+        <span class="vk">Status <span class="build done" style="vertical-align:3px;"><span class="dot"></span></span></span>
+        <span class="vv" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">The only thing you broadcast.
+          <span class="pill here"><span class="pulse-live"></span>here</span>
+          <span class="pill otw">&rarr; on my way</span>
+          <span class="pill out">heading out</span>
+        </span>
+      </div>
+      <div class="vocab-item">
+        <span class="vk">Headcount <span class="build done" style="vertical-align:3px;"><span class="dot"></span></span></span>
+        <span class="vv">The number, set as a typographic event &mdash; <span class="serif-display" style="color:var(--ember);font-size:20px;">7</span> in &middot; 5 here &middot; 2 on the way. Warmth is always earned by real bodies, never inflated.</span>
+      </div>
+      <div class="vocab-item">
+        <span class="vk">Ritual <span class="build spec" style="vertical-align:3px;"><span class="dot"></span></span></span>
+        <span class="vv">A pulse with &ldquo;repeat&rdquo; on, pointed at the same people &mdash; the guaranteed floor under your week. Auto-spawns each cycle; summons opt-out, not opt-in.</span>
+      </div>
+      <div class="vocab-item">
+        <span class="vk">&ldquo;Again&rdquo; <span class="build spec" style="vertical-align:3px;"><span class="dot"></span></span></span>
+        <span class="vv">One tap after a real hang. Mutual &ldquo;again&rdquo; is a platonic double opt-in &mdash; the signal that turns a one-off pulse into a locked crew.</span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ───────── THE THREE FLOWS ───────── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2 class="sec-title">The three flows</h2>
+    </div>
+
+    <!-- FLOW A — PULSE LINK -->
+    <div class="flow">
+      <div class="flow-top">
+        <div class="flow-badge" style="background:var(--ember-tint);color:var(--ember);">A</div>
+        <div>
+          <h3 class="flow-title">Pulse Link &mdash; the core loop</h3>
+          <div class="flow-role">In-app · create a pulse and read the room</div>
+        </div>
+        <a class="flow-link" href="Bonfire Pulse Link.html">Open prototype <span class="arr">&rarr;</span></a>
+      </div>
+      <div class="flow-body">
+        <div class="flow-prose">
+          <p class="tlead">The heart of the product. Someone in the group chat drops a pulse; tapping it opens the <strong>live view</strong> &mdash; a running headcount and who&rsquo;s <span class="pill here" style="vertical-align:1px;"><span class="pulse-live"></span>here</span>, on the way, or heading out.</p>
+          <p class="tmuted">The create sheet is deliberately tiny: pick an activity, the nearest place is filled in for you, choose a time, drop the link. The conversation never leaves the group chat &mdash; the link is purely the scoreboard. As the night fills, you flip your own status and others see it move in real time.</p>
+        </div>
+        <div class="screens">
+          <div class="lbl">4 screens</div>
+          <div class="screen-row"><span class="sn">1</span><span class="st">Group chat &mdash; link unfurled</span><span class="sd">the seed in context</span></div>
+          <div class="screen-row"><span class="sn">2</span><span class="st">Quick-create sheet</span><span class="sd">activity · place · when</span></div>
+          <div class="screen-row"><span class="sn">3</span><span class="st">Live &mdash; 3 in</span><span class="sd">early, read the room</span></div>
+          <div class="screen-row"><span class="sn">4</span><span class="st">Live &mdash; busier, you&rsquo;re in</span><span class="sd">broadcast your status</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLOW B — WEB FLOW -->
+    <div class="flow">
+      <div class="flow-top">
+        <div class="flow-badge" style="background:var(--here-tint);color:var(--here);">B</div>
+        <div>
+          <h3 class="flow-title">Web Flow &mdash; the appless on-ramp</h3>
+          <div class="flow-role">No app · Partiful-style, the link opens straight to the live thing</div>
+        </div>
+        <a class="flow-link" href="Bonfire Web Flow (Appless).html">Open prototype <span class="arr">&rarr;</span></a>
+      </div>
+      <div class="flow-body">
+        <div class="flow-prose">
+          <p class="tlead">The growth path. A recipient with no app taps the same link and it <strong>opens straight to the live view in mobile Safari</strong> &mdash; open to value, never a download gate.</p>
+          <p class="tmuted">Joining is name-only and instant. A number is optional, asked <em>after</em> you&rsquo;re already in &mdash; only to text you a ping and save your spot to a lightweight web home. The app is nudged gently, later, as &ldquo;louder, not required.&rdquo;</p>
+        </div>
+        <div class="screens">
+          <div class="lbl">5 screens</div>
+          <div class="screen-row"><span class="sn">1</span><span class="st">The link opens &mdash; live</span><span class="sd">no signup to look</span></div>
+          <div class="screen-row"><span class="sn">2</span><span class="st">Join &mdash; name only</span><span class="sd">instant, no account</span></div>
+          <div class="screen-row"><span class="sn">3</span><span class="st">Optional &mdash; add number</span><span class="sd">for a ping</span></div>
+          <div class="screen-row"><span class="sn">4</span><span class="st">Your pulses &mdash; web home</span><span class="sd">keyed to number</span></div>
+          <div class="screen-row"><span class="sn">5</span><span class="st">Soft prompt to get the app</span><span class="sd">a nudge, not a wall</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLOW C — ONBOARDING -->
+    <div class="flow">
+      <div class="flow-top">
+        <div class="flow-badge" style="background:var(--dusk-tint);color:var(--dusk);">C</div>
+        <div>
+          <h3 class="flow-title">Onboarding &mdash; the app path</h3>
+          <div class="flow-role">Fresh install · funnel hard toward a crew, because the app is empty without one</div>
+        </div>
+        <a class="flow-link" href="Bonfire Onboarding (App).html">Open prototype <span class="arr">&rarr;</span></a>
+      </div>
+      <div class="flow-body">
+        <div class="flow-prose">
+          <p class="tlead">For people who install. Account signup is name + phone (SMS code, no password), then <strong>notifications framed as the payoff</strong> &mdash; one ping the moment your crew goes out.</p>
+          <p class="tmuted">The critical step is &ldquo;get into a crew&rdquo;: paste an invite link, start a crew, or pull friends from contacts &mdash; so no one dead-ends in an empty app. Lands on Home: crews and any live pulses, with a <span class="ember" style="width:11px;height:11px;vertical-align:-1px;"></span> to start one.</p>
+        </div>
+        <div class="screens">
+          <div class="lbl">5 screens</div>
+          <div class="screen-row"><span class="sn">1</span><span class="st">Welcome</span><span class="sd">presence, not events</span></div>
+          <div class="screen-row"><span class="sn">2</span><span class="st">Sign up &mdash; name, phone, photo</span><span class="sd">no password</span></div>
+          <div class="screen-row"><span class="sn">3</span><span class="st">Turn on notifications</span><span class="sd">the payoff</span></div>
+          <div class="screen-row"><span class="sn">4</span><span class="st">Get into a crew</span><span class="sd">don&rsquo;t dead-end empty</span></div>
+          <div class="screen-row"><span class="sn">5</span><span class="st">Home &mdash; crews &amp; live pulses</span><span class="sd">start one with +</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ───────── HOW THEY CONNECT ───────── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2 class="sec-title">How they fit together</h2>
+    </div>
+    <p class="tlead">One pulse link is shared once and serves three audiences at once. The <strong>creator</strong> and existing app users live in <strong>Flow&nbsp;A</strong>. A friend without the app falls into <strong>Flow&nbsp;B</strong> and may never need more than the web. Anyone who wants the recurring signal crosses into <strong>Flow&nbsp;C</strong> &mdash; and the soft nudge at the end of B is the bridge.</p>
+    <p class="tmuted">Read top to bottom, that&rsquo;s the funnel: <strong>see &rarr; join &rarr; come back &rarr; install</strong>. Each step is opt-in and reversible; value always arrives before any ask.</p>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ───────── WHAT'S NEXT ───────── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <h2 class="sec-title">What these cover &mdash; and what&rsquo;s next</h2>
+    </div>
+    <p class="tlead">These three flows are the <strong>spontaneous slice</strong>: the pulse lifecycle and the two on-ramps onto it. That&rsquo;s the ceiling of the product &mdash; the high-energy, &ldquo;who&rsquo;s out right now&rdquo; moment. The earlier draft of this page flagged a v1/v2 tension; the current thesis <strong>resolves it</strong>. The appless link stays (gating moves to placement, not a wall on the link); a recurring pulse <em>is</em> just a pulse with repeat on; and the harsher &ldquo;mortal fire / collective blame&rdquo; mechanic is softened into <strong>graceful auto-pause</strong>. Both app and web are first-class by design.</p>
+    <p class="tmuted">What the prototypes don&rsquo;t yet show is the rest of the system &mdash; the floor that turns a fun night into a standing crew. Four layers are specified but not drawn:</p>
+    <div class="next-list" style="margin-top:20px;">
+      <div class="next-item"><span class="nk">The ritual <span class="build spec"><span class="dot"></span>next</span></span><span class="nv">The recurring floor &mdash; a self-running cadence that summons the same crew opt-out, not opt-in, and auto-pauses gracefully when turnout fades.</span></div>
+      <div class="next-item"><span class="nk">Matching &amp; placement <span class="build spec"><span class="dot"></span>next</span></span><span class="nv">Express demand &rarr; invisible routing into a small, gated, curated, hyperlocal game. Public category, private placement &mdash; never a board you browse.</span></div>
+      <div class="next-item"><span class="nk">The &ldquo;again&rdquo; engine <span class="build spec"><span class="dot"></span>next</span></span><span class="nv">One tap after a real hang. Mutual &ldquo;again&rdquo; is the green light that turns one-off pulses into a locked crew &mdash; and makes the ritual emerge.</span></div>
+      <div class="next-item"><span class="nk">Crew lifecycle <span class="build spec"><span class="dot"></span>next</span></span><span class="nv">Pool &rarr; crystallize &rarr; lock &rarr; graceful death. Membership manages itself off one weekly in/out signal, with zero ongoing work from the creator.</span></div>
+    </div>
+    <a class="sysbridge" href="Bonfire — The System.html" style="margin-top:22px;">
+      <span class="ember glow sb-ember"></span>
+      <span class="sb-txt">
+        <span class="sb-k">The canonical model</span>
+        <span class="sb-h">See all six parts laid out as one system &mdash; ceiling, floor, and the graph beneath both.</span>
+      </span>
+      <span class="sb-arr">Open The System &rarr;</span>
+    </a>
+  </section>
+
+  <div class="footer-note">
+    <span class="ember" style="width:13px;height:13px;"></span>
+    Bonfire MVP map · synthesized from the three prototype flows + the app repo&rsquo;s PRODUCT.md / README. Links above open each live prototype.
+  </div>
+
+</div>
+</body>
+</html>

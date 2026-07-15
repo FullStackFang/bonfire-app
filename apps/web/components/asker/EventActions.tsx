@@ -34,7 +34,7 @@ export function EventActions({ eventId, token, myState, holdOpen, walkIn, venueN
           <p className="mb-2">Still in?</p>
           <div className="flex gap-2">
             <button onClick={() => setState('confirmed')} className="rounded bg-amber-500 px-4 py-2 font-medium text-black">yes</button>
-            <button onClick={() => setState('out')} className="rounded bg-neutral-800 px-4 py-2">can't tonight</button>
+            <button onClick={() => setState('out')} className="rounded bg-neutral-800 px-4 py-2">can&apos;t tonight</button>
           </div>
         </div>
       )}
@@ -50,7 +50,7 @@ export function EventActions({ eventId, token, myState, holdOpen, walkIn, venueN
             {[5, 15, 30].map((m) => (
               <button key={m} onClick={() => setState('omw', m)} className="rounded bg-neutral-800 px-3 py-2">{m} min</button>
             ))}
-            <button onClick={() => setState('here')} className="rounded bg-amber-500 px-4 py-2 font-medium text-black">I'm here</button>
+            <button onClick={() => setState('here')} className="rounded bg-amber-500 px-4 py-2 font-medium text-black">I&apos;m here</button>
           </div>
         </div>
       )}

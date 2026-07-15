@@ -1,0 +1,296 @@
+/* Bonfire Live Pulse — design-system tokens + primitives, scoped to /p routes.
+   Source of truth: design/bonfire-design-system (imported from the claude.ai/design
+   "Bonfire Design System" project). Key rules: ember is earned (live state + primary
+   CTA only), pure black forbidden (Coal), depth is the chunky press (never ambient
+   shadow on cards), pills and rounded rects only, numbers typeset — never chipped. */
+
+.bonfire-pulse {
+  /* ── ember family ── */
+  --ember: #f05846;
+  --ember-deep: #a52a24;
+  --ember-glow: #fa9b82;
+  --ember-tint: #fdeeea;
+  /* ── state accents (markers only) ── */
+  --spark: #54b05a;
+  --spark-tint: #ecf5ee;
+  --dusk: #e0843e;
+  --dusk-tint: #fbf1e7;
+  --night: #1d293d;
+  /* ── warm neutrals ── */
+  --coal: #231715;
+  --smoke: #716664;
+  --ash: #ddd6d4;
+  --cream: #fff7f1;
+  --hearth: #ffffff;
+  --shadow-warm: #c8b8b1;
+  /* ── type ── */
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Onest", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+  --pulse-cadence: 3.2s;
+  /* bottom-nav chrome height (padding + chip + offset), excluding the safe-area inset.
+     Surfaces reserve this below so nothing hides behind the fixed bar; bp-foot lifts by it. */
+  --pulse-nav-h: 68px;
+
+  /* own scroll container: the root layout locks body scrolling for the map view */
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--cream);
+  color: var(--coal);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 22px;
+  -webkit-font-smoothing: antialiased;
+  /* reserve room for the fixed bottom navbar so no surface's content hides behind it */
+  padding-bottom: calc(var(--pulse-nav-h) + env(safe-area-inset-bottom));
+}
+
+/* ── brand ── */
+.bp-ember {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 52% 52% 52% 8% / 60% 60% 40% 40%;
+  background: radial-gradient(120% 110% at 50% 78%, #FFD37A 0%, #FF8A3D 38%, #f05846 70%, #E0431F 100%);
+}
+.bp-ember--glow { box-shadow: 0 0 10px rgba(240, 88, 70, 0.55); }
+.bp-wordmark { font-weight: 700; font-size: 13px; letter-spacing: 1.4px; color: var(--coal); }
+
+/* mono pill in the brand row (share / pinned) */
+.bp-pin-chip {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ember-deep);
+  background: var(--ember-tint);
+  border: 1px solid var(--ember-glow);
+  border-radius: 999px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+/* ── type roles ── */
+.bp-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 27px;
+  line-height: 1.25;
+  color: var(--coal);
+}
+.bp-num {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+}
+.bp-sub { font-size: 12.5px; color: var(--smoke); }
+.bp-overline {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--smoke);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bp-overline .bp-live { display: inline-flex; align-items: center; gap: 5px; color: var(--spark); }
+.bp-mono { font-family: var(--font-mono); font-size: 10.5px; color: var(--smoke); }
+
+/* the shared 3.2s breathing cadence */
+@keyframes bonfire-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+.bonfire-pulse-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--spark);
+  animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
+}
+
+/* ── cards (flat, hairline, no shadow) ── */
+.bp-card { background: var(--hearth); border: 1px solid var(--ash); border-radius: 16px; }
+.bp-card--you { background: var(--ember-tint); border: 1.5px solid var(--ember); }
+.bp-card--spark { background: var(--cream); }
+.bp-card--primary { border-radius: 20px; }
+
+/* ── chunky-press buttons (Press-Eats-Shadow) ── */
+.bp-btn {
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  height: 52px;
+  padding: 0 20px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+.bp-btn:disabled { opacity: 0.5; cursor: default; }
+.bp-btn--primary { background: var(--ember); color: var(--hearth); box-shadow: 0 5px 0 var(--ember-deep); }
+.bp-btn--primary:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 0 0 var(--ember-deep); }
+.bp-btn--outline { background: var(--hearth); color: var(--ember); border: 1.5px solid var(--shadow-warm); box-shadow: 0 5px 0 var(--shadow-warm); }
+.bp-btn--outline:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 0 0 var(--shadow-warm); }
+.bp-btn--icon { width: 52px; padding: 0; flex-shrink: 0; font-size: 22px; }
+.bp-btn--ghost { background: none; color: var(--smoke); box-shadow: none; height: auto; padding: 8px 6px; font-size: 13.5px; }
+
+/* ── fields ── */
+.bp-field {
+  width: 100%;
+  box-sizing: border-box;
+  height: 50px;
+  border-radius: 14px;
+  background: var(--hearth);
+  border: 1.5px solid var(--ash);
+  padding: 0 15px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--coal);
+}
+.bp-field::placeholder { color: var(--smoke); opacity: 0.75; }
+.bp-field:focus { outline: none; border-color: var(--ember); }
+
+/* ── segmented pill options ── */
+.bp-seg { display: flex; gap: 7px; flex-wrap: wrap; }
+.bp-opt {
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 8px 13px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid var(--ash);
+  background: var(--hearth);
+  color: var(--coal);
+  transition: transform 0.06s;
+}
+.bp-opt--sel { background: var(--ember); color: var(--hearth); border-color: var(--ember); }
+.bp-opt:disabled { opacity: 0.5; cursor: default; }
+
+/* ── status pill ── */
+.bp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* ── you badge ── */
+.bp-you-badge {
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--ember);
+  background: var(--hearth);
+  border: 1px solid var(--ember-glow);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+/* ── sticky footer toolbar ── */
+/* Sits above the fixed bottom navbar (which owns the safe-area inset). */
+.bp-foot {
+  position: sticky;
+  bottom: calc(var(--pulse-nav-h) + env(safe-area-inset-bottom));
+  padding: 12px 0;
+  background: linear-gradient(rgba(255, 247, 241, 0), var(--cream) 30%);
+}
+
+/* ── slide-up sheet ── */
+.bp-sheet-wrap { position: fixed; inset: 0; z-index: 50; }
+.bp-scrim { position: absolute; inset: 0; background: rgba(35, 23, 21, 0.42); animation: bp-fade 0.2s ease; }
+@keyframes bp-fade { from { opacity: 0; } }
+.bp-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 28rem;
+  background: var(--cream);
+  border-radius: 28px 28px 0 0;
+  padding: 12px 22px max(30px, env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 40px rgba(35, 23, 21, 0.18);
+  animation: bp-rise 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes bp-rise { from { transform: translate(-50%, 100%); } }
+.bp-grab { width: 38px; height: 5px; border-radius: 999px; background: var(--ash); margin: 0 auto 14px; }
+.bp-sheet-title { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 24px; color: var(--coal); margin: 0 0 4px; }
+.bp-sheet-blurb { font-size: 13px; color: var(--smoke); margin: 0 0 16px; line-height: 1.45; }
+
+/* ── bottom navbar (chunky chips) ── */
+.bp-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: 100%;
+  max-width: 28rem; /* matches the max-w-md column */
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  background: var(--hearth);
+  border-top: 0.5px solid var(--ash);
+  padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+}
+/* each tab is a structural-press chip, not a flat icon */
+.bp-nav-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--hearth);
+  color: var(--smoke);
+  border: 1.5px solid var(--ash);
+  box-shadow: 0 4px 0 var(--shadow-warm); /* hard offset, no blur */
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+.bp-nav-tab:active { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow-warm); }
+/* active = ember face, white icon, ember-deep offset. Ember only ever means active/live. */
+.bp-nav-tab--active {
+  background: var(--ember);
+  color: var(--hearth);
+  border-color: var(--ember);
+  box-shadow: 0 4px 0 var(--ember-deep);
+}
+.bp-nav-tab--active:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ember-deep); }
+.bp-nav-tab svg { width: 22px; height: 22px; display: block; }
+/* live signal: a spark dot on the tab whose destination has something live now */
+.bp-nav-spark {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--spark);
+  border: 1.5px solid var(--hearth);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bonfire-pulse-dot { animation: none; }
+  .bp-sheet, .bp-scrim { animation: none; }
+  /* keep the state colors and resting offset; drop only the press translation */
+  .bp-nav-tab { transition: none; }
+  .bp-nav-tab:active { transform: none; box-shadow: 0 4px 0 var(--shadow-warm); }
+  .bp-nav-tab--active:active { transform: none; box-shadow: 0 4px 0 var(--ember-deep); }
+}

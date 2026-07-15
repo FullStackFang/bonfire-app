@@ -16,7 +16,7 @@ export default async function PlacesPage({ params }: { params: Promise<{ token: 
       <ViewBeacon token={token} page="places" />
       <h1 className="text-2xl font-semibold">Places</h1>
       <p className="mt-1 text-sm text-neutral-500">Spots brighten every time you go back.</p>
-      {places.length === 0 && <p className="mt-6 text-neutral-500">Nowhere yet. That changes the first time it's on.</p>}
+      {places.length === 0 && <p className="mt-6 text-neutral-500">Nowhere yet. That changes the first time it&apos;s on.</p>}
       <ul className="mt-6 space-y-2">
         {places.map((p) => (
           <li key={p.name} className="flex justify-between rounded bg-neutral-900 px-3 py-3 text-lg"

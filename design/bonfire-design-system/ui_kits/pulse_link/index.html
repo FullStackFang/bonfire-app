@@ -1,0 +1,226 @@
+<!-- @dsCard group="Pulse Link" viewport="900x680" -->
+<!-- @startingPoint section="Pulse Link" subtitle="The live pulse-link web view — presence + sparks" viewport="900x680" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bonfire · Pulse Link</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 0%, #fbe9e1 0%, var(--cream) 55%);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 30px; box-sizing: border-box;
+  }
+  .phone {
+    width: 390px; height: 800px; max-height: calc(100vh - 40px);
+    background: var(--cream); border-radius: 44px;
+    border: 10px solid #1a1210; box-shadow: 0 30px 70px -30px rgba(35,23,21,0.55);
+    overflow: hidden; position: relative; display: flex; flex-direction: column;
+  }
+  .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 26px; background: #1a1210; border-radius: 0 0 16px 16px; z-index: 40; }
+  /* safari chrome */
+  .safari { padding-top: 40px; background: #f4f1ef; border-bottom: 1px solid var(--ash); flex-shrink: 0; }
+  .safari .bar { display: flex; align-items: center; gap: 10px; padding: 4px 14px 11px; }
+  .safari .url { flex: 1; height: 36px; border-radius: 11px; background: #e7e2df; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; color: var(--coal); }
+  .safari .aa { font-size: 13px; color: var(--smoke); width: 20px; text-align: center; }
+  .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .scroll::-webkit-scrollbar { width: 0; }
+  /* brand row */
+  .brand { display: flex; align-items: center; gap: 8px; padding: 14px 20px 2px; }
+  .ember { display: inline-block; flex-shrink: 0; border-radius: 52% 52% 52% 8% / 60% 60% 40% 40%; background: radial-gradient(120% 110% at 50% 78%, #FFD37A 0%, #FF8A3D 38%, #f05846 70%, #E0431F 100%); }
+  .ember.glow { box-shadow: 0 0 10px rgba(240,88,70,0.55); }
+  .wm { font-weight: 700; font-size: 13px; letter-spacing: 1.4px; color: var(--coal); }
+  .pin { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--ember-deep); background: var(--ember-tint); border: 1px solid var(--ember-glow); border-radius: 999px; padding: 2px 8px; }
+  .trip { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 27px; color: var(--coal); padding: 6px 20px 2px; }
+  .sub { font-size: 12.5px; color: var(--smoke); padding: 0 20px 6px; }
+  .ov { font-family: var(--font-body); font-weight: 600; font-size: 11px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--smoke); padding: 14px 20px 8px; display: flex; align-items: center; gap: 8px; }
+  .ov .live { display:inline-flex; align-items:center; gap:5px; color: var(--spark); }
+  .list { padding: 0 16px; display: flex; flex-direction: column; gap: 9px; }
+  /* footer bar */
+  .foot { flex-shrink: 0; padding: 12px 18px 26px; background: linear-gradient(#fff7f100, var(--cream) 30%); }
+  .toolbar { display: flex; gap: 10px; }
+  .btn { border: none; cursor: pointer; border-radius: 999px; height: 52px; font-family: var(--font-body); font-weight: 600; font-size: 15.5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary { flex: 1; background: var(--ember); color: #fff; box-shadow: 0 5px 0 var(--ember-deep); }
+  .btn-primary:active { transform: translateY(5px); box-shadow: 0 0 0 var(--ember-deep); }
+  .btn-icon { width: 52px; background: var(--hearth); color: var(--ember); border: 1.5px solid var(--shadow-warm); box-shadow: 0 5px 0 var(--shadow-warm); font-size: 24px; }
+  .btn-icon:active { transform: translateY(5px); box-shadow: 0 0 0 var(--shadow-warm); }
+  /* sheet */
+  .sheet-wrap { position: absolute; inset: 0; z-index: 50; display: none; }
+  .sheet-wrap.open { display: block; }
+  .scrim { position: absolute; inset: 0; background: rgba(35,23,21,0.42); animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; } }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--cream); border-radius: 28px 28px 0 0; padding: 12px 22px 30px; box-shadow: 0 -8px 40px rgba(35,23,21,0.18); animation: rise .26s cubic-bezier(.2,.8,.2,1); }
+  @keyframes rise { from { transform: translateY(100%); } }
+  .grab { width: 38px; height: 5px; border-radius: 999px; background: var(--ash); margin: 0 auto 14px; }
+  .sheet h3 { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 24px; color: var(--coal); margin: 0 0 4px; }
+  .sheet p { font-size: 13px; color: var(--smoke); margin: 0 0 16px; line-height: 1.45; }
+  .field { width: 100%; box-sizing: border-box; height: 50px; border-radius: 14px; background: var(--hearth); border: 1.5px solid var(--ash); padding: 0 15px; font-family: var(--font-body); font-size: 16px; color: var(--coal); margin-bottom: 10px; }
+  .field:focus { outline: none; border-color: var(--ember); }
+  .seg { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; }
+  .opt { cursor: pointer; border-radius: 999px; padding: 8px 13px; font-weight: 600; font-size: 13px; border: 1px solid var(--ash); background: var(--hearth); color: var(--coal); }
+  .opt.sel { background: var(--ember); color: #fff; border-color: var(--ember); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="safari">
+    <div class="bar">
+      <span class="aa"><span style="font-size:11px">A</span><span style="font-size:16px">A</span></span>
+      <span class="url">🔒 bonfire.live/p/greece26</span>
+      <span class="aa">⟳</span>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="brand"><span class="ember glow" style="width:16px;height:16px;"></span><span class="wm">BONFIRE</span><span class="pin">Pinned</span></div>
+    <div class="trip">Greece ’26</div>
+    <div class="sub">Live for the whole trip · 6 on the link</div>
+
+    <div class="ov"><span class="live"><span class="bonfire-pulse-dot"></span>Live now</span></div>
+    <div class="list" id="sparks"></div>
+
+    <div class="ov">Who’s up to what</div>
+    <div class="list" id="roster" style="padding-bottom:14px;"></div>
+  </div>
+  <div class="foot">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="dropBtn"><span class="ember" style="width:15px;height:15px;"></span>Drop a spark</button>
+      <button class="btn btn-icon" id="statusBtn" title="Set your status">◔</button>
+    </div>
+  </div>
+
+  <!-- Drop-a-spark sheet -->
+  <div class="sheet-wrap" id="sparkSheet">
+    <div class="scrim" data-close></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>Drop a spark</h3>
+      <p>A one-line plan. Not an invite — people opt themselves in.</p>
+      <input class="field" id="spTitle" placeholder="What’s the plan?" />
+      <input class="field" id="spPlace" placeholder="Where?" />
+      <input class="field" id="spTime" placeholder="When? (or “now”)" />
+      <button class="btn btn-primary" style="width:100%;box-shadow:0 5px 0 var(--ember-deep);" id="spAdd"><span class="ember" style="width:15px;height:15px;"></span>Drop it</button>
+    </div>
+  </div>
+
+  <!-- Set-status sheet -->
+  <div class="sheet-wrap" id="statusSheet">
+    <div class="scrim" data-close></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>Set your status</h3>
+      <p>Self-reported, never GPS. Add a note if you like.</p>
+      <div class="seg" id="statusOpts">
+        <span class="opt" data-st="around">around</span>
+        <span class="opt" data-st="pool">at the pool</span>
+        <span class="opt" data-st="asleep">asleep</span>
+        <span class="opt" data-st="out">out</span>
+      </div>
+      <input class="field" id="stNote" placeholder="Optional note — “by the harbor”" />
+      <button class="btn btn-primary" style="width:100%;box-shadow:0 5px 0 var(--ember-deep);" id="stSave">Save status</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── tiny state model ────────────────────────────────────────────────
+const AV = { blue:'#5E7FE5', green:'#1A9E75', purple:'#9D5BC2', orange:'#E2843D', amber:'#E2B33D', slate:'#666f7d' };
+const ST = {
+  around:{fg:'var(--spark)',bg:'var(--spark-tint)',label:'around'},
+  pool:{fg:'var(--dusk)',bg:'var(--dusk-tint)',label:'at the pool'},
+  asleep:{fg:'#7A6C82',bg:'#efeaf0',label:'asleep'},
+  out:{fg:'var(--smoke)',bg:'#f1eeec',label:'out'},
+  here:{fg:'var(--spark)',bg:'var(--spark-tint)',label:'here'},
+  otw:{fg:'var(--dusk)',bg:'var(--dusk-tint)',label:'on my way'},
+};
+let sparks = [
+  { id:1, title:'Sunset at the windmills', place:'Oia', time:'8:30pm', ttl:'ends 9:30p', count:3, fresh:true, joined:false },
+  { id:2, title:'Coffee run', place:'that place by the steps', time:'now', ttl:'now · ends EOD', count:1, fresh:false, joined:true },
+];
+let roster = [
+  { name:'Maya', initials:'M', color:AV.orange, status:'around', note:'by the harbor, easy to grab', time:'2m' },
+  { name:'Theo', initials:'T', color:AV.green, status:'pool', note:'', time:'9m' },
+  { name:'Sam', initials:'S', color:AV.purple, status:'asleep', note:'nap — wake me for dinner', time:'40m' },
+  { name:'Iris', initials:'I', color:AV.slate, status:'out', note:'day trip to Naxos, back late', time:'1h' },
+  { name:'Alex R.', initials:'A', color:AV.blue, status:'around', note:'', time:'now', you:true },
+];
+
+function pill(status, opts={}) {
+  const s = ST[status] || ST.around;
+  const dot = status==='here' ? '<span class="bonfire-pulse-dot" style="width:6px;height:6px"></span>' : status==='otw' ? '→ ' : '';
+  return `<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:${s.bg};color:${s.fg};font-weight:600;font-size:11.5px;white-space:nowrap;">${dot}${s.label}</span>`;
+}
+
+function renderSparks() {
+  document.getElementById('sparks').innerHTML = sparks.map(sp => `
+    <div style="background:${sp.fresh?'var(--ember-tint)':'var(--cream)'};border:1px solid ${sp.fresh?'var(--ember-glow)':'var(--ash)'};border-radius:16px;padding:14px 16px;">
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <span style="font-family:var(--font-display);font-style:italic;font-weight:600;font-size:18px;color:var(--coal);">${sp.title}</span>
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:9.5px;color:var(--smoke);white-space:nowrap;">${sp.ttl}</span>
+      </div>
+      <div style="font-size:12px;color:var(--smoke);margin-top:3px;"><b style="color:var(--coal);font-weight:600;">${sp.place}</b> · ${sp.time}</div>
+      <div style="display:flex;align-items:center;gap:9px;margin-top:11px;">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--ember-deep);font-weight:500;">${sp.count} in</span>
+        <button data-join="${sp.id}" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:${sp.joined?'var(--hearth)':'var(--ember)'};color:${sp.joined?'var(--ember)':'#fff'};border:${sp.joined?'1.5px solid var(--ember-glow)':'none'};border-radius:999px;padding:6px 14px;font-weight:600;font-size:12px;cursor:pointer;">
+          <span class="ember" style="width:10px;height:10px;border-radius:52% 52% 52% 8% / 60% 60% 40% 40%;background:radial-gradient(120% 110% at 50% 78%,#FFD37A,#FF8A3D 38%,#f05846 70%,#E0431F);"></span>${sp.joined?'you’re in':'I’m in'}
+        </button>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('[data-join]').forEach(b => b.onclick = () => {
+    const sp = sparks.find(s => s.id == b.dataset.join);
+    sp.joined = !sp.joined; sp.count += sp.joined ? 1 : -1; renderSparks();
+  });
+}
+
+function renderRoster() {
+  document.getElementById('roster').innerHTML = roster.map(p => `
+    <div style="background:${p.you?'var(--ember-tint)':'var(--hearth)'};border-radius:16px;border:${p.you?'1.5px solid var(--ember)':'1px solid var(--ash)'};padding:11px 13px;display:flex;gap:12px;align-items:flex-start;">
+      <span style="width:40px;height:40px;border-radius:50%;background:${p.color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;border:2px solid var(--hearth);flex-shrink:0;">${p.initials}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:14.5px;color:var(--coal);">${p.name}</span>
+          ${p.you?'<span style="font-weight:600;font-size:10px;letter-spacing:.5px;color:var(--ember);background:var(--hearth);border:1px solid var(--ember-glow);padding:1px 7px;border-radius:999px;">YOU</span>':''}
+          <span style="margin-left:auto;font-family:var(--font-mono);font-size:10.5px;color:var(--smoke);">${p.time}</span>
+        </div>
+        <div style="margin-top:7px;">${pill(p.status)}</div>
+        ${p.note?`<div style="font-size:12.5px;color:var(--smoke);margin-top:6px;line-height:1.35;">“${p.note}”</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ── sheet plumbing ───────────────────────────────────────────────────
+function openSheet(id){ document.getElementById(id).classList.add('open'); }
+function closeSheets(){ document.querySelectorAll('.sheet-wrap').forEach(s=>s.classList.remove('open')); }
+document.querySelectorAll('[data-close]').forEach(s=>s.onclick=closeSheets);
+document.getElementById('dropBtn').onclick=()=>openSheet('sparkSheet');
+document.getElementById('statusBtn').onclick=()=>openSheet('statusSheet');
+
+document.getElementById('spAdd').onclick=()=>{
+  const t=document.getElementById('spTitle').value.trim();
+  if(!t){document.getElementById('spTitle').focus();return;}
+  const place=document.getElementById('spPlace').value.trim()||'somewhere';
+  const time=document.getElementById('spTime').value.trim()||'now';
+  sparks.forEach(s=>s.fresh=false);
+  sparks.unshift({id:Date.now(),title:t,place,time,ttl:time==='now'?'now · ends EOD':'ends soon',count:1,fresh:true,joined:true});
+  ['spTitle','spPlace','spTime'].forEach(i=>document.getElementById(i).value='');
+  closeSheets(); renderSparks();
+};
+
+let picked='around';
+document.querySelectorAll('#statusOpts .opt').forEach(o=>{
+  if(o.dataset.st===picked) o.classList.add('sel');
+  o.onclick=()=>{ picked=o.dataset.st; document.querySelectorAll('#statusOpts .opt').forEach(x=>x.classList.toggle('sel',x===o)); };
+});
+document.getElementById('stSave').onclick=()=>{
+  const me=roster.find(p=>p.you);
+  me.status=picked; me.note=document.getElementById('stNote').value.trim(); me.time='now';
+  closeSheets(); renderRoster();
+};
+
+renderSparks(); renderRoster();
+</script>
+</body>
+</html>

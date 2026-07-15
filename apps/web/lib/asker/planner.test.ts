@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test fixtures cast partial rows. */
 import { describe, it, expect } from 'vitest'
 import { planScheduledRounds, planKindleRelease, planHoldDecision } from './planner'
 import type { Circle, Round } from './types'

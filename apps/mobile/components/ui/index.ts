@@ -8,6 +8,7 @@ export { Chip, type ChipProps, type ChipVariant, type ChipSize } from "./Chip";
 export { Card, type CardProps } from "./Card";
 export { CTAButton, type CTAButtonProps, type CTAVariant } from "./CTAButton";
 export { ChunkyPressable, type ChunkyPressableProps } from "./ChunkyPressable";
+export { ChunkyTabBar } from "./ChunkyTabBar";
 export { AppHeader, type AppHeaderProps } from "./AppHeader";
 export {
   IconButton,

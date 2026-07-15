@@ -12,9 +12,9 @@ export function JoinForm({ circleId }: { circleId: string }) {
   if (link) {
     return (
       <div className="space-y-3">
-        <p className="text-amber-400">You're in. We texted you your personal link — it's also here:</p>
+        <p className="text-amber-400">You&apos;re in. We texted you your personal link — it&apos;s also here:</p>
         <a href={link} className="block break-all rounded bg-neutral-900 p-3 text-sm underline">{link}</a>
-        <p className="text-sm text-neutral-400">Bookmark it. It's how the asker reaches you.</p>
+        <p className="text-sm text-neutral-400">Bookmark it. It&apos;s how the asker reaches you.</p>
       </div>
     )
   }

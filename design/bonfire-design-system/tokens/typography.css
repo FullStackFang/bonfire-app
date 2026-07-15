@@ -1,0 +1,26 @@
+/* Bonfire — type system.
+   Display: Source Serif 4 (stands in for FontShare "Sentient").
+   Body:    Onest (stands in for "Switzer").
+   Mono:    Geist Mono (stands in for "Fragment Mono").
+   Editorial serif italic for display + numbers; clean grotesk for UI; mono for live data. */
+:root {
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Onest", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Type scale — size / line-height pairs (from DESIGN.md) */
+  --fs-display: 34px;   --lh-display: 40px;   /* italic — screen titles, large numerics */
+  --fs-headline: 28px;  --lh-headline: 34px;  /* section openers, head-counts as typography */
+  --fs-title: 22px;     --lh-title: 28px;     /* card titles, modal headers */
+  --fs-body-lg: 17px;   --lh-body-lg: 24px;   /* primary reading copy */
+  --fs-body: 15px;      --lh-body: 22px;      /* default UI copy, list rows */
+  --fs-body-sm: 13px;   --lh-body-sm: 18px;   /* chip labels, metadata */
+  --fs-mono: 12px;      --lh-mono: 16px;      /* timestamps, distances — used sparingly */
+  --fs-overline: 11px;  --lh-overline: 14px;  --ls-overline: 1.1px; /* section labels — ALWAYS UPPERCASE */
+
+  /* Weights */
+  --fw-regular: 400;   /* @kind other */
+  --fw-medium: 500;    /* @kind other */
+  --fw-semibold: 600;  /* @kind other */
+  --fw-bold: 700;      /* @kind other */
+}
