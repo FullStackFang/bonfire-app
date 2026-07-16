@@ -87,6 +87,8 @@ export const navCopy = {
   home: 'Home',
   events: 'Events',
   groups: 'Groups',
+  login: 'Log in',
+  account: 'Account',
   eventsTitle: 'Events',
   groupsTitle: 'Groups',
   eventsEmptyTitle: 'No events yet',
@@ -94,4 +96,28 @@ export const navCopy = {
   groupsEmptyTitle: 'No groups yet',
   groupsEmptyBlurb: 'Groups form where the same people keep showing up. Start a board, share the link, and one begins.',
   startCta: 'Start something',
+}
+
+// Sign-in (/p/login) and account (/p/account) strings. Sign-in and sign-up are one flow —
+// the heading says both so nobody has to know which they are. Phones are always masked.
+export const authCopy = {
+  signInHeading: 'Sign in or sign up',
+  signInBlurb: "We'll text you a 6-digit code. Never shown to anyone.",
+  phonePlaceholder: '(555) 010-2030',
+  sendCodeCta: 'Text me a code',
+  consentLine: 'By tapping "Text me a code" you agree to receive a one-time verification text. Msg & data rates may apply.',
+  sentTo: (displayPhone: string) => `We sent ${displayPhone} a code via SMS.`,
+  codeLabel: 'Verification Code',
+  codePlaceholder: '6-digit code',
+  confirmCta: 'Verify',
+  resendCountdown: (seconds: number) => `Didn't receive your code? Resend it in ${seconds}s`,
+  resendCta: "Didn't receive your code? Resend it",
+  differentNumberCta: 'Use a different number',
+  nameHeading: "What's your name?",
+  namePlaceholder: 'Your name',
+  nameCta: 'Continue',
+  accountTitle: 'Account',
+  phoneLabel: 'Phone',
+  signOutCta: 'Sign out',
+  signOutBlurb: 'Signs this device out. Your crews and availability stay with your number — sign back in anytime.',
 }

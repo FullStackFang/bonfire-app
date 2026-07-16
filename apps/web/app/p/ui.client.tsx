@@ -1,7 +1,7 @@
 'use client'
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import type { BoardStatus, PublicDashCrew, PublicDashPulse, PulseStatus } from '@/lib/pulse/types'
+import type { BoardStatus, PublicDashCrew, PublicDashPulse, PublicPlanOption, PulseStatus } from '@/lib/pulse/types'
 import { BOARD_STATUS_LABEL, PULSE_STATUS_LABEL, dashCopy } from '@/lib/pulse/copy'
 
 // Shared Live Pulse primitives, ported from design/bonfire-design-system
@@ -198,6 +198,44 @@ export function CrewCard({ c }: { c: PublicDashCrew }) {
       </span>
       {c.myStatus && <StatusPill kind="board" status={c.myStatus} label={BOARD_STATUS_LABEL[c.myStatus]} />}
     </Link>
+  )
+}
+
+// ── plan option typesetting (link view + opener review share it) ─────
+
+// The server label is "Fri, Jul 17 · 6:30 PM · Blue Bottle Coffee". Split the venue
+// off so the time leads and the place gets its own line instead of one long bold
+// string wrapping mid-venue. Falls back to the whole label if the shape differs.
+export function splitPlanLabel(label: string, venueName?: string | null): { time: string; venue: string | null } {
+  if (venueName && label.endsWith(` · ${venueName}`)) {
+    return { time: label.slice(0, label.length - venueName.length - 3), venue: venueName }
+  }
+  return { time: label, venue: null }
+}
+
+// Card body for one plan option: time lead, venue line, rationale, and (on the link
+// view) the availability count typeset as a numeral — never chipped.
+export function PlanOptionBody({ o, showCount = false }: { o: PublicPlanOption; showCount?: boolean }) {
+  const { time, venue } = splitPlanLabel(o.label, o.venue?.name)
+  return (
+    <>
+      <span className="flex items-baseline gap-2.5">
+        <span style={{ fontWeight: 600, fontSize: 15, lineHeight: '21px' }}>{time}</span>
+        {showCount && o.availableCount > 0 && (
+          <span className="bp-num ml-auto whitespace-nowrap" style={{ fontSize: 15, color: 'var(--ember-deep)' }}>
+            {o.availableCount} free
+          </span>
+        )}
+      </span>
+      {venue && (
+        <span className="block" style={{ fontWeight: 500, fontSize: 13, marginTop: 1 }}>{venue}</span>
+      )}
+      {o.aiRationale && (
+        <span className="block" style={{ fontSize: 12.5, color: 'var(--smoke)', marginTop: 3, lineHeight: '17px' }}>
+          {o.aiRationale}
+        </span>
+      )}
+    </>
   )
 }
 

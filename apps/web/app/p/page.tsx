@@ -8,8 +8,10 @@ import { viewerCrews, viewerPulses } from '@/lib/pulse/dashReads'
 import { serializeDash } from '@/lib/pulse/serialize'
 import { isCrawler } from '@/lib/pulse/ratelimit'
 import { dashCopy } from '@/lib/pulse/copy'
+import { getPublicReconnect } from '@/lib/pulse/reconnect'
 import { BrandRow, CrewCard, PulseCard } from './ui.client'
 import { RecoveryEntry } from './dash.client'
+import { ReconnectCard } from './Reconnect.client'
 
 // The home of the pulse rail: everything the viewer is part of, read once from the cookie
 // identity and rendered server-side. A launchpad, not a live surface — no polling; freshness
@@ -35,6 +37,9 @@ export default async function DashPage() {
     after(() => repo.logEvent('dash_view', { participantId: viewer?.id ?? null }))
   }
 
+  // Proactive reconnect suggestion (Phase 3) — opt-in, crew-mate-scoped, derived from co-presence.
+  const reconnect = viewer ? await getPublicReconnect(toPublicViewer(viewer)) : { enabled: false, suggestion: null }
+
   const dash = serializeDash(crews, pulses, toPublicViewer(viewer))
   const empty = dash.live.length === 0 && dash.crews.length === 0 && dash.earlier.length === 0
   // Identity chrome only when it can help: unverified (verify makes this device durable) or
@@ -46,6 +51,8 @@ export default async function DashPage() {
     // narrow centered column (a wide surface for one CTA reads as broken).
     <main className={`mx-auto min-h-full w-full px-4 pt-4 pb-8 ${empty ? 'max-w-md' : 'bp-main-wide'}`}>
       <BrandRow />
+
+      <ReconnectCard initial={reconnect} hasPeople={crews.length > 0} />
 
       {empty ? (
         <>

@@ -4,7 +4,8 @@ import { usePathname } from 'next/navigation'
 import { navCopy } from '@/lib/pulse/copy'
 import { EmberMark } from './ui.client'
 
-// The shared primary nav for every /p surface: three tabs (Home · Events · Groups). Active state
+// The shared primary nav for every /p surface: three tabs (Home · Events · Groups) plus an auth
+// chip (Log in → /p/login when signed out, Account → /p/account when verified). Active state
 // derives from the route — detail pages count toward the section they belong to (a pulse → Events,
 // a crew → Groups) so one tab is always lit.
 //
@@ -40,6 +41,14 @@ function PeopleIcon() {
     </svg>
   )
 }
+function PersonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="7.5" r="3.6" />
+      <path d="M5 20c0-3.4 3-5.6 7-5.6s7 2.2 7 5.6" />
+    </svg>
+  )
+}
 
 type Tab = { href: string; label: string; icon: React.ReactNode; active: (p: string) => boolean }
 
@@ -52,8 +61,13 @@ const TABS: Tab[] = [
   { href: '/p/groups', label: navCopy.groups, icon: <PeopleIcon />, active: (p) => p === '/p/groups' || p.startsWith('/p/c/') },
 ]
 
-export function PulseTabBar({ live = false }: { live?: boolean }) {
+export function PulseTabBar({ live = false, verified = false }: { live?: boolean; verified?: boolean }) {
   const pathname = usePathname()
+  // The auth chip: the one route in when signed out, the account surface when signed in.
+  // Same chunky-chip states as the tabs; active only on its own route.
+  const auth: Tab = verified
+    ? { href: '/p/account', label: navCopy.account, icon: <PersonIcon />, active: (p) => p === '/p/account' }
+    : { href: '/p/login', label: navCopy.login, icon: <PersonIcon />, active: (p) => p === '/p/login' }
   return (
     <nav className="bp-nav" aria-label="Primary">
       {/* Rail-only brand + way home (desktop). Hidden on the phone bottom bar. */}
@@ -61,7 +75,7 @@ export function PulseTabBar({ live = false }: { live?: boolean }) {
         <EmberMark glow size={18} />
         <span className="bp-wordmark">BONFIRE</span>
       </Link>
-      {TABS.map((tab) => {
+      {[...TABS, auth].map((tab) => {
         const active = tab.active(pathname)
         // The spark rides the Events tab: it points at the surface where a live pulse lives.
         const showSpark = live && tab.href === '/p/events'

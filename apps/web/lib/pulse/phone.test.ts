@@ -23,6 +23,24 @@ describe('normalizePhone', () => {
   })
 })
 
+describe('formatPhoneDisplay', () => {
+  it('formats NANP numbers for display', async () => {
+    const { formatPhoneDisplay } = await import('./phone-format')
+    expect(formatPhoneDisplay('6462268158')).toBe('+1 646-226-8158')
+    expect(formatPhoneDisplay('(646) 226-8158')).toBe('+1 646-226-8158')
+    expect(formatPhoneDisplay('+16462268158')).toBe('+1 646-226-8158')
+  })
+  it('leaves non-NANP numbers bare E.164', async () => {
+    const { formatPhoneDisplay } = await import('./phone-format')
+    expect(formatPhoneDisplay('+44 20 7946 0958')).toBe('+442079460958')
+  })
+  it('falls back to the raw (trimmed) input when unparseable', async () => {
+    const { formatPhoneDisplay } = await import('./phone-format')
+    expect(formatPhoneDisplay(' 12345 ')).toBe('12345')
+    expect(formatPhoneDisplay('hello')).toBe('hello')
+  })
+})
+
 describe('requireVerified gating matrix', () => {
   const tier0 = {
     id: 'p0', token: 't0', displayName: 'Ghost', phone: null, phoneVerifiedAt: null, createdAt: new Date(),

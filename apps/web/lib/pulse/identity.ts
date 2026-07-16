@@ -73,6 +73,13 @@ export async function adoptParticipant(p: Participant): Promise<void> {
   store.set(COOKIE, p.token, COOKIE_OPTS)
 }
 
+/** Sign-out: delete the device identity cookie. The participant row is untouched — the phone
+ *  identity survives and is recovered by verifying again on any device. */
+export async function clearParticipant(): Promise<void> {
+  const store = await cookies()
+  store.delete(COOKIE)
+}
+
 /** Tier gate for durable acts ONLY (availability writes, crew create/join, SMS delivery).
  *  Consumption paths (presence, pulse responses) must never call this. Returns a Response to
  *  short-circuit the route, or null to proceed. */

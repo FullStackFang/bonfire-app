@@ -1,7 +1,12 @@
 import { createHash, randomInt } from 'node:crypto'
 import { deliverSms } from '../sms'
+import { normalizePhone } from './phone-format'
 import * as repo from './repo'
 import type { Participant } from './types'
+
+// The pure helpers live in phone-format.ts (client-safe, no node imports); re-exported here
+// so existing server imports and tests are untouched.
+export { normalizePhone, maskPhone } from './phone-format'
 
 // One-time SMS phone verification for the durable (tier-1) identity. Codes are 6 digits,
 // hashed at rest, expire in 10 minutes, allow 5 attempts, single-use. Issuing is rate-limited
@@ -18,21 +23,6 @@ export type IssueResult = { ok: true } | { ok: false; error: 'invalid_phone' | '
 export type ConfirmResult =
   | { ok: true; participant: Participant; merged: boolean }
   | { ok: false; error: 'invalid_phone' | 'no_code' | 'expired' | 'too_many_attempts' | 'bad_code' }
-
-/** E.164 normalize. Bare 10-digit numbers are assumed US (+1); otherwise a country code is
- *  required. Returns null when the input can't be a real phone. */
-export function normalizePhone(input: string): string | null {
-  const cleaned = input.trim().replace(/[\s\-().]/g, '')
-  const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned
-  if (!/^\d+$/.test(digits)) return null
-  if (cleaned.startsWith('+')) {
-    if (digits.length < 8 || digits.length > 15 || digits.startsWith('0')) return null
-    return `+${digits}`
-  }
-  if (digits.length === 10) return `+1${digits}` // bare US number
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  return null
-}
 
 export function hashCode(code: string): string {
   return createHash('sha256').update(code).digest('hex')

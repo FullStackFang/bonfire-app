@@ -192,6 +192,28 @@
 .bp-opt--sel { background: var(--ember); color: var(--hearth); border-color: var(--ember); }
 .bp-opt:disabled { opacity: 0.5; cursor: default; }
 
+/* ── plan option cards ──
+   Full-width, multi-line tappables (time + venue + rationale). The segmented pill
+   above cannot take a second line — 999px radius on a tall block turns into an egg.
+   Flat card vocabulary; selected mirrors bp-card--you (ember tint, never a flood). */
+.bp-opt-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 16px;
+  background: var(--hearth);
+  border: 1.5px solid var(--ash);
+  padding: 12px 15px;
+  font-family: var(--font-body);
+  color: var(--coal);
+  transition: border-color 0.12s, background-color 0.12s, opacity 0.12s;
+}
+.bp-opt-card--sel { background: var(--ember-tint); border-color: var(--ember); }
+.bp-opt-card--busy { opacity: 0.7; }
+.bp-opt-card:disabled { cursor: default; }
+.bp-opt-card:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+
 /* ── status pill ── */
 .bp-pill {
   display: inline-flex;
@@ -318,6 +340,7 @@
   .bp-btn--outline:hover:not(:disabled):not(:active) { transform: translateY(-1px); box-shadow: 0 6px 0 var(--shadow-warm); }
   .bp-btn--ghost:hover:not(:disabled) { color: var(--coal); }
   .bp-opt:hover:not(:disabled):not(.bp-opt--sel) { border-color: var(--shadow-warm); background: #fffdfb; }
+  .bp-opt-card:hover:not(:disabled):not(.bp-opt-card--sel) { border-color: var(--shadow-warm); background: #fffdfb; }
   .bp-pin-chip:hover { background: #fbe3dd; }
 }
 

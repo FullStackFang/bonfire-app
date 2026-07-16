@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getViewer } from '@/lib/pulse/identity'
+import { getViewer, isVerified } from '@/lib/pulse/identity'
 import { viewerPulses } from '@/lib/pulse/dashReads'
 import { PulseTabBar } from './nav.client'
 import './pulse.css'
@@ -12,8 +12,8 @@ export default function PulseLayout({ children }: { children: React.ReactNode })
   return (
     <div className="bonfire-pulse">
       {children}
-      {/* The bar paints immediately (spark off); the live read streams in behind it so the
-          layout never blocks first paint on a DB round-trip. */}
+      {/* The bar paints immediately (spark off, signed-out default); the live read streams in
+          behind it so the layout never blocks first paint on a DB round-trip. */}
       <Suspense fallback={<PulseTabBar />}>
         <LiveTabBar />
       </Suspense>
@@ -21,10 +21,11 @@ export default function PulseLayout({ children }: { children: React.ReactNode })
   )
 }
 
-// Live signal for the bar's spark dot — the same per-request-cached read the dash/events
-// pages use, so on those surfaces this costs no extra query.
+// Live signal for the bar's spark dot + the auth chip's verified state — the same
+// per-request-cached read the dash/events pages use, so on those surfaces this costs no
+// extra query.
 async function LiveTabBar() {
   const viewer = await getViewer()
   const live = viewer ? (await viewerPulses(viewer.id)).live.length > 0 : false
-  return <PulseTabBar live={live} />
+  return <PulseTabBar live={live} verified={isVerified(viewer)} />
 }
