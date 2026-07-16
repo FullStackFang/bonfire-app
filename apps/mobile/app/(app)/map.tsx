@@ -5,18 +5,21 @@
 // the venue card for whatever light you touch — with the real verbs (Pulse
 // here, Drop ember, I'm coming) — and the anchor-night demo trigger.
 
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { light } from "@bonfire/ui-tokens";
 import { T, Card, Chip, ChunkyPressable, SegmentedControl } from "../../components/ui";
-import {
-  FogMap,
-  type FogMapHandle,
-  type FogMapSelection,
-} from "../../components/map/FogMap";
+import type { FogMapHandle, FogMapSelection } from "../../components/map/fogTypes";
+
+// Deferred: FogMap pulls maplibre-gl on web — by far the heaviest module in the app.
+// lazy() keeps it out of the startup path (its own chunk on web export); the tab renders
+// its cream surface instantly and the map hydrates a beat later.
+const FogMap = lazy(() =>
+  import("../../components/map/FogMap").then((m) => ({ default: m.FogMap })),
+);
 import { mapCenter, embers, litTerritory, group } from "../../lib/mockV2";
 import { useLiveSim, startAnchorNight } from "../../lib/liveSim";
 import {
@@ -329,7 +332,9 @@ export default function MapScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: light.cream }}>
-      <FogMap ref={fogRef} mode={mode} userPos={userPos} onSelect={setSel} />
+      <Suspense fallback={<View style={{ flex: 1, backgroundColor: light.cream }} />}>
+        <FogMap ref={fogRef} mode={mode} userPos={userPos} onSelect={setSel} />
+      </Suspense>
 
       {/* Floating layer toggle */}
       <View style={{ position: "absolute", top: insets.top + 12, left: 20, right: 20 }}>

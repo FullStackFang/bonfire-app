@@ -24,13 +24,15 @@
   --hearth: #ffffff;
   --shadow-warm: #c8b8b1;
   /* ── type ── */
-  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --font-body: "Onest", system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-source-serif), "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: var(--font-onest), "Onest", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
   --pulse-cadence: 3.2s;
   /* bottom-nav chrome height (padding + chip + offset), excluding the safe-area inset.
      Surfaces reserve this below so nothing hides behind the fixed bar; bp-foot lifts by it. */
   --pulse-nav-h: 68px;
+  /* desktop (≥860px) slim icon-rail width; unused on the phone bottom bar. */
+  --rail-w: 76px;
 
   /* own scroll container: the root layout locks body scrolling for the map view */
   height: 100dvh;
@@ -111,6 +113,20 @@
   border-radius: 50%;
   background: var(--spark);
   animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
+}
+
+/* ── loading skeletons (the /p loading shell — quiet warm blocks, no spinner) ── */
+.bp-skel {
+  border-radius: 16px;
+  background: linear-gradient(100deg, #f6ede6 40%, #fdf6f0 50%, #f6ede6 60%);
+  background-size: 200% 100%;
+  animation: bp-shimmer 1.4s ease-in-out infinite;
+}
+.bp-skel--title { height: 34px; max-width: 200px; border-radius: 10px; }
+.bp-skel--card { height: 88px; }
+@keyframes bp-shimmer {
+  from { background-position: 120% 0; }
+  to   { background-position: -80% 0; }
 }
 
 /* ── cards (flat, hairline, no shadow) ── */
@@ -274,6 +290,13 @@
 }
 .bp-nav-tab--active:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ember-deep); }
 .bp-nav-tab svg { width: 22px; height: 22px; display: block; }
+/* Rail-only chrome — off on the phone bottom bar, switched on at the desktop breakpoint. */
+.bp-nav-brand { display: none; }
+
+/* Desktop layout primitives — inert on phones (plain block / vertical list), they
+   become the wide two-column spread and card grids at the desktop breakpoint. */
+.bp-cols { display: block; }
+.bp-list { display: flex; flex-direction: column; gap: 8px; }
 /* live signal: a spark dot on the tab whose destination has something live now */
 .bp-nav-spark {
   position: absolute;
@@ -286,11 +309,147 @@
   border: 1.5px solid var(--hearth);
 }
 
+/* ── cursor hover states (pointer devices only — touch keeps press-only feedback) ── */
+@media (hover: hover) and (pointer: fine) {
+  a.bp-card { transition: border-color 0.12s, background-color 0.12s; }
+  a.bp-card:hover { border-color: var(--shadow-warm); background: #fffdfb; }
+  a.bp-card--spark:hover { background: var(--hearth); }
+  .bp-btn--primary:hover:not(:disabled):not(:active) { transform: translateY(-1px); box-shadow: 0 6px 0 var(--ember-deep); }
+  .bp-btn--outline:hover:not(:disabled):not(:active) { transform: translateY(-1px); box-shadow: 0 6px 0 var(--shadow-warm); }
+  .bp-btn--ghost:hover:not(:disabled) { color: var(--coal); }
+  .bp-opt:hover:not(:disabled):not(.bp-opt--sel) { border-color: var(--shadow-warm); background: #fffdfb; }
+  .bp-pin-chip:hover { background: #fbe3dd; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bonfire-pulse-dot { animation: none; }
+  .bp-skel { animation: none; }
   .bp-sheet, .bp-scrim { animation: none; }
   /* keep the state colors and resting offset; drop only the press translation */
   .bp-nav-tab { transition: none; }
   .bp-nav-tab:active { transform: none; box-shadow: 0 4px 0 var(--shadow-warm); }
   .bp-nav-tab--active:active { transform: none; box-shadow: 0 4px 0 var(--ember-deep); }
+}
+
+/* ═══ desktop: rail + full-bleed surface ═══════════════════════════════════
+   The phone shell is a single thumb-column under a fixed bottom bar. On a pointer-
+   driven screen that reads as a phone app in a browser, so at ≥860px the bottom bar
+   lifts into a slim left icon rail and the content flows directly on ONE warm full-
+   bleed surface (cream + faint ember pooling) — no bounded panel, no card, no
+   container edge. The layout, not a frame, does the work: content uses the width.
+   Light pools, never floods (PRODUCT.md): the ember glow is a soft low-alpha wash. */
+@media (min-width: 860px) {
+  .bonfire-pulse {
+    padding-bottom: 0;
+    padding-left: var(--rail-w); /* clear the fixed rail */
+    /* one warm surface for the whole viewport; faint ember warmth, not a gradient wall */
+    background:
+      radial-gradient(50rem 50rem at 14% 12%, rgba(240, 88, 70, 0.05), transparent 60%),
+      radial-gradient(56rem 42rem at 92% 96%, rgba(250, 155, 130, 0.05), transparent 55%),
+      var(--cream);
+  }
+
+  /* content sits directly on the surface — no background, no shadow, no border.
+     Forms/detail keep a readable measure; list surfaces opt into the wide spread. */
+  .bonfire-pulse main {
+    max-width: 34rem;
+  }
+
+  /* the per-surface wordmark defers to the rail; keep any children (ShareChip).
+     Scoped through .bonfire-pulse so it outranks the Tailwind .flex utility on the
+     same element regardless of layer order. */
+  .bonfire-pulse .bp-brandrow-home { display: none; }
+
+  /* ── bottom bar → slim icon rail (the Partiful desktop idiom) ── */
+  .bp-nav {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    transform: none;
+    width: var(--rail-w);
+    max-width: none;
+    height: 100dvh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 22px 0;
+    background: var(--cream);
+    border-top: none;
+    border-right: 1px solid var(--ash);
+  }
+  /* brand mark only — the slim rail has no room for the wordmark */
+  .bp-nav-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0 18px;
+    text-decoration: none;
+  }
+  .bp-nav-brand .bp-wordmark { display: none; }
+
+  /* icon-only tabs (the destination rides aria-label): flat, ember-tint when active.
+     The chunky press belongs to the phone bar; the rail is a quiet icon strip. */
+  .bp-nav-tab {
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    border-radius: 14px;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    text-decoration: none;
+  }
+  .bp-nav-tab:hover { background: #f4ebe4; }
+  .bp-nav-tab:active { transform: none; box-shadow: none; }
+  .bp-nav-tab:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .bp-nav-tab--active,
+  .bp-nav-tab--active:active {
+    background: var(--ember-tint);
+    color: var(--ember-deep);
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+  .bp-nav-tab svg { width: 22px; height: 22px; }
+  .bp-nav-spark { /* back to notching the icon corner */
+    position: absolute;
+    top: 7px;
+    right: 10px;
+    margin: 0;
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid var(--cream);
+  }
+
+  /* ── content uses the width ──
+     The three list surfaces opt into the wide spread (bp-main-wide); forms and detail
+     pages keep the default narrow measure. bp-cols is the two-column spread (primary /
+     secondary, like Partiful's event page); bp-list flows a card list into a grid
+     (like Partiful's Explore). */
+  .bonfire-pulse main.bp-main-wide { max-width: 64rem; }
+  .bp-cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px;
+    align-items: start;
+  }
+  .bp-cols > * { margin-top: 0; } /* columns align at the top; the mobile gap is dropped */
+  .bp-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  /* the sticky action footer sits over the surface (no bottom bar to clear) */
+  .bp-foot {
+    bottom: 0;
+    background: linear-gradient(rgba(255, 247, 241, 0), var(--cream) 30%);
+  }
+
+  /* slide-up sheets center over the content area, not under the rail */
+  .bp-sheet-wrap { left: var(--rail-w); }
 }

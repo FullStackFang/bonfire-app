@@ -32,7 +32,7 @@ html, body {
   overflow: hidden;
   background: #c9e0d5;
   color: var(--text);
-  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-geist), 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

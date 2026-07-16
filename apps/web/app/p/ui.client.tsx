@@ -15,9 +15,11 @@ export function EmberMark({ size = 16, glow = false }: { size?: number; glow?: b
 
 export function BrandRow({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
-      {/* The way back home: every rail surface reaches the dash through the brand. */}
-      <Link href="/p" className="flex items-center gap-2" style={{ textDecoration: 'none', color: 'inherit' }}>
+    <div className="bp-brandrow flex items-center gap-2">
+      {/* The way back home: every rail surface reaches the dash through the brand.
+         On desktop the left rail owns brand + home, so this lockup hides (bp-brandrow-home)
+         while any children — e.g. the ShareChip on detail pages — stay in the row. */}
+      <Link href="/p" className="bp-brandrow-home flex items-center gap-2" style={{ textDecoration: 'none', color: 'inherit' }}>
         <EmberMark glow />
         <span className="bp-wordmark">BONFIRE</span>
       </Link>

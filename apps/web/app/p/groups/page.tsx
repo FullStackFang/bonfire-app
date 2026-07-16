@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import * as repo from '@/lib/pulse/repo'
 import { getViewer, toPublicViewer } from '@/lib/pulse/identity'
+import { viewerCrews } from '@/lib/pulse/dashReads'
 import { serializeDash } from '@/lib/pulse/serialize'
 import { navCopy } from '@/lib/pulse/copy'
 import { BrandRow, CrewCard } from '../ui.client'
@@ -18,13 +18,13 @@ export const metadata: Metadata = {
 
 export default async function GroupsPage() {
   const viewer = await getViewer()
-  const crews = viewer ? await repo.crewsForParticipant(viewer.id) : []
+  const crews = viewer ? await viewerCrews(viewer.id) : []
 
   const dash = serializeDash(crews, { live: [], earlier: [] }, toPublicViewer(viewer))
   const empty = dash.crews.length === 0
 
   return (
-    <main className="mx-auto min-h-full w-full max-w-md px-4 pt-4 pb-8">
+    <main className={`mx-auto min-h-full w-full px-4 pt-4 pb-8 ${empty ? 'max-w-md' : 'bp-main-wide'}`}>
       <BrandRow />
       <h1 className="bp-title mt-3">{navCopy.groupsTitle}</h1>
 
@@ -36,7 +36,7 @@ export default async function GroupsPage() {
           </Link>
         </>
       ) : (
-        <ul className="space-y-2 mt-6">
+        <ul className="bp-list mt-6">
           {dash.crews.map((c) => (
             <li key={c.token}><CrewCard c={c} /></li>
           ))}

@@ -81,6 +81,15 @@ export function ChunkyPressable({
           onPressOut={() => {
             offset.value = withSpring(0, houseSpring);
           }}
+          // Cursor hover (web only — native never fires these): the face lifts a hair
+          // off its shadow, the inverse of the press. Touch devices keep press-only.
+          onHoverIn={() => {
+            if (disabled) return;
+            offset.value = withSpring(-1.5, houseSpring);
+          }}
+          onHoverOut={() => {
+            offset.value = withSpring(0, houseSpring);
+          }}
           onPress={() => {
             if (disabled) return;
             fireHaptic();

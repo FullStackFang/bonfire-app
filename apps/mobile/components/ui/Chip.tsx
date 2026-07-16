@@ -48,7 +48,9 @@ export function Chip({
   else if (variant === "ghost") { bg = "transparent"; fg = light.smoke; borderWidth = 0; borderColor = "transparent"; }
   else if (variant === "tinted" && tint) { bg = tint + "1f"; fg = tint; borderWidth = 0; borderColor = "transparent"; }
 
-  const style: ViewStyle = {
+  // Hover (web cursor) and press feedback via the Pressable style function — hovered
+  // dims a touch, pressed dims more. Native never hovers, so touch is unchanged there.
+  const style = ({ pressed, hovered }: { pressed: boolean; hovered?: boolean }): ViewStyle => ({
     backgroundColor: bg,
     paddingVertical: sz.paddingV,
     paddingHorizontal: sz.paddingH,
@@ -58,8 +60,8 @@ export function Chip({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    opacity: disabled ? 0.5 : 1,
-  };
+    opacity: disabled ? 0.5 : pressed ? 0.7 : hovered ? 0.85 : 1,
+  });
 
   const handlePress = () => {
     if (disabled) return;

@@ -2,11 +2,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { navCopy } from '@/lib/pulse/copy'
+import { EmberMark } from './ui.client'
 
-// The shared bottom navbar for every /p surface: three icon-only chunky-chip tabs
-// (Home · Events · Groups). Active state derives from the route — detail pages count toward
-// the section they belong to (a pulse → Events, a crew → Groups) so one chip is always lit.
-// Icon-only, so the plain-word destination rides each tab's aria-label.
+// The shared primary nav for every /p surface: three tabs (Home · Events · Groups). Active state
+// derives from the route — detail pages count toward the section they belong to (a pulse → Events,
+// a crew → Groups) so one tab is always lit.
+//
+// Two forms from one markup (see pulse.css): on phones a fixed bottom bar of chunky chips
+// (thumb-reachable), on desktop (≥860px) a slim left icon rail (the Partiful desktop idiom).
+// Both are icon-only — the plain-word destination rides each tab's aria-label. Bottom bars read
+// as a phone app in a browser; the rail is the cursor-era idiom.
 
 // Icons are inline (currentColor) — the chip drives fill via its text color (white when active,
 // smoke when not). Simple, dependency-free line/solid marks that read at 22px.
@@ -51,6 +56,11 @@ export function PulseTabBar({ live = false }: { live?: boolean }) {
   const pathname = usePathname()
   return (
     <nav className="bp-nav" aria-label="Primary">
+      {/* Rail-only brand + way home (desktop). Hidden on the phone bottom bar. */}
+      <Link href="/p" className="bp-nav-brand" aria-label="Bonfire home">
+        <EmberMark glow size={18} />
+        <span className="bp-wordmark">BONFIRE</span>
+      </Link>
       {TABS.map((tab) => {
         const active = tab.active(pathname)
         // The spark rides the Events tab: it points at the surface where a live pulse lives.

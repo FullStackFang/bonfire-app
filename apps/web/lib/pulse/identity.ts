@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { newToken } from '../ids'
 import * as repo from './repo'
@@ -26,12 +27,13 @@ export async function getParticipantByToken(token: string): Promise<Participant 
 }
 
 /** Read-only: who is the viewer, from the cookie? Never creates or mutates. Safe in Server
- *  Components (pages) and in state reads. Returns null for a brand-new device. */
-export async function getViewer(): Promise<Participant | null> {
+ *  Components (pages) and in state reads. Returns null for a brand-new device.
+ *  cache(): layout and page both ask during one request — resolve the cookie once. */
+export const getViewer = cache(async (): Promise<Participant | null> => {
   const token = (await cookies()).get(COOKIE)?.value
   if (!token) return null
   return repo.getParticipantByToken(token)
-}
+})
 
 /** Write paths only (Route Handlers): resolve the viewer or create one on first write, setting the
  *  identity cookie. Never throws "already joined" — a dropped cookie just mints a fresh participant

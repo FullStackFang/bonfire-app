@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import "react-native-reanimated";
 
 import "../global.css";
@@ -21,7 +22,10 @@ export default function RootLayout() {
     if (loaded || error) SplashScreen.hideAsync().catch(() => {});
   }, [loaded, error]);
 
-  if (!loaded && !error) return null;
+  // Native: the splash stays up until fonts land, so returning null is invisible.
+  // Web: there is no splash — returning null is a blank white page for as long as
+  // eight font files take to download. Paint immediately and let fonts swap in.
+  if (!loaded && !error && Platform.OS !== "web") return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
