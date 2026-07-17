@@ -393,7 +393,7 @@ function InviteSheet({
         onPress={onClose}
         style={[
           StyleSheet.absoluteFillObject,
-          { backgroundColor: "rgba(35,23,21,0.18)" },
+          { backgroundColor: "rgba(32,29,27,0.18)" },
         ]}
       />
       <View

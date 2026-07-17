@@ -145,10 +145,10 @@ const HTML_TEMPLATE = `<!doctype html>
             'heatmap-opacity': 0.65,
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
-              0, 'rgba(240,88,70,0)',
-              0.2, 'rgba(240,88,70,0.35)',
-              0.5, 'rgba(240,88,70,0.65)',
-              1, 'rgba(165,42,36,0.85)'
+              0, 'rgba(232,80,47,0)',
+              0.2, 'rgba(232,80,47,0.35)',
+              0.5, 'rgba(232,80,47,0.65)',
+              1, 'rgba(158,44,28,0.85)'
             ]
           }
         }
