@@ -10,7 +10,8 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/mobile",
     "build:web": "npm run build --workspace=apps/web",
-    "lint:web": "npm run lint --workspace=apps/web"
+    "lint:web": "npm run lint --workspace=apps/web",
+    "deploy:web": "npm run deploy --workspace=apps/web"
   },
   "devDependencies": {
     "web-push": "^3.6.7"

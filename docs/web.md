@@ -42,7 +42,20 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_FROM=+1xxxxxxxxxx
 SMS_DRY_RUN=1           # Set to 0 to send real SMS
+AI_GATEWAY_API_KEY=     # Vercel AI Gateway key (plan proposer) — optional locally
+PLAN_AI_MODEL=          # Gateway model slug (default anthropic/claude-sonnet-5)
 ```
+
+### Plug in a real AI (plan proposer)
+
+The plan proposer (`lib/pulse/plan-ai.ts`) calls Anthropic through the **Vercel AI Gateway**.
+Without a credential it silently uses deterministic fallback options (create never fails).
+
+- **Local**: put `AI_GATEWAY_API_KEY` in `apps/web/.env.local` (create one in the Vercel
+  dashboard under AI Gateway → API Keys), or `vercel env pull` for a ~24h `VERCEL_OIDC_TOKEN`.
+- **On Vercel**: automatic — `VERCEL_OIDC_TOKEN` is injected, no key to manage.
+- Every Vercel team gets **$5/month of free gateway credits**; a spent budget (402) or rate
+  limit (429) degrades to fallback options rather than breaking plan creation.
 
 ## Invariants — never violate
 

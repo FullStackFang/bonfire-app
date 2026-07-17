@@ -80,6 +80,34 @@ export const dashCopy = {
   recoveryBlurb: 'Verify your number and your crews and pulses follow you to this device. Never shown to anyone.',
 }
 
+// Afterglow + ember strings (close-plan-loop): the post-event view of /p/plan/[token] and the
+// "again" tap. House voice: statements not questions in outcomes — the one sanctioned question
+// is the button itself (SYSTEM-THESIS §iv). No guilt, no roster, never a word about who didn't tap.
+const listNames = (names: string[]) =>
+  names.length <= 1 ? (names[0] ?? 'someone')
+  : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+
+export const emberCopy = {
+  overline: 'that happened',
+  blurb: 'Hope it was a good one.',
+  tapCta: 'do this again?',
+  soloLine: 'You’re in for another one.',
+  soloBlurb: 'If someone else is in too, you’ll both see it here.',
+  mutualLine: (names: string[]) => `${listNames(names)} ${names.length === 1 ? 'is' : 'are'} in too.`,
+  nextCta: 'Start the next one',
+  untapCta: 'never mind',
+  // Dash presences (opener's plans). Expired stays quiet history — no "missed", no blame.
+  plansOverline: 'Your plans',
+  planStateLine: {
+    proposing: 'not shared yet',
+    open: 'gathering availability',
+    expired: 'closed',
+  } as const,
+  planStruck: (label: string | null) => (label ? `it’s on — ${label}` : 'it’s on'),
+  planCompleted: 'that happened',
+  planEmberLine: (names: string[]) => `${listNames(names)} ${names.length === 1 ? 'is' : 'are'} in for another one`,
+}
+
 // Navbar destinations. Plain words only — never the internal terms "pulse"/"crew". The bar is
 // icon-only, so these ride the aria-labels; the list pages reuse them as their titles. Empty
 // states teach the next action rather than announcing emptiness.

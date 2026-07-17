@@ -100,3 +100,186 @@ describe.skipIf(!url)('plan strike (requires TEST_DATABASE_URL)', () => {
     expect(r.kind).toBe('invalid')
   })
 })
+
+// pickDeadlineWinner is pure — no DB needed. Most availability, tie -> earliest start
+// (timeless last), still tied -> lowest rank.
+describe('pickDeadlineWinner', () => {
+  const opt = (id: string, aiRank: number, startsAt: Date | null) => ({
+    id, planId: 'p', kind: 'time' as const, startsAt, venue: null, label: id,
+    aiRank, aiRationale: null, source: 'ai' as const, createdAt: new Date(),
+  })
+  const at = (h: number) => new Date(Date.UTC(2026, 6, 20, h))
+
+  it('is null when nothing was marked anywhere', async () => {
+    const { pickDeadlineWinner } = await import('./plan')
+    expect(pickDeadlineWinner([opt('a', 0, at(18))], new Map())).toBeNull()
+  })
+
+  it('picks the option with the most availability', async () => {
+    const { pickDeadlineWinner } = await import('./plan')
+    const w = pickDeadlineWinner(
+      [opt('a', 0, at(18)), opt('b', 1, at(20))],
+      new Map([['a', 1], ['b', 2]]),
+    )
+    expect(w?.id).toBe('b')
+  })
+
+  it('breaks a tie by earliest start time, with timeless options last', async () => {
+    const { pickDeadlineWinner } = await import('./plan')
+    const w = pickDeadlineWinner(
+      [opt('late', 0, at(20)), opt('early', 1, at(18)), opt('timeless', 2, null)],
+      new Map([['late', 2], ['early', 2], ['timeless', 2]]),
+    )
+    expect(w?.id).toBe('early')
+  })
+
+  it('breaks a remaining tie by option rank', async () => {
+    const { pickDeadlineWinner } = await import('./plan')
+    const w = pickDeadlineWinner(
+      [opt('b', 1, null), opt('a', 0, null)],
+      new Map([['a', 1], ['b', 1]]),
+    )
+    expect(w?.id).toBe('a')
+  })
+})
+
+// Lazy lifecycle transitions (close-plan-loop): deadline auto-strike/expire and struck -> completed.
+// Same DB gate as the strike suite above.
+describe.skipIf(!url)('plan lifecycle transitions (requires TEST_DATABASE_URL)', () => {
+  beforeAll(() => {
+    process.env.DATABASE_URL = url
+    process.env.PG_POOL_MAX = '4'
+  })
+
+  const HOUR = 3600_000
+
+  async function fixtures(n: number) {
+    const repo = await import('./repo')
+    const plan = await import('./plan')
+    const { newToken } = await import('../ids')
+    const creator = await repo.createParticipant(newToken())
+    const invitees = []
+    for (let i = 0; i < n; i++) invitees.push(await repo.createParticipant(newToken()))
+    return { repo, plan, newToken, creator, invitees }
+  }
+
+  // An open plan (threshold high enough that test picks never threshold-strike) with a deadline
+  // and two options; option startsAt are relative to `now` so completion buffers are exact.
+  async function deadlinePlan(now: Date, opts?: { timeless?: boolean }) {
+    const { plan, newToken, creator, invitees } = await fixtures(4)
+    const closesAt = new Date(now.getTime() + 1 * HOUR)
+    const p = await plan.createPlan({
+      token: newToken(), creatorParticipantId: creator.id,
+      intentText: 'tennis saturday', confirmThreshold: 4, closesAt,
+    })
+    const [optA, optB] = await plan.setOptions(p.id, [
+      { kind: 'time', label: 'Sat 10:00 AM', startsAt: opts?.timeless ? null : new Date(now.getTime() + 26 * HOUR), aiRank: 0 },
+      { kind: 'time', label: 'Sun 4:00 PM', startsAt: opts?.timeless ? null : new Date(now.getTime() + 50 * HOUR), aiRank: 1 },
+    ])
+    const published = await plan.publishPlan(p.id, creator.id)
+    expect(published?.state).toBe('open')
+    return { plan, p: published!, optA: optA!, optB: optB!, invitees, closesAt }
+  }
+
+  it('deadline auto-strikes the option with the most availability', async () => {
+    const now = new Date()
+    const { plan, p, optA, optB, invitees } = await deadlinePlan(now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optA.id, invitees[0]!.id, now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optB.id, invitees[1]!.id, now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optB.id, invitees[2]!.id, now)
+    const resolved = await plan.resolvePlanState(
+      (await plan.getPlanById(p.id))!, new Date(now.getTime() + 2 * HOUR))
+    expect(resolved.state).toBe('struck')
+    expect(resolved.struckOptionId).toBe(optB.id)
+    expect(resolved.struckAt).not.toBeNull()
+  })
+
+  it('deadline tie is broken by the earlier start', async () => {
+    const now = new Date()
+    const { plan, p, optA, optB, invitees } = await deadlinePlan(now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optA.id, invitees[0]!.id, now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optB.id, invitees[1]!.id, now)
+    const resolved = await plan.resolvePlanState(
+      (await plan.getPlanById(p.id))!, new Date(now.getTime() + 2 * HOUR))
+    expect(resolved.state).toBe('struck')
+    expect(resolved.struckOptionId).toBe(optA.id) // 26h out beats 50h out
+  })
+
+  it('zero selections at the deadline means expired', async () => {
+    const now = new Date()
+    const { plan, p } = await deadlinePlan(now)
+    const resolved = await plan.resolvePlanState(
+      (await plan.getPlanById(p.id))!, new Date(now.getTime() + 2 * HOUR))
+    expect(resolved.state).toBe('expired')
+    expect(resolved.struckOptionId).toBeNull()
+  })
+
+  it('an open plan before its deadline is left alone', async () => {
+    const now = new Date()
+    const { plan, p } = await deadlinePlan(now)
+    const resolved = await plan.resolvePlanState((await plan.getPlanById(p.id))!, now)
+    expect(resolved.state).toBe('open')
+  })
+
+  it('a struck plan completes after the winning start + buffer, not before', async () => {
+    const now = new Date()
+    const { plan, p, optA, invitees } = await deadlinePlan(now) // optA starts now+26h
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optA.id, invitees[0]!.id, now)
+    const afterDeadline = new Date(now.getTime() + 2 * HOUR)
+    const struck = await plan.resolvePlanState((await plan.getPlanById(p.id))!, afterDeadline)
+    expect(struck.state).toBe('struck')
+    // 26h + 4h buffer = due at now+30h. At +29h: still struck. At +31h: completed.
+    const early = await plan.resolvePlanState(struck, new Date(now.getTime() + 29 * HOUR))
+    expect(early.state).toBe('struck')
+    const done = await plan.resolvePlanState(early, new Date(now.getTime() + 31 * HOUR))
+    expect(done.state).toBe('completed')
+  })
+
+  it('a timeless winner falls back to strike + 24h', async () => {
+    const now = new Date()
+    const { plan, p, optA, invitees } = await deadlinePlan(now, { timeless: true })
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optA.id, invitees[0]!.id, now)
+    const strikeAt = new Date(now.getTime() + 2 * HOUR)
+    const struck = await plan.resolvePlanState((await plan.getPlanById(p.id))!, strikeAt)
+    expect(struck.state).toBe('struck')
+    const early = await plan.resolvePlanState(struck, new Date(strikeAt.getTime() + 23 * HOUR))
+    expect(early.state).toBe('struck')
+    const done = await plan.resolvePlanState(early, new Date(strikeAt.getTime() + 25 * HOUR))
+    expect(done.state).toBe('completed')
+  })
+
+  it('completion is idempotent: a second resolve is a no-op', async () => {
+    const now = new Date()
+    const { plan, p, optA, invitees } = await deadlinePlan(now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optA.id, invitees[0]!.id, now)
+    const late = new Date(now.getTime() + 40 * HOUR) // past deadline AND past start+buffer
+    const first = await plan.resolvePlanState((await plan.getPlanById(p.id))!, late)
+    expect(first.state).toBe('completed') // strike + completion chain in one read
+    const versionAfter = first.version
+    const second = await plan.resolvePlanState(first, late)
+    expect(second.state).toBe('completed')
+    const fresh = (await plan.getPlanById(p.id))!
+    expect(fresh.state).toBe('completed')
+    expect(fresh.version).toBe(versionAfter) // no extra transition hit the DB
+  })
+
+  // Race-safety needs real concurrent connections; gated like the strike concurrency test above.
+  it.skipIf(!process.env.TEST_PG_CONCURRENCY)('racing resolves transition exactly once', async () => {
+    const now = new Date()
+    const { plan, p, optA, invitees } = await deadlinePlan(now)
+    await plan.recordAvailabilityAndMaybeStrike(p.id, optA.id, invitees[0]!.id, now)
+    const late = new Date(now.getTime() + 2 * HOUR)
+    const stale = (await plan.getPlanById(p.id))!
+    const beforeVersion = Number(stale.version)
+    const [r1, r2] = await Promise.all([
+      plan.resolvePlanState(stale, late),
+      plan.resolvePlanState(stale, late),
+    ])
+    expect(r1.state).toBe('struck')
+    expect(r2.state).toBe('struck')
+    expect(r1.struckOptionId).toBe(optA.id)
+    expect(r2.struckOptionId).toBe(optA.id)
+    const after = (await plan.getPlanById(p.id))!
+    expect(Number(after.version)).toBe(beforeVersion + 1) // one transition, not two
+  })
+})

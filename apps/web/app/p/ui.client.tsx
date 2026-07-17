@@ -1,8 +1,8 @@
 'use client'
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import type { BoardStatus, PublicDashCrew, PublicDashPulse, PublicPlanOption, PulseStatus } from '@/lib/pulse/types'
-import { BOARD_STATUS_LABEL, PULSE_STATUS_LABEL, dashCopy } from '@/lib/pulse/copy'
+import type { BoardStatus, PublicDashCrew, PublicDashPlan, PublicDashPulse, PublicPlanOption, PulseStatus } from '@/lib/pulse/types'
+import { BOARD_STATUS_LABEL, PULSE_STATUS_LABEL, dashCopy, emberCopy } from '@/lib/pulse/copy'
 
 // Shared Live Pulse primitives, ported from design/bonfire-design-system
 // (Ember, Overline, StatusPill, Avatar, chunky press, slide-up sheet).
@@ -197,6 +197,27 @@ export function CrewCard({ c }: { c: PublicDashCrew }) {
         )}
       </span>
       {c.myStatus && <StatusPill kind="board" status={c.myStatus} label={BOARD_STATUS_LABEL[c.myStatus]} />}
+    </Link>
+  )
+}
+
+// One of the opener's plans (close-plan-loop): intent + a quiet state line. Completed plans stay
+// visible, and a mutual ember surfaces as one line — the viewer's own standing only, never a
+// count of eligible people or anyone's non-response.
+export function PlanCard({ p }: { p: PublicDashPlan }) {
+  const line =
+    p.state === 'struck' ? emberCopy.planStruck(p.winnerLabel)
+    : p.state === 'completed' ? emberCopy.planCompleted
+    : emberCopy.planStateLine[p.state]
+  return (
+    <Link href={`/p/plan/${p.token}`} className="bp-card block px-4 py-3.5" style={{ color: 'inherit' }}>
+      <span className="block truncate" style={{ fontWeight: 600, fontSize: 14.5 }}>{p.intentText}</span>
+      <span className="mt-0.5 block truncate" style={{ fontSize: 12.5, color: 'var(--smoke)' }}>{line}</span>
+      {p.ember?.tapped && p.ember.mutual && (
+        <span className="mt-0.5 block truncate" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ember-deep)' }}>
+          {emberCopy.planEmberLine(p.ember.coTappers)}
+        </span>
+      )}
     </Link>
   )
 }

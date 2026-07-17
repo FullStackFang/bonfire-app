@@ -46,7 +46,7 @@ export default async function PulsePage({ params }: { params: Promise<{ token: s
   const initial = serializePulse(pulse, responses, toPublicViewer(viewer), crew, now)
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-md flex-col">
+    <main className="bpd-main mx-auto flex min-h-full w-full max-w-md flex-col">
       <PulseView initial={initial} pulseToken={pulse.token} />
     </main>
   )

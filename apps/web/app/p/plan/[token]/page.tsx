@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getViewer, toPublicViewer } from '@/lib/pulse/identity'
 import { getPlanByToken, getPublicPlanByToken } from '@/lib/pulse/plan'
+import { getPublicEmber } from '@/lib/pulse/ember'
 import { PlanView } from './PlanView.client'
 
 export const dynamic = 'force-dynamic'
@@ -25,10 +26,14 @@ export default async function PlanPage({ params }: { params: Promise<{ token: st
   const viewer = await getViewer()
   const plan = await getPublicPlanByToken(token, toPublicViewer(viewer))
   if (!plan) notFound()
+  // Afterglow: the viewer's OWN ember standing only (getPublicEmber enforces visibility).
+  const ember = plan.state === 'completed'
+    ? await getPublicEmber((await getPlanByToken(token))!.id, viewer?.id ?? null)
+    : null
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-md flex-col px-4 py-6">
-      <PlanView initial={plan} token={token} />
+      <PlanView initial={plan} initialEmber={ember} token={token} />
     </main>
   )
 }

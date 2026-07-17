@@ -4,12 +4,12 @@ import { headers } from 'next/headers'
 import { after } from 'next/server'
 import * as repo from '@/lib/pulse/repo'
 import { getViewer, isVerified, toPublicViewer } from '@/lib/pulse/identity'
-import { viewerCrews, viewerPulses } from '@/lib/pulse/dashReads'
+import { viewerCrews, viewerPlans, viewerPulses } from '@/lib/pulse/dashReads'
 import { serializeDash } from '@/lib/pulse/serialize'
 import { isCrawler } from '@/lib/pulse/ratelimit'
-import { dashCopy } from '@/lib/pulse/copy'
+import { dashCopy, emberCopy } from '@/lib/pulse/copy'
 import { getPublicReconnect } from '@/lib/pulse/reconnect'
-import { BrandRow, CrewCard, PulseCard } from './ui.client'
+import { BrandRow, CrewCard, PlanCard, PulseCard } from './ui.client'
 import { RecoveryEntry } from './dash.client'
 import { ReconnectCard } from './Reconnect.client'
 
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
 
 export default async function DashPage() {
   const viewer = await getViewer()
-  const [crews, pulses] = viewer
-    ? await Promise.all([viewerCrews(viewer.id), viewerPulses(viewer.id)])
-    : [[], { live: [], earlier: [] }]
+  const [crews, pulses, plans] = viewer
+    ? await Promise.all([viewerCrews(viewer.id), viewerPulses(viewer.id), viewerPlans(viewer.id)])
+    : [[], { live: [], earlier: [] }, []]
 
   // Funnel: one dash_view per human load; crawlers excluded. after() runs the insert once
   // the response is sent — analytics never holds up first paint.
@@ -42,6 +42,7 @@ export default async function DashPage() {
 
   const dash = serializeDash(crews, pulses, toPublicViewer(viewer))
   const empty = dash.live.length === 0 && dash.crews.length === 0 && dash.earlier.length === 0
+    && plans.length === 0
   // Identity chrome only when it can help: unverified (verify makes this device durable) or
   // empty (a returning participant on a fresh device recovers everything here).
   const showRecovery = !isVerified(viewer) || empty
@@ -81,8 +82,21 @@ export default async function DashPage() {
               </ul>
             </section>
 
-            {/* Crews + quiet history. mt-6 spaces it below live on phones; dropped in the grid. */}
+            {/* Crews + plans + quiet history. mt-6 spaces it below live on phones; dropped in the grid. */}
             <section className="mt-6">
+              {/* Plans — the opener's own, completed ones included (the afterglow lives at the
+                  link; a mutual ember surfaces here as one quiet line). */}
+              {plans.length > 0 && (
+                <>
+                  <div className="bp-overline mb-2">{emberCopy.plansOverline}</div>
+                  <ul className="space-y-2 mb-6">
+                    {plans.map((p) => (
+                      <li key={p.token}><PlanCard p={p} /></li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
               {/* Crews — name + MY status only; the roster lives on the board itself. */}
               <div className="bp-overline mb-2">{dashCopy.crewsOverline}</div>
               {dash.crews.length === 0 && <p className="bp-sub">{dashCopy.crewsEmpty}</p>}

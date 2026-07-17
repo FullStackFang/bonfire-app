@@ -10,10 +10,10 @@ import type { PublicPlan } from '@/lib/pulse/types'
 
 type Phase = 'intent' | 'review' | 'share'
 
-export function PlanNew() {
+export function PlanNew({ initialIntent = '' }: { initialIntent?: string }) {
   const router = useRouter()
   const [phase, setPhase] = useState<Phase>('intent')
-  const [intent, setIntent] = useState('')
+  const [intent, setIntent] = useState(initialIntent)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [plan, setPlan] = useState<PublicPlan | null>(null)

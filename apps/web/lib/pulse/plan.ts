@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- row mappers take dynamically-shaped
    postgres rows (camelCased); typing each as `any` is the established asker/repo boundary idiom. */
 import { sql } from '../db'
+import { getPublicEmber } from './ember'
 import type {
-  Plan, PlanOption, PlanPick, PlanVenue, PublicPlan, PublicPlanOption, PublicViewer,
+  Plan, PlanOption, PlanPick, PlanVenue, PublicDashPlan, PublicPlan, PublicPlanOption, PublicViewer,
 } from './types'
 
 // Plan-coordination domain logic (growth-story Phase 1). Transport-agnostic — NO SMS. The strike
@@ -16,6 +17,7 @@ const toPlan = (r: any): Plan => ({
   intentText: r.intentText, context: r.context ?? null, state: r.state,
   confirmThreshold: r.confirmThreshold, struckOptionId: r.struckOptionId ?? null,
   version: String(r.version), createdAt: r.createdAt, closesAt: r.closesAt ?? null,
+  struckAt: r.struckAt ?? null,
 })
 const toOption = (r: any): PlanOption => ({
   id: r.id, planId: r.planId, kind: r.kind, startsAt: r.startsAt ?? null,
@@ -147,10 +149,105 @@ export async function recordAvailabilityAndMaybeStrike(
       select count(*)::int as n from pulse.plan_picks where option_id = ${optionId}`
     if (n < plan.confirmThreshold) return { kind: 'recorded' as const }
     await tx`
-      update pulse.plans set state = 'struck', struck_option_id = ${optionId}, version = version + 1
+      update pulse.plans
+      set state = 'struck', struck_option_id = ${optionId}, struck_at = ${now}, version = version + 1
       where id = ${planId} and state = 'open'`
     return { kind: 'struck' as const, winnerOptionId: optionId as string }
   }) as Promise<PickResult>
+}
+
+// ---- lazy lifecycle transitions (close-plan-loop) ----
+
+/** A struck plan completes once its winning time + this buffer has passed — the gathering has
+ *  plausibly ended and warmth is at peak (never "do this again?" mid-dinner). Constant, not config. */
+export const COMPLETE_BUFFER_MS = 4 * 3600_000
+/** Fallback when the winning option carries no parseable time: complete 24h after the strike. */
+export const TIMELESS_COMPLETE_MS = 24 * 3600_000
+
+/** The deadline winner: most availability, tie -> earliest start (timeless options last),
+ *  still tied -> lowest option rank. Null when nothing was marked anywhere (-> expired). */
+export function pickDeadlineWinner(options: PlanOption[], counts: Map<string, number>): PlanOption | null {
+  const marked = options.filter((o) => (counts.get(o.id) ?? 0) > 0)
+  if (marked.length === 0) return null
+  return marked.reduce((best, o) => {
+    const bn = counts.get(best.id) ?? 0, on = counts.get(o.id) ?? 0
+    if (on !== bn) return on > bn ? o : best
+    const bt = best.startsAt ? best.startsAt.getTime() : Infinity
+    const ot = o.startsAt ? o.startsAt.getTime() : Infinity
+    if (ot !== bt) return ot < bt ? o : best
+    return o.aiRank < best.aiRank ? o : best
+  })
+}
+
+/** Apply any due lifecycle transition, lazily, on read (design D1: no cron — polling clients make
+ *  reads frequent, and nothing must happen at an exact moment). Two transitions:
+ *    open   past closes_at            -> auto-strike the best option, or expired when nobody marked
+ *    struck past the gathering (D3)   -> completed
+ *  Each is a conditional single-statement update (`… where state = 'x'`), the same idempotent
+ *  pattern as the threshold strike: two racing readers -> one transition, the loser's update
+ *  matches zero rows and its re-read returns the winner's result. */
+export async function resolvePlanState(plan: Plan, now: Date): Promise<Plan> {
+  // Deadline resolves the plan instead of killing it (D2). `expired` now means nobody engaged.
+  if (plan.state === 'open' && plan.closesAt && plan.closesAt.getTime() <= now.getTime()) {
+    // Sequential on purpose: the local PGlite harness serializes one backend session (see
+    // plan.test.ts concurrency note) and two racing reads here would interleave the protocol.
+    const options = await optionsForPlan(plan.id)
+    const counts = await pickCounts(plan.id)
+    const winner = pickDeadlineWinner(options, counts)
+    if (winner) {
+      await sql()`
+        update pulse.plans
+        set state = 'struck', struck_option_id = ${winner.id}, struck_at = ${now}, version = version + 1
+        where id = ${plan.id} and state = 'open'`
+    } else {
+      await sql()`
+        update pulse.plans set state = 'expired', version = version + 1
+        where id = ${plan.id} and state = 'open'`
+    }
+    plan = (await getPlanById(plan.id)) ?? plan
+  }
+  // The gathering has plausibly ended -> completed. Pre-struck_at rows fall back to created_at.
+  if (plan.state === 'struck' && plan.struckOptionId) {
+    const [w] = await sql()`select starts_at from pulse.plan_options where id = ${plan.struckOptionId}`
+    const startsAt = (w as any)?.startsAt ? new Date((w as any).startsAt) : null
+    const dueAt = startsAt
+      ? startsAt.getTime() + COMPLETE_BUFFER_MS
+      : (plan.struckAt ?? plan.createdAt).getTime() + TIMELESS_COMPLETE_MS
+    if (dueAt <= now.getTime()) {
+      await sql()`
+        update pulse.plans set state = 'completed', version = version + 1
+        where id = ${plan.id} and state = 'struck'`
+      plan = (await getPlanById(plan.id)) ?? plan
+    }
+  }
+  return plan
+}
+
+/** The opener's plans for the dash, most recent first, each healed by resolvePlanState (a dash
+ *  visit completes due plans without anyone opening the link). Completed plans stay visible, and
+ *  each carries the VIEWER'S OWN ember standing only — getPublicEmber enforces the mutuality and
+ *  silence-is-invisible rules, so nobody's non-response can reach the dash. */
+export async function dashPlansForCreator(participantId: string, now: Date, limit = 10): Promise<PublicDashPlan[]> {
+  const rows = await sql()`
+    select * from pulse.plans where creator_participant_id = ${participantId}
+    order by created_at desc limit ${limit}`
+  const out: PublicDashPlan[] = []
+  for (const r of rows) {
+    const plan = await resolvePlanState(toPlan(r), now)
+    let winnerLabel: string | null = null
+    if (plan.struckOptionId) {
+      const [w] = await sql()`select label from pulse.plan_options where id = ${plan.struckOptionId}`
+      winnerLabel = (w as any)?.label ?? null
+    }
+    out.push({
+      token: plan.token,
+      intentText: plan.intentText,
+      state: plan.state,
+      winnerLabel,
+      ember: plan.state === 'completed' ? await getPublicEmber(plan.id, participantId) : null,
+    })
+  }
+  return out
 }
 
 // ---- serialize (the ONLY plan shape sent to the client; creator id, picker ids never leak) ----
@@ -186,10 +283,12 @@ export function toPublicPlan(
 }
 
 /** Assemble the client-facing PublicPlan for a token (options + availability counts + the viewer's
- *  own marks + the creator's name). The ONLY plan shape a route/page sends to the client. */
+ *  own marks + the creator's name). The ONLY plan shape a route/page sends to the client.
+ *  Every read heals state first (resolvePlanState) — deadline strikes and completion happen here. */
 export async function getPublicPlanByToken(token: string, viewer: PublicViewer): Promise<PublicPlan | null> {
-  const plan = await getPlanByToken(token)
+  let plan = await getPlanByToken(token)
   if (!plan) return null
+  plan = await resolvePlanState(plan, new Date())
   const [options, counts] = await Promise.all([optionsForPlan(plan.id), pickCounts(plan.id)])
   const mine = viewer ? await myPicks(plan.id, viewer.participantId) : new Set<string>()
   const [creator] = await sql()`

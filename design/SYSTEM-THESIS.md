@@ -1,7 +1,9 @@
-# Bonfire — The System (canonical product thesis)
+# Bonfire — The System (product thesis)
+
+> **⚠ NON-BINDING as of 2026-07-15 (superseded by the growth-story program).** This thesis is no longer a constraint the build must satisfy. The **growth-story roadmap** governs current product direction — see `design/growth-story/ROADMAP.md` and `design/growth-story/conflicts.md`. Several DNA principles below are explicitly overridden: **#1 "no RSVP"** (Phase 1 ships availability-selection), **#4 "never GPS"** (Phase 2 ships a map + per-person distances), and the **"contacts are a byproduct, not a CRM"** stance (Phase 3 ships recency-based relationship intelligence). Kept for historical reasoning and the parts still in use (palette/voice, the pulse↔crew model); treat it as reference, not canon.
 
 > Reconciled thesis, June 2026. Supersedes the v1/v2 split previously flagged in the MVP Overview.
-> This document is the canonical model; the HTML files in this bundle are visual references for the parts that have been prototyped.
+> This document was the canonical model; the HTML files in this bundle are visual references for the parts that have been prototyped.
 
 ## What Bonfire is
 

@@ -187,7 +187,7 @@ export type PublicDash = {
 
 // ---- plan coordination (growth-story Phase 1) ----
 
-export type PlanState = 'proposing' | 'open' | 'struck' | 'expired'
+export type PlanState = 'proposing' | 'open' | 'struck' | 'expired' | 'completed'
 export type PlanOptionKind = 'time' | 'place' | 'time_place'
 
 // A small venue blob carried on place/time_place options.
@@ -205,6 +205,7 @@ export type Plan = {
   version: string // bigint — opaque monotonic ETag value
   createdAt: Date
   closesAt: Date | null
+  struckAt: Date | null // when the strike happened — drives the timeless completion fallback
 }
 
 export type PlanOption = {
@@ -253,6 +254,41 @@ export type PublicPlan = {
   struck: boolean
   winner: PublicPlanOption | null
   viewer: PublicViewer
+}
+
+// ---- again engine (close-plan-loop) ----
+
+export type Ember = {
+  id: string
+  planId: string
+  intentSnapshot: string
+  createdAt: Date
+}
+
+export type EmberTap = {
+  emberId: string
+  participantId: string
+  tappedAt: Date
+}
+
+// The ONLY ember shape sent to a client, and only ever the VIEWER'S OWN standing. A non-tapper
+// (or signed-out viewer) always receives the empty shape — no count, no names, no hint that
+// anyone else has or hasn't tapped. `coTappers` (display names) fills in only once the ember is
+// mutual (>= 2 taps), and only for tappers. Silence is structurally invisible (again-engine spec).
+export type PublicEmber = {
+  tapped: boolean
+  mutual: boolean
+  coTappers: string[]
+}
+
+// A plan on the opener's dash: their own plans only, with the viewer's own ember standing on
+// completed ones (subject to PublicEmber's visibility rules — never anyone's non-response).
+export type PublicDashPlan = {
+  token: string
+  intentText: string
+  state: PlanState
+  winnerLabel: string | null
+  ember: PublicEmber | null
 }
 
 // ---- network discovery ("who's around", growth-story Phase 2) ----
