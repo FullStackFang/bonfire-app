@@ -33,6 +33,34 @@ describe.skipIf(!url)('pulse repo (requires TEST_DATABASE_URL)', () => {
     expect(active.filter((p) => p.clientUuid === clientUuid)).toHaveLength(1)
   })
 
+  it('a pulse created without geocode args defaults to unresolved, null coordinates', async () => {
+    const { repo, newToken, creator } = await fixtures()
+    const pulse = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'No geo', place: 'my place', timeLabel: '8pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: creator.id, clientUuid: crypto.randomUUID(),
+    })
+    expect(pulse.placeGeoStatus).toBe('unresolved')
+    expect(pulse.placeLat).toBeNull()
+    expect(pulse.placeLng).toBeNull()
+    // Round-trips through a fresh read (columns persisted, not just echoed).
+    const read = await repo.getPulseByToken(pulse.token)
+    expect(read!.placeGeoStatus).toBe('unresolved')
+  })
+
+  it('a resolved geocode persists coordinates + status and reads back', async () => {
+    const { repo, newToken, creator } = await fixtures()
+    const pulse = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Mapped', place: 'The Anchor, Rivington', timeLabel: '9pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: creator.id, clientUuid: crypto.randomUUID(),
+      placeLat: 40.7189, placeLng: -73.9877, placeGeoStatus: 'resolved',
+    })
+    expect(pulse.placeGeoStatus).toBe('resolved')
+    const read = await repo.getPulseByToken(pulse.token)
+    expect(read!.placeLat).toBeCloseTo(40.7189, 4)
+    expect(read!.placeLng).toBeCloseTo(-73.9877, 4)
+    expect(read!.placeGeoStatus).toBe('resolved')
+  })
+
   it('standalone double pulse-create also dedupes (NULLS NOT DISTINCT)', async () => {
     const { repo, newToken, creator } = await fixtures()
     const clientUuid = crypto.randomUUID()

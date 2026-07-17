@@ -38,6 +38,10 @@ export type Crew = {
   archivedAt: Date | null
 }
 
+// Geocode confidence for a pulse's free-text place. Only `resolved` renders a map; `low_confidence`
+// keeps a coordinate but is non-mappable; `unresolved` has null coordinates. Mirrors lib/pulse/geo.
+export type PlaceGeoStatus = 'resolved' | 'low_confidence' | 'unresolved'
+
 export type Pulse = {
   id: string
   token: string
@@ -51,6 +55,9 @@ export type Pulse = {
   createdBy: string
   clientUuid: string
   createdAt: Date
+  placeLat: number | null
+  placeLng: number | null
+  placeGeoStatus: PlaceGeoStatus
 }
 
 export type Presence = {
@@ -156,6 +163,11 @@ export type PublicPulse = {
   participants: PublicPulseResponse[]
   madeItCount: number
   viewer: PublicViewer
+  // Location map: coordinates + confidence. Only `resolved` (with non-null coords) renders a map;
+  // everything else falls back to the stylized place tile.
+  placeLat: number | null
+  placeLng: number | null
+  placeGeoStatus: PlaceGeoStatus
 }
 
 // Dash shapes carry ONLY the viewer's own participation (my status, my note) — never another

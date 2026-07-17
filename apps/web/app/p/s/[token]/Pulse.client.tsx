@@ -2,10 +2,15 @@
 import { useMemo, useState } from 'react'
 import { createStore, useStore } from 'zustand'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { PULSE_STATUSES, type PulseStatus, type PublicPulse, type PublicPulseResponse, type PublicViewer } from '@/lib/pulse/types'
 import { PULSE_STATUS_LABEL, CAPS, pulseMessage } from '@/lib/pulse/copy'
 import { usePulsePoll } from '@/lib/pulse/usePulsePoll'
 import { EmberMark, EndsAt, avatarColorFor, initialsFor } from '../../ui.client'
+
+// The real map tile ships in its own chunk (maplibre-gl + tile CSS) fetched only when it renders —
+// i.e. only for a resolved coordinate. Unresolved/low_confidence/no-config pulses never load it.
+const PulseMap = dynamic(() => import('./PulseMap.client'), { ssr: false })
 
 // tile ordering: the people already there lead, then arrivals by ETA, then in, then out
 const STATUS_ORDER: Record<PulseStatus, number> = { here: 0, on_my_way: 1, in: 2, out: 3 }
@@ -182,6 +187,13 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
   const rosterQuery = query.trim().toLowerCase()
   const rosterFiltered = rosterQuery ? roster.filter((p) => p.displayName.toLowerCase().includes(rosterQuery)) : roster
 
+  // Only a resolved geocode with real coordinates renders a map; everything else (unresolved,
+  // low_confidence, or missing coords) keeps the stylized tile — no blank or wrongly-pinned map.
+  const mappable =
+    initial.placeGeoStatus === 'resolved' &&
+    typeof initial.placeLat === 'number' &&
+    typeof initial.placeLng === 'number'
+
   const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(initial.place)}`
   const inviteText = () => pulseMessage(initial.title, initial.place, initial.timeLabel, window.location.href)
   const linkText = () => window.location.href
@@ -335,25 +347,34 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
 
     {/* ── desktop tree: contained commit + living hearth (shown ≥1100px) ── */}
     <div className="bpd-desktop">
-      <div className="bpd-head">
-        <div className="min-w-0">
-          <h1 className="bpd-h1">{initial.title}</h1>
-          <div className="bpd-sub">
-            {live
-              ? <><span className="bp-live-tag"><span className="bonfire-pulse-dot" /> live</span><span>·</span><span>{initial.timeLabel}</span><span>·</span><EndsAt iso={initial.expiresAt} /></>
-              : <><span className="bp-done-tag">wrapped</span><span>·</span><span>{initial.timeLabel}</span></>}
+      <div className="bpd-details">
+        <div className="bpd-head">
+          <div className="min-w-0">
+            <h1 className="bpd-h1">{initial.title}</h1>
+            <div className="bpd-sub">
+              {live
+                ? <><span className="bp-live-tag"><span className="bonfire-pulse-dot" /> live</span><span>·</span><span>{initial.timeLabel}</span><span>·</span><EndsAt iso={initial.expiresAt} /></>
+                : <><span className="bp-done-tag">wrapped</span><span>·</span><span>{initial.timeLabel}</span></>}
+              {initial.crewName && <><span>·</span><span>{initial.crewName}</span></>}
+            </div>
           </div>
-          <a className="bpd-place" href={mapsHref} target="_blank" rel="noreferrer">
-            <span className="pin">◉</span>{initial.place}<span className="maps">maps ↗</span>
+          <div className="bpd-head-r">
+            {live && <CopyButton text={inviteText} className="bpd-invite" label="Copy invite message" idle={<>＋&nbsp;Invite</>} done="✓ Copied" />}
+            <CopyButton text={linkText} className="bpd-share" label="Copy link" idle="↗" done="✓" />
+            {initial.crewToken && (
+              <Link href={`/p/c/${initial.crewToken}`} className="bpd-share" aria-label={`Back to ${initial.crewName}`}>‹</Link>
+            )}
+          </div>
+        </div>
+        {mappable ? (
+          <PulseMap lat={initial.placeLat!} lng={initial.placeLng!} place={initial.place} />
+        ) : (
+          <a className="bp-map bpd-map" href={mapsHref} target="_blank" rel="noreferrer">
+            <EmberMark size={30} glow />
+            <span className="bp-map-tag">{initial.place}</span>
+            <span className="bp-map-hint">open in maps ↗</span>
           </a>
-        </div>
-        <div className="bpd-head-r">
-          {live && <CopyButton text={inviteText} className="bpd-invite" label="Copy invite message" idle={<>＋&nbsp;Invite</>} done="✓ Copied" />}
-          <CopyButton text={linkText} className="bpd-share" label="Copy link" idle="↗" done="✓" />
-          {initial.crewToken && (
-            <Link href={`/p/c/${initial.crewToken}`} className="bpd-share" aria-label={`Back to ${initial.crewName}`}>‹</Link>
-          )}
-        </div>
+        )}
       </div>
 
       <div className="bpd-grid">
@@ -464,29 +485,31 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${goingCount} going`} autoFocus />
                 <button type="button" className="bpd-rback" onClick={() => { setExpanded(false); setQuery('') }}>‹ fire</button>
               </div>
-              {DESKTOP_GROUPS.map(({ key, label }) => {
-                const rows = rosterFiltered.filter((p) => p.status === key)
-                if (rows.length === 0) return null
-                return (
-                  <div key={key} className={`bpd-rgroup${key === 'out' ? ' bpd-rgroup--out' : ''}`}>
-                    <div className="bpd-rghead">
-                      <span className={`sd ${key}`} /><span className="lab">{label}</span><span className="ct">{rows.length}</span><span className="hr" />
-                    </div>
-                    <div className="bpd-rrows">
-                      {rows.map((p) => (
-                        <div key={p.participantId} className="bpd-rrow">
-                          <span className="a" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
-                          <div className="who">
-                            <div className="nm">{p.me ? 'You' : p.displayName}</div>
-                            <div className={`det ${p.status}`}>{timeFor(p) ?? PULSE_STATUS_LABEL[p.status]}</div>
+              <div className="bpd-rscroll">
+                {DESKTOP_GROUPS.map(({ key, label }) => {
+                  const rows = rosterFiltered.filter((p) => p.status === key)
+                  if (rows.length === 0) return null
+                  return (
+                    <div key={key} className={`bpd-rgroup${key === 'out' ? ' bpd-rgroup--out' : ''}`}>
+                      <div className="bpd-rghead">
+                        <span className={`sd ${key}`} /><span className="lab">{label}</span><span className="ct">{rows.length}</span><span className="hr" />
+                      </div>
+                      <div className="bpd-rrows">
+                        {rows.map((p) => (
+                          <div key={p.participantId} className="bpd-rrow">
+                            <span className="a" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                            <div className="who">
+                              <div className="nm">{p.me ? 'You' : p.displayName}</div>
+                              <div className={`det ${p.status}`}>{timeFor(p) ?? PULSE_STATUS_LABEL[p.status]}</div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-              {rosterFiltered.length === 0 && <p className="bpd-rempty">No one by that name.</p>}
+                  )
+                })}
+                {rosterFiltered.length === 0 && <p className="bpd-rempty">No one by that name.</p>}
+              </div>
             </div>
           )}
         </div>

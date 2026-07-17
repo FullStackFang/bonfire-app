@@ -4,6 +4,7 @@ import { newToken } from '@/lib/ids'
 import { CAPS, pulseMessage } from '@/lib/pulse/copy'
 import { enforceRateLimit, clientIp } from '@/lib/pulse/ratelimit'
 import { inQuietHours, quietHoursTimezone } from '@/lib/pulse/sms'
+import { geocode } from '@/lib/pulse/geo'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -51,9 +52,14 @@ export async function POST(request: Request) {
   })
   if (limited) return limited
 
+  // Resolve the free-text place to a coordinate. Best-effort by contract: geocode() never throws
+  // and returns `unresolved` on any failure/timeout/no-config, so creation is never blocked.
+  const geo = await geocode(place)
+
   const pulse = await repo.createPulse({
     token: newToken(), crewId, title, place, timeLabel, expiresAt,
     createdBy: participant.id, clientUuid,
+    placeLat: geo.lat, placeLng: geo.lng, placeGeoStatus: geo.status,
   })
   await repo.logEvent('pulse_create', { pulseId: pulse.id, crewId, participantId: participant.id })
 

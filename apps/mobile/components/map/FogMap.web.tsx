@@ -19,7 +19,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "rea
 import { View, Text } from "react-native";
 import maplibregl from "maplibre-gl";
 import { Ionicons } from "@expo/vector-icons";
-import { light } from "@bonfire/ui-tokens";
+import { light, MAP_MIST, cartoVoyagerStyle } from "@bonfire/ui-tokens";
 import type { VenueKind } from "../../lib/mockV2";
 import {
   litTerritory,
@@ -60,12 +60,10 @@ interface Pool {
   sel: FogMapSelection;
 }
 
-// The undiscovered city: grayscale under morning mist — quiet, not menacing.
-const MIST = "rgba(250, 247, 243, 0.48)";
+// The undiscovered city: grayscale under morning mist — quiet, not menacing. MIST + the Carto
+// Voyager basemap come from @bonfire/ui-tokens so the web pulse map tile stays in lockstep.
+const MIST = MAP_MIST;
 const GRAY = "#808080"; // zero-saturation fill for the blend veil
-const TILES = ["a", "b", "c", "d"].map(
-  (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png`,
-);
 
 // What-it-is icons. Pulses get "flash" (happening now), the anchor gets
 // "bonfire" (the ritual); everything else shows its venue kind.
@@ -352,18 +350,7 @@ export const FogMap = forwardRef<FogMapHandle, FogMapProps>(function FogMap(
 
     const map = new maplibregl.Map({
       container,
-      style: {
-        version: 8,
-        sources: {
-          carto: {
-            type: "raster",
-            tiles: TILES,
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors © CARTO",
-          },
-        },
-        layers: [{ id: "carto", type: "raster", source: "carto" }],
-      },
+      style: cartoVoyagerStyle(),
       center: [mapCenter.lng, mapCenter.lat],
       zoom: mapCenter.zoom,
       attributionControl: false,

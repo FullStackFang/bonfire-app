@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.15",
+    "@bonfire/ui-tokens": "*",
     "@supabase/supabase-js": "^2.105.3",
     "ai": "^7.0.29",
+    "maplibre-gl": "^4.7.1",
     "next": "16.2.5",
     "postgres": "^3.4.9",
     "react": "19.2.4",

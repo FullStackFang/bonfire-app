@@ -113,5 +113,8 @@ export function serializePulse(
     participants: serializeResponses(responses, viewer?.participantId ?? null),
     madeItCount: responses.filter((p) => p.status === 'here').length,
     viewer,
+    placeLat: pulse.placeLat,
+    placeLng: pulse.placeLng,
+    placeGeoStatus: pulse.placeGeoStatus,
   }
 }

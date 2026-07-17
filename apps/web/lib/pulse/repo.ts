@@ -4,6 +4,7 @@ import { sql } from '../db'
 import type {
   AvailabilityBaseline, AvailabilityException, Crew, Participant, PhoneVerification,
   Presence, PresenceRow, Pulse, PulseResponse, PulseResponseRow, BoardStatus, PulseStatus,
+  PlaceGeoStatus,
 } from './types'
 
 // ---- mapping helpers (postgres.camel gives camelCase keys; bigint comes back as string) ----
@@ -24,6 +25,8 @@ const toPulse = (r: any): Pulse => ({
   title: r.title, place: r.place, timeLabel: r.timeLabel,
   expiresAt: r.expiresAt, closedAt: r.closedAt ?? null, version: String(r.version),
   createdBy: r.createdBy, clientUuid: r.clientUuid, createdAt: r.createdAt,
+  placeLat: r.placeLat ?? null, placeLng: r.placeLng ?? null,
+  placeGeoStatus: r.placeGeoStatus ?? 'unresolved',
 })
 const toPresenceRow = (r: any): PresenceRow => ({
   crewId: r.crewId, participantId: r.participantId, status: r.status,
@@ -162,12 +165,21 @@ export type NewPulse = {
   expiresAt: Date
   createdBy: string
   clientUuid: string
+  // Best-effort geocode of `place`, resolved before insert. Defaults keep creation working when
+  // the caller skips geocoding (status defaults to 'unresolved', coordinates null).
+  placeLat?: number | null
+  placeLng?: number | null
+  placeGeoStatus?: PlaceGeoStatus
 }
 /** Idempotent on (crew_id, created_by, client_uuid) — a double-tap/retry yields one pulse. */
 export async function createPulse(p: NewPulse): Promise<Pulse> {
   const [row] = await sql()`
-    insert into pulse.pulses (token, crew_id, title, place, time_label, expires_at, created_by, client_uuid)
-    values (${p.token}, ${p.crewId}, ${p.title}, ${p.place}, ${p.timeLabel}, ${p.expiresAt}, ${p.createdBy}, ${p.clientUuid})
+    insert into pulse.pulses (
+      token, crew_id, title, place, time_label, expires_at, created_by, client_uuid,
+      place_lat, place_lng, place_geo_status)
+    values (
+      ${p.token}, ${p.crewId}, ${p.title}, ${p.place}, ${p.timeLabel}, ${p.expiresAt}, ${p.createdBy}, ${p.clientUuid},
+      ${p.placeLat ?? null}, ${p.placeLng ?? null}, ${p.placeGeoStatus ?? 'unresolved'})
     on conflict (crew_id, created_by, client_uuid) do nothing
     returning *`
   if (row) {

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 const FIRST = ['Maya', 'Theo', 'Stephen', 'Priya', 'Jacquelyn', 'Devon', 'Amara', 'Noah', 'Iris', 'Leo', 'Sana', 'Marcus', 'Nina', 'Owen', 'Rosa', 'Kai', 'Elena', 'Jonah', 'Tara', 'Wes', 'Cleo', 'Ravi', 'Mona', 'Paul', 'Zara', 'Dane', 'Lila', 'Sam', 'Yuki', 'Beck', 'Gia', 'Hugo', 'Ivy', 'Jed', 'Kira', 'Luca', 'Mira', 'Ned', 'Opal', 'Pia', 'Quin', 'Remy', 'Sol', 'Tomas', 'Uma', 'Vero', 'Will', 'Xena', 'Yara', 'Zeke']
 const NOTES = ['Got us a table in the back, come find us', 'Grab the big booth by the window', "I'm by the bar in a red jacket"]
 
-function buildPreview(n: number): PublicPulse {
+function buildPreview(n: number, coord: { lat: number; lng: number } | null): PublicPulse {
   const participants: PublicPulseResponse[] = []
   for (let i = 0; i < n; i++) {
     const r = (i * 37) % 100
@@ -39,14 +39,27 @@ function buildPreview(n: number): PublicPulse {
     participants,
     madeItCount: participants.filter((p) => p.status === 'here').length,
     viewer: { participantId: 'pv-2', displayName: FIRST[2]!, verified: true },
+    placeLat: coord?.lat ?? null,
+    placeLng: coord?.lng ?? null,
+    placeGeoStatus: coord ? 'resolved' : 'unresolved',
   }
 }
 
-export default async function PulsePreview({ searchParams }: { searchParams: Promise<{ n?: string }> }) {
+export default async function PulsePreview({ searchParams }: { searchParams: Promise<{ n?: string; map?: string; lat?: string; lng?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
-  const { n } = await searchParams
+  const { n, map, lat, lng } = await searchParams
   const count = Math.min(200, Math.max(0, Number.parseInt(n ?? '12', 10) || 0))
-  const initial = buildPreview(count)
+  // Resolved-coordinate preview so the live map tile can be reviewed without real geocoding:
+  //   ?map=1                → a default resolved point (The Anchor · Rivington, NYC)
+  //   ?lat=<n>&lng=<n>      → an explicit resolved point
+  // Absent (default)        → unresolved, so the stylized tile renders.
+  const explicit = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && lat != null && lng != null
+  const coord = explicit
+    ? { lat: Number(lat), lng: Number(lng) }
+    : map === '1'
+      ? { lat: 40.7189, lng: -73.9877 }
+      : null
+  const initial = buildPreview(count, coord)
   return (
     <main className="bpd-main mx-auto flex min-h-full w-full max-w-md flex-col">
       <PulseView initial={initial} pulseToken="preview" />
