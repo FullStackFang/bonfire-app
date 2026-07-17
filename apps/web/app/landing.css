@@ -22,10 +22,12 @@
   --coal-deep: #16130f;
   --smoke: #6b6560;
   --smoke-on-dark: #b4ada6;
-  --ash: #e3dfdb;
-  --ash-on-dark: rgba(246, 243, 239, 0.14);
-  --cream: #f6f3ef;
-  --linen: #f6ebe2;
+  --ash: #e3e3e0;
+  --ash-on-dark: rgba(244, 244, 243, 0.14);
+  /* neutral stone surfaces — deliberately de-creamed (user direction: more neutral, less warm).
+     The app shell (pulse.css) still grounds on warm --cream; the landing overrides its own copy. */
+  --cream: #efefed;   /* ground: light neutral stone, not cream */
+  --linen: #e6e6e3;   /* alternating band: one step deeper neutral stone */
   --hearth: #ffffff;
   --shadow-warm: #c3bcb4;
   /* ── type (map to the self-hosted variables on <html>) ── */
@@ -162,16 +164,11 @@
 /* shared floated product-frame (marketing screenshots lift; app chrome never does) */
 .bonfire-landing .frame { background: var(--hearth); border: 1px solid var(--ash); border-radius: 22px; }
 .bonfire-landing .frame--float {
-  box-shadow: 0 26px 60px -32px rgba(122, 60, 40, 0.5), 0 8px 20px -14px rgba(122, 60, 40, 0.35);
+  box-shadow: 0 24px 50px -30px rgba(28, 26, 24, 0.32), 0 6px 16px -12px rgba(28, 26, 24, 0.22);
 }
 
-/* ═══════════ 1 · HERO (cream, morning) ═══════════ */
-.bonfire-landing .s-hero {
-  /* a committed warm wash across the first fold — the room is already lit */
-  background:
-    radial-gradient(120% 92% at 88% -10%, var(--ember-tint) 0%, rgba(247, 235, 230, 0) 52%),
-    var(--cream);
-}
+/* ═══════════ 1 · HERO (neutral stone, morning) ═══════════ */
+.bonfire-landing .s-hero { background: var(--cream); }
 .bonfire-landing .hero {
   display: grid;
   grid-template-columns: 1fr;
@@ -260,7 +257,7 @@
   content: "";
   position: absolute;
   inset: -10% -14% -6%;
-  background: radial-gradient(58% 52% at 56% 44%, var(--ember-tint) 0%, rgba(247, 235, 230, 0) 72%);
+  background: radial-gradient(58% 52% at 56% 44%, rgba(32, 29, 27, 0.05) 0%, rgba(32, 29, 27, 0) 70%);
   pointer-events: none;
 }
 .bonfire-landing .hero-card { position: absolute; width: min(340px, 88%); padding: 20px; }
@@ -400,7 +397,7 @@
 .bonfire-landing .m-art .frame { padding: 20px; }
 .bonfire-landing .m-art .art-glow {
   position: absolute; inset: 8% 4%; z-index: -1;
-  background: radial-gradient(60% 60% at 50% 45%, var(--ember-tint), transparent 72%);
+  background: radial-gradient(60% 60% at 50% 45%, rgba(32, 29, 27, 0.05), transparent 72%);
 }
 
 /* C1 frame: one sentence → real options → it locks itself */
