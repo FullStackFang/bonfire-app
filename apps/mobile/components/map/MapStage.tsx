@@ -98,10 +98,10 @@ const HTML_TEMPLATE = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet"/>
 <style>
-  html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#fff7f1;
+  html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#f6f3ef;
     -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
-  .maplibregl-ctrl-attrib{font-size:9px;background:rgba(255,247,241,0.6) !important;}
-  .maplibregl-ctrl-attrib a{color:#716664 !important;}
+  .maplibregl-ctrl-attrib{font-size:9px;background:rgba(246,243,239,0.6) !important;}
+  .maplibregl-ctrl-attrib a{color:#6b6560 !important;}
   .maplibregl-canvas{outline:none !important;}
 </style>
 </head><body>

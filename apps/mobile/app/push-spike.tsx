@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
-const EMBER = "#f05846";
-const COAL = "#231715";
-const CREAM = "#fff7f1";
+const EMBER = "#e8502f";
+const COAL = "#201d1b";
+const CREAM = "#f6f3ef";
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {

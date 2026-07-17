@@ -3,18 +3,18 @@
 // To regenerate, run `node bake.mjs` in this directory with culori installed.
 
 export const light = {
-  ember:     "#f05846", // oklch(66% 0.19 30)
-  emberDeep: "#a52a24", // oklch(48% 0.16 28)
-  emberGlow: "#fa9b82", // oklch(78% 0.12 35)
+  ember:     "#e8502f", // oklch(64% 0.194 34)  — grounded orange-red
+  emberDeep: "#9e2c1c", // oklch(47% 0.153 31)
+  emberGlow: "#f39472", // oklch(76% 0.124 40)
   spark:     "#54b05a", // oklch(68% 0.15 145)
   dusk:      "#e0843e", // oklch(70% 0.14 55)
   night:     "#1d293d", // oklch(28% 0.04 260)
-  coal:      "#231715", // oklch(22% 0.02 30)
-  smoke:     "#716664", // oklch(52% 0.015 30)
-  ash:       "#ddd6d4", // oklch(88% 0.008 30)
+  coal:      "#201d1b", // oklch(23% 0.006 56)  — near-black, faint warmth (neutral, not pink)
+  smoke:     "#6b6560", // oklch(51% 0.011 62)  — neutral secondary text
+  ash:       "#e3dfdb", // oklch(91% 0.007 68)  — neutral hairline
   hearth:    "#ffffff", // oklch(100% 0 0)
-  cream:     "#fff7f1", // oklch(98% 0.012 60)
-  warmShadow:"#c8b8b1", // oklch(78% 0.012 30) — the bottom layer under hearth-faced chunky buttons
+  cream:     "#f6f3ef", // oklch(97% 0.006 75)  — warm paper, balanced not pink
+  warmShadow:"#c3bcb4", // oklch(80% 0.014 71) — the bottom layer under hearth-faced chunky buttons
 } as const;
 
 export const night = {
@@ -58,7 +58,7 @@ export function avatarColorFor(seed: string): string {
 // the app (profile chips, contact rows, inbox) stay untouched — the map has
 // its own warm visual language built around ember / dusk.
 export const flameAccents = [
-  "#f05846", // ember
+  "#e8502f", // ember
   "#b8513b", // clay
   "#e0843e", // dusk
   "#d3a23a", // amber

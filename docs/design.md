@@ -10,18 +10,19 @@ The fire is the hero object. The map is the memory. The one required action is *
 
 | Token | Hex | Role |
 |---|---|---|
-| Ember | `#f05846` | Living fire, lit/live state, primary CTAs. Never decorative. |
-| Ember Deep | `#a52a24` | Shadow under ember buttons (3D press). Pressed states. |
-| Ember Glow | `#fa9b82` | Breathing halo at 22–54% opacity around checked-in members and lit venues. |
+| Ember | `#e8502f` | Living fire, lit/live state, primary CTAs. Never decorative. |
+| Ember Deep | `#9e2c1c` | Shadow under ember buttons (3D press). Pressed states. |
+| Ember Glow | `#f39472` | Breathing halo at 22–54% opacity around checked-in members and lit venues. |
 | Spark | `#54b05a` | "Happening now" dot — active pulses, live check-ins. State marker only. |
 | Dusk | `#e0843e` | Venues staked, awaiting ignition. State marker only. |
 | Night | `#1d293d` | Fog-of-war map surface. The game board, not a dark-mode toggle. |
-| Coal | `#231715` | Body text on light surfaces. Never pure black. |
-| Smoke | `#716664` | Secondary text, placeholders, inactive icons. |
-| Ash | `#ddd6d4` | Hairline borders and dividers. |
-| Cream | `#fff7f1` | Base surface of every screen. |
-| Hearth | `#ffffff` | Card surface — reads warm against cream. |
-| Shadow Warm | `#c8b8b1` | Shadow under hearth-face (outline) chunky buttons. |
+| Coal | `#201d1b` | Body text on light surfaces. Near-black, faint warmth. Never pure black. |
+| Smoke | `#6b6560` | Secondary text, placeholders, inactive icons. |
+| Ash | `#e3dfdb` | Hairline borders and dividers. |
+| Cream | `#f6f3ef` | Base surface of every screen — warm paper, balanced not pink. |
+| Hearth | `#ffffff` | Card surface — clean white against the paper. |
+| Shadow Warm | `#c3bcb4` | Shadow under hearth-face (outline) chunky buttons. |
+| Ink | `#2a3140` | Cool slate structural anchor — headers, rails, non-warm edges. |
 
 **Hard rules:**
 - Pure black (`#000`) is forbidden. Use Coal.

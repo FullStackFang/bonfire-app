@@ -2,18 +2,18 @@
 name: Bonfire
 description: Warm, kinetic, intimate. A small group's living fire — fed only by showing up, mapped in earned light.
 colors:
-  ember: "#f05846"
-  ember-deep: "#a52a24"
-  ember-glow: "#fa9b82"
+  ember: "#e8502f"
+  ember-deep: "#9e2c1c"
+  ember-glow: "#f39472"
   spark: "#54b05a"
   dusk: "#e0843e"
   night: "#1d293d"
-  coal: "#231715"
-  smoke: "#716664"
-  ash: "#ddd6d4"
-  cream: "#fff7f1"
+  coal: "#201d1b"
+  smoke: "#6b6560"
+  ash: "#e3dfdb"
+  cream: "#f6f3ef"
   hearth: "#ffffff"
-  shadow-warm: "#c8b8b1"
+  shadow-warm: "#c3bcb4"
 typography:
   display:
     fontFamily: "SourceSerif4_400Regular_Italic"
@@ -138,9 +138,9 @@ This system explicitly rejects the visual cliches of the category. From `PRODUCT
 The system is tinted toward ember (~30°) across all neutrals so every surface reads as living in the same room as the brand color. Built in OKLCH (canonical values below); hex values in the frontmatter are sRGB approximations for Stitch compliance.
 
 ### Primary
-- **Ember** (`#f05846` / `oklch(66% 0.19 30)`): the bonfire color. Used for the primary CTA face, the living fire, the heat core of lit territory, and the active "here now" indicator. Never used as decoration.
-- **Ember Deep** (`#a52a24` / `oklch(48% 0.16 28)`): the shadow under every ember button. Carries the 3D press effect. Also used for pressed/dark surface states.
-- **Ember Glow** (`#fa9b82` / `oklch(78% 0.12 35)`): the breathing halo around checked-in members and lit venues at ~22–54% opacity. Heat falloff color.
+- **Ember** (`#e8502f` / `oklch(64% 0.194 34)`): the bonfire color — grounded orange-red. Used for the primary CTA face, the living fire, the heat core of lit territory, and the active "here now" indicator. Never used as decoration.
+- **Ember Deep** (`#9e2c1c` / `oklch(47% 0.153 31)`): the shadow under every ember button. Carries the 3D press effect. Also used for pressed/dark surface states.
+- **Ember Glow** (`#f39472` / `oklch(76% 0.124 40)`): the breathing halo around checked-in members and lit venues at ~22–54% opacity. Heat falloff color.
 
 ### Secondary
 - **Spark** (`#54b05a` / `oklch(68% 0.15 145)`): sage-leaning green for the "happening now" dot — active pulses, live check-ins. **Not iOS green.** Used only as a state marker, never as a fill.
@@ -150,12 +150,14 @@ The system is tinted toward ember (~30°) across all neutrals so every surface r
 - **Night** (`#1d293d` / `oklch(28% 0.04 260)`): true deep blue-black for the fog-of-war group map — the unlit city the group lights up. **The game board, not a dark-mode toggle.**
 
 ### Neutral
-- **Coal** (`#231715` / `oklch(22% 0.02 30)`): warm near-black for body text on light surfaces. Never pure black.
-- **Smoke** (`#716664` / `oklch(52% 0.015 30)`): secondary text, placeholder text, inactive icons.
-- **Ash** (`#ddd6d4` / `oklch(88% 0.008 30)`): hairline borders and dividers.
-- **Cream** (`#fff7f1` / `oklch(98% 0.012 60)`): the base surface of every screen. The room.
-- **Hearth** (`#ffffff`): the card surface. Reads warm against cream.
-- **Shadow Warm** (`#c8b8b1`): the bottom layer under hearth-faced chunky buttons. Provides 3D press for outline / secondary actions.
+Retuned neutral-warm — professional paper, not pink. The tint toward ember is now barely-there so surfaces read balanced rather than feminine.
+- **Coal** (`#201d1b` / `oklch(23% 0.006 56)`): near-black for body text on light surfaces, only a faint warmth. Never pure black.
+- **Smoke** (`#6b6560` / `oklch(51% 0.011 62)`): neutral secondary text, placeholder text, inactive icons.
+- **Ash** (`#e3dfdb` / `oklch(91% 0.007 68)`): neutral hairline borders and dividers.
+- **Cream** (`#f6f3ef` / `oklch(97% 0.006 75)`): the base surface of every screen — warm paper, balanced not pink. The room.
+- **Hearth** (`#ffffff`): the card surface. Clean white against the paper.
+- **Shadow Warm** (`#c3bcb4`): the bottom layer under hearth-faced chunky buttons. Provides 3D press for outline / secondary actions.
+- **Ink** (`#2a3140` / `oklch(31% 0.029 265)`): cool slate structural anchor — headers, rails, and other places that want a professional, non-warm edge.
 
 ### Named Rules
 
@@ -163,7 +165,7 @@ The system is tinted toward ember (~30°) across all neutrals so every surface r
 
 **The 60/30/10 Rule.** 60% cream / hearth, 30% coal / smoke, 10% ember. Spark, dusk, and night are intent-state accents, not part of the everyday palette.
 
-**The No-Pure-Black Rule.** `#000` is forbidden. Use **Coal** (`#231715`). All neutrals must be tinted toward the ember hue.
+**The No-Pure-Black Rule.** `#000` is forbidden. Use **Coal** (`#201d1b`). Neutrals carry only the faintest warmth — balanced paper, never a pink cast.
 
 ## 3. Typography
 
@@ -197,11 +199,11 @@ There are no ambient drop shadows on cards, modals, or chips. Depth is conveyed 
 
 ### Shadow Vocabulary
 - **Chunky depth — primary action** (face: ember; shadow: ember-deep; offset 5–6px): Check-in FAB, primary CTAs.
-- **Chunky depth — secondary action** (face: hearth; shadow: shadow-warm `#c8b8b1`; offset 4–5px): Recenter button, Continue buttons in outline variant.
+- **Chunky depth — secondary action** (face: hearth; shadow: shadow-warm `#c3bcb4`; offset 4–5px): Recenter button, Continue buttons in outline variant.
 
 ### Named Rules
 
-**The Flat-Card Rule.** Cards and modals do not carry ambient drop shadows. They sit on cream with a hairline ash border (`#ddd6d4`, 1px) or no border. If a surface needs to feel lifted, give it the chunky press treatment — not a soft blur.
+**The Flat-Card Rule.** Cards and modals do not carry ambient drop shadows. They sit on cream with a hairline ash border (`#e3dfdb`, 1px) or no border. If a surface needs to feel lifted, give it the chunky press treatment — not a soft blur.
 
 **The Press-Eats-Shadow Rule.** When a chunky button is pressed, the button face translates down by exactly its `depth` value, fully covering the shadow. There is no "still see the shadow under the pressed button" state.
 
@@ -226,7 +228,7 @@ The full reference implementation lives in `apps/mobile/components/ui/` and `app
 ### Cards (`Card`)
 - **Shape:** 20px corner radius.
 - **Background:** hearth (`#ffffff`).
-- **Shadow:** none. Hairline ash border (1px `#ddd6d4`) when needed for separation; no border when stacked in a list with row separators.
+- **Shadow:** none. Hairline ash border (1px `#e3dfdb`) when needed for separation; no border when stacked in a list with row separators.
 - **Internal padding:** 16px default; 12px for dense list rows; 20px for primary content cards.
 
 ### Inputs (search pill, name field)
