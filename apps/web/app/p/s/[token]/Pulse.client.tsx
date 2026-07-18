@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createStore, useStore } from 'zustand'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -27,8 +27,132 @@ const DESKTOP_GROUPS: { key: PulseStatus; label: string }[] = [
 ]
 // the fire ring holds at most this many faces; the rest fold into a +N chip
 const RING_CAP = 8
+// the slider is the attending progression only — 'out' (not coming) is a negation, not a
+// point on it, so it lives as the OptOutToggle below.
+const SLIDER_STATUSES = PULSE_STATUSES.filter((s) => s !== 'out')
 
 const firstName = (n: string) => n.trim().split(/\s+/)[0] ?? n
+
+// Draggable status slider. Grab the thumb (or press anywhere on the track) and drag: the thumb
+// follows the pointer, morphing to each status's colour as it crosses (in=ember, on-the-way=amber,
+// here=spark), and snaps to the nearest status on release. Tap a label to slide there; arrow keys
+// step. Parked on a status it breathes in the fire's 3.2s cadence. Only transform/opacity/colour
+// animate — never layout. Shared by the mobile sheet and the desktop commit card (via --seg-n).
+function StatusSegment({ statuses, current, onPick, disabled, dimmed, className }: {
+  statuses: readonly PulseStatus[]
+  current: PulseStatus | null
+  onPick: (s: PulseStatus) => void
+  disabled?: boolean
+  dimmed?: boolean
+  className?: string
+}) {
+  const n = statuses.length
+  const idx = current ? statuses.indexOf(current) : -1     // resting slot (optimistic `current`)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [dragPx, setDragPx] = useState<number | null>(null) // freeform offset while dragging
+  const [nearest, setNearest] = useState(idx < 0 ? 0 : idx)
+  const geom = useRef({ left: 0, segW: 0 })
+  const pressing = useRef(false)
+  const moved = useRef(false)
+  const startX = useRef(0)
+
+  const measure = () => {
+    const el = trackRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    geom.current = { left: r.left + 4, segW: (r.width - 8) / n }
+  }
+  // pointer x → { pixel offset within the track, nearest segment index }
+  const at = (clientX: number) => {
+    const { left, segW } = geom.current
+    const rel = Math.max(segW / 2, Math.min(clientX - left, n * segW - segW / 2))
+    return { x: rel - segW / 2, i: Math.max(0, Math.min(n - 1, Math.round((rel - segW / 2) / segW))) }
+  }
+  const commit = (i: number) => {
+    const s = statuses[i]
+    if (s) onPick(s)
+  }
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled) return
+    measure()
+    pressing.current = true
+    moved.current = false
+    startX.current = e.clientX
+    trackRef.current?.setPointerCapture?.(e.pointerId)
+  }
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pressing.current) return
+    if (!moved.current && Math.abs(e.clientX - startX.current) < 4) return // ignore jitter → taps stay taps
+    moved.current = true
+    const { x, i } = at(e.clientX)
+    setDragPx(x)
+    setNearest(i)
+  }
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pressing.current) return
+    pressing.current = false
+    trackRef.current?.releasePointerCapture?.(e.pointerId)
+    const { i } = at(e.clientX)
+    setDragPx(null) // drop freeform offset → thumb snaps to the slot via CSS transition
+    commit(i)
+  }
+  const onPointerCancel = () => { pressing.current = false; moved.current = false; setDragPx(null) }
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return
+    const cur = idx < 0 ? 0 : idx
+    let next = cur
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = Math.max(0, cur - 1)
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') next = Math.min(n - 1, cur + 1)
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = n - 1
+    else return
+    e.preventDefault()
+    commit(next)
+  }
+
+  const dragging = dragPx != null
+  const activeIdx = dragging ? nearest : idx
+  const thumbStatus = activeIdx >= 0 ? statuses[activeIdx] : undefined
+  const rest = idx < 0 ? 0 : idx
+
+  return (
+    <div
+      ref={trackRef}
+      className={`bp-seg2${dragging ? ' is-dragging' : ''}${dimmed ? ' is-muted' : ''}${className ? ` ${className}` : ''}`}
+      style={{ '--seg-n': n } as React.CSSProperties}
+      role="slider" aria-label="Your status" aria-valuemin={0} aria-valuemax={n - 1}
+      aria-valuenow={activeIdx >= 0 ? activeIdx : undefined}
+      aria-valuetext={thumbStatus ? PULSE_STATUS_LABEL[thumbStatus] : undefined}
+      aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : 0}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel} onKeyDown={onKeyDown}
+    >
+      <span className="bp-seg2-thumb" aria-hidden data-status={thumbStatus}
+        style={dragging
+          ? { opacity: 1, transform: `translateX(${dragPx}px)`, transition: 'none' }
+          : { opacity: activeIdx >= 0 ? 1 : 0, transform: `translateX(${rest * 100}%)` }} />
+      {statuses.map((s, i) => (
+        <span key={s} className={`bp-seg2-opt${i === activeIdx ? ' is-sel' : ''}`} aria-hidden>
+          {PULSE_STATUS_LABEL[s]}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// Quiet opt-out. 'out' (not coming) is a negation, not a point on the attending slider, so it
+// lives as a de-emphasised switch — muted, never alarming. Flipping it off returns you to 'in'.
+function OptOutToggle({ on, onToggle, disabled }: {
+  on: boolean; onToggle: (next: boolean) => void; disabled?: boolean
+}) {
+  return (
+    <button type="button" role="switch" aria-checked={on} disabled={disabled}
+      className={`bp-optout${on ? ' is-on' : ''}`} onClick={() => onToggle(!on)}>
+      <span className="bp-optout-lab">{on ? 'Not coming' : "Can’t make it"}</span>
+      <span className="bp-optout-sw" aria-hidden><span className="knob" /></span>
+    </button>
+  )
+}
 
 function CopyButton({ text, className, label, idle, done }: {
   text: () => string; className: string; label: string; idle: React.ReactNode; done: React.ReactNode
@@ -269,14 +393,10 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
                 <input value={name} onChange={(e) => setName(e.target.value)} maxLength={CAPS.displayName}
                   placeholder="Pick a name your friends will know" autoFocus className="bp-field mb-2.5" />
               )}
-              <div className="bp-seg">
-                {PULSE_STATUSES.map((s) => (
-                  <button key={s} type="button" onClick={() => setStatus(s)} disabled={busy}
-                    className={`bp-opt${me?.status === s ? ' bp-opt--sel' : ''}`}>
-                    {PULSE_STATUS_LABEL[s]}
-                  </button>
-                ))}
-              </div>
+              <StatusSegment statuses={SLIDER_STATUSES} current={me?.status ?? null}
+                onPick={(s) => setStatus(s)} disabled={busy} dimmed={me?.status === 'out'} />
+              <OptOutToggle on={me?.status === 'out'}
+                onToggle={(next) => setStatus(next ? 'out' : 'in')} disabled={busy} />
               {me?.status === 'on_my_way' && (
                 <div className="mt-3 flex gap-2">
                   <input value={eta} onChange={(e) => setEta(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric"
@@ -386,17 +506,12 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
               {me && <div className="bpd-youstate">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></div>}
               {needName && (
                 <input value={name} onChange={(e) => setName(e.target.value)} maxLength={CAPS.displayName}
-                  placeholder="Pick a name your friends will know" className="bp-field" style={{ marginTop: me ? 0 : 12 }} />
+                  placeholder="A name your friends will know" className="bp-field" style={{ marginTop: me ? 0 : 12 }} />
               )}
-              <button type="button" className="bpd-cta" onClick={() => setStatus('in')} disabled={busy}>
-                <span className="emo">🔥</span>{me ? PULSE_STATUS_LABEL[me.status] : 'I’m in'}
-              </button>
-              <div className="bpd-seg">
-                {PULSE_STATUSES.filter((s) => s !== 'in').map((s) => (
-                  <button key={s} type="button" onClick={() => setStatus(s)} disabled={busy}
-                    className={`bp-opt${me?.status === s ? ' bp-opt--sel' : ''}`}>{PULSE_STATUS_LABEL[s]}</button>
-                ))}
-              </div>
+              <StatusSegment statuses={SLIDER_STATUSES} current={me?.status ?? null}
+                onPick={(s) => setStatus(s)} disabled={busy} dimmed={me?.status === 'out'} className="bp-seg2--desktop" />
+              <OptOutToggle on={me?.status === 'out'}
+                onToggle={(next) => setStatus(next ? 'out' : 'in')} disabled={busy} />
               {me?.status === 'on_my_way' && (
                 <div className="mt-3 flex gap-2">
                   <input value={eta} onChange={(e) => setEta(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric"

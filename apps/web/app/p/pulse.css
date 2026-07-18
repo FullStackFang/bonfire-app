@@ -186,6 +186,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 13px;
+  white-space: nowrap;
   border: 1px solid var(--ash);
   background: var(--hearth);
   color: var(--coal);
@@ -193,6 +194,122 @@
 }
 .bp-opt--sel { background: var(--ember); color: var(--hearth); border-color: var(--ember); }
 .bp-opt:disabled { opacity: 0.5; cursor: default; }
+
+/* ── sliding-thumb status segment ──
+   Replaces the flat .bp-opt row for the pulse status picker. One inset track; an
+   absolutely-positioned thumb slides to the selected status and takes its colour,
+   morphing hue mid-slide. Parked on a live status (in / on-the-way / here) it breathes
+   in the fire's 3.2s cadence. Only transform / opacity / colour animate — never layout.
+   --seg-n (4 on mobile, 3 on desktop) drives the segment count so both trees share one
+   component. */
+.bp-seg2 {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--seg-n, 4), 1fr);
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--cream);
+  border: 1.5px solid var(--ash);
+  box-shadow: inset 0 1px 3px rgba(32, 29, 27, 0.09);
+  isolation: isolate;
+  cursor: grab;
+  touch-action: pan-y;               /* vertical scroll still passes; horizontal drag is ours */
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.2s ease;
+}
+.bp-seg2:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.bp-seg2.is-dragging { cursor: grabbing; }
+.bp-seg2.is-muted { opacity: 0.42; }  /* opted out — still draggable to re-engage */
+.bp-seg2--desktop { margin-top: 14px; }
+.bp-seg2--desktop .bp-seg2-opt { padding: 13px 6px; font-size: 14px; }
+.bp-seg2-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--seg-n, 4));
+  border-radius: 999px;
+  background: var(--ember);
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition:
+    transform 0.44s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.32s ease,
+    box-shadow 0.32s ease,
+    opacity 0.2s ease;
+}
+/* per-status face + the --glow triplet the breathing halo reads from */
+.bp-seg2-thumb[data-status='in']        { background: var(--ember); box-shadow: 0 2px 8px rgba(158, 44, 28, 0.42); --glow: 232, 80, 47; }
+.bp-seg2-thumb[data-status='on_my_way'] { background: var(--dusk);  box-shadow: 0 2px 8px rgba(181, 101, 42, 0.42); --glow: 224, 132, 62; }
+.bp-seg2-thumb[data-status='here']      { background: var(--spark); box-shadow: 0 2px 8px rgba(61, 133, 68, 0.42); --glow: 84, 176, 90; }
+.bp-seg2-thumb[data-status='out']       { background: var(--smoke); box-shadow: 0 2px 8px rgba(74, 70, 66, 0.35); --glow: 107, 101, 96; }
+/* the breathing halo — live statuses only (out stays calm) */
+.bp-seg2-thumb::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.bp-seg2-thumb[data-status='in']::after,
+.bp-seg2-thumb[data-status='on_my_way']::after,
+.bp-seg2-thumb[data-status='here']::after { animation: bp-seg-glow var(--pulse-cadence) ease-in-out infinite; }
+@keyframes bp-seg-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--glow), 0); }
+  50%      { box-shadow: 0 0 13px 2px rgba(var(--glow), 0.5); }
+}
+.bp-seg2-opt {
+  position: relative;
+  z-index: 1;
+  padding: 9px 6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--smoke);
+  text-align: center;
+  pointer-events: none;          /* the track owns the pointer; labels are pass-through */
+  transition: color 0.24s ease;
+}
+.bp-seg2-opt.is-sel { color: #fff; }
+
+/* ── opt-out switch ('Can't make it') ──
+   A negation, not a slot on the attending slider — kept quiet and muted, never alarming. */
+.bp-optout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 6px 9px 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+.bp-optout:disabled { cursor: default; opacity: 0.5; }
+.bp-optout-lab { font-size: 13px; font-weight: 600; color: var(--smoke); transition: color 0.2s ease; }
+.bp-optout.is-on .bp-optout-lab { color: var(--coal); }
+.bp-optout-sw {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--ash);
+  transition: background-color 0.24s ease;
+}
+.bp-optout.is-on .bp-optout-sw { background: var(--smoke); }
+.bp-optout-sw .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--hearth);
+  box-shadow: 0 1px 2px rgba(32, 29, 27, 0.28);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bp-optout.is-on .bp-optout-sw .knob { transform: translateX(16px); }
 
 /* ── plan option cards ──
    Full-width, multi-line tappables (time + venue + rationale). The segmented pill
@@ -570,6 +687,8 @@
   .bp-btn--outline:hover:not(:disabled):not(:active) { transform: translateY(-1px); box-shadow: 0 6px 0 var(--shadow-warm); }
   .bp-btn--ghost:hover:not(:disabled) { color: var(--coal); }
   .bp-opt:hover:not(:disabled):not(.bp-opt--sel) { border-color: var(--shadow-warm); background: #fbfaf8; }
+  .bp-optout:hover:not(:disabled) .bp-optout-lab { color: var(--coal); }
+  .bp-optout:hover:not(:disabled):not(.is-on) .bp-optout-sw { background: var(--shadow-warm); }
   .bp-opt-card:hover:not(:disabled):not(.bp-opt-card--sel) { border-color: var(--shadow-warm); background: #fbfaf8; }
   .bp-pin-chip:hover { background: #f2ddd5; }
   .bp-hero-btn:hover { background: rgba(255, 255, 255, 0.26); }
@@ -585,6 +704,12 @@
   .bp-sheet, .bp-scrim { animation: none; }
   /* the desktop hearth: keep a calm static glow, drop the flicker/sway/breathe */
   .bpd-fl, .bpd-bloom, .bpd-orb--here::after, .bpd-roster { animation: none; }
+  /* the status thumb: land instantly, hold a calm static halo instead of breathing */
+  .bp-seg2-thumb { transition: opacity 0.2s ease, background-color 0.2s ease; }
+  .bp-seg2-thumb::after { animation: none; }
+  .bp-seg2-thumb[data-status='in']::after,
+  .bp-seg2-thumb[data-status='on_my_way']::after,
+  .bp-seg2-thumb[data-status='here']::after { box-shadow: 0 0 10px 1px rgba(var(--glow), 0.4); }
   /* keep the state colors and resting offset; drop only the press translation */
   .bp-nav-tab { transition: none; }
   .bp-nav-tab:active { transform: none; box-shadow: 0 4px 0 var(--shadow-warm); }
@@ -796,24 +921,13 @@
   .bpd-share:active { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow-warm); }
 
   /* ── two equal-height cards ── */
-  .bpd-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 22px; align-items: stretch; }
+  .bpd-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 22px; align-items: stretch; }
   .bpd-card { background: var(--hearth); border: 1px solid var(--ash); border-radius: 22px; }
 
   /* ── left: commit ── */
   .bpd-commit { padding: 22px 20px; display: flex; flex-direction: column; }
   .bpd-youstate { margin: 8px 0 15px; font-size: 15px; color: var(--smoke); }
   .bpd-youstate b { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 19px; }
-  .bpd-cta {
-    width: 100%; height: 56px; margin-top: 12px; border: none; border-radius: 999px;
-    background: var(--ember); color: #fff; font-family: var(--font-display); font-style: italic;
-    font-weight: 700; font-size: 20px; cursor: pointer; box-shadow: 0 4px 0 var(--ember-deep);
-    display: flex; align-items: center; justify-content: center; gap: 9px; transition: transform 0.06s, box-shadow 0.06s;
-  }
-  .bpd-cta:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 var(--ember-deep); }
-  .bpd-cta:disabled { opacity: 0.6; cursor: default; }
-  .bpd-cta .emo { font-size: 20px; line-height: 1; }
-  .bpd-seg { display: flex; gap: 7px; margin-top: 11px; }
-  .bpd-seg .bp-opt { flex: 1; height: 42px; }
   .bpd-notes { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
   .bpd-foot-wrap { margin-top: auto; padding-top: 18px; }
 
@@ -849,7 +963,7 @@
     color: #fff; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 9px 22px -11px rgba(88, 32, 20, 0.6); transform: translate(-50%, -50%);
   }
-  .bpd-orb .bp-tile-badge { right: -3px; bottom: -3px; width: 18px; height: 18px; border-color: var(--hearth); }
+  .bpd-orb .bp-tile-badge { top: -3px; right: -3px; bottom: auto; width: 18px; height: 18px; border-color: var(--hearth); }
   .bpd-orb--here::after {
     content: ""; position: absolute; inset: -5px; border-radius: 50%;
     box-shadow: 0 0 0 2.5px rgba(84, 176, 90, 0.34); animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
