@@ -702,8 +702,8 @@
   .bonfire-pulse-dot { animation: none; }
   .bp-skel { animation: none; }
   .bp-sheet, .bp-scrim { animation: none; }
-  /* the desktop hearth: keep a calm static glow, drop the flicker/sway/breathe */
-  .bpd-fl, .bpd-bloom, .bpd-orb--here::after, .bpd-roster { animation: none; }
+  /* the desktop hero: keep a calm static glow, drop the flicker/sway/breathe/approach */
+  .bpd-fl, .bpd-hero-bloom, .bpd-person--here::after, .bpd-person--on_my_way, .bpd-hero-roster { animation: none; }
   /* the status thumb: land instantly, hold a calm static halo instead of breathing */
   .bp-seg2-thumb { transition: opacity 0.2s ease, background-color 0.2s ease; }
   .bp-seg2-thumb::after { animation: none; }
@@ -842,69 +842,42 @@
   .bp-sheet-wrap { left: var(--rail-w); }
 }
 
-/* ═══ pulse detail ≥1100px: contained commit + living hearth ════════════════
-   Replaces the three-column Partiful spread (map hero + guest wall + rail). The
-   pulse has no coordinates, so there is no map; the people are the content. Two
-   equal-height cards, centered and contained: left commits (name + status), right
-   is the hearth — faces ring a living fire, capped at RING_CAP with a +N chip that
-   expands the card in place into a searchable, status-grouped roster. */
+/* ═══ pulse detail ≥1100px: the unified map-hero ════════════════════════════
+   One surface, not two cards. A cinematic (non-pannable) basemap centred on the
+   venue, the bonfire burning at map-centre, and participants gathered toward the
+   fire by status — `here` hugging it (green breathing halo), `on_my_way` out on
+   the approaching ring with an ETA pill, `in` at mid-distance. Headcount, venue,
+   open-in-maps, and the commit slider are overlays on the map. No geocode → the
+   same gather composition on cream (no basemap). The fire is the hero; everything
+   else pools around it. Overflow → +N chip → searchable roster overlay in place. */
 @media (min-width: 1100px) {
-  .bonfire-pulse main.bpd-main { max-width: 62rem; }
+  .bonfire-pulse main.bpd-main { max-width: 66rem; }
   .bpd-mobile { display: none; }
   .bpd-desktop { display: block; padding: 40px 8px 56px; }
 
-  /* ── header ── */
-  /* event details: title + status + the prominent location tile, its own band on top */
-  .bpd-details { margin-bottom: 24px; }
-  .bpd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+  /* ── header: editorial title + a three-cell dateline ── */
+  .bpd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
   .bpd-h1 {
     font-family: var(--font-display);
     font-style: italic;
     font-weight: 600;
-    font-size: clamp(40px, 4vw, 52px);
+    font-size: clamp(40px, 4.4vw, 56px);
     line-height: 1;
     letter-spacing: -0.4px;
     color: var(--coal);
     margin: 0;
     overflow-wrap: break-word;
   }
-  .bpd-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 12px; font-family: var(--font-mono); font-size: 12.5px; color: var(--smoke); }
-  /* prominent location tile (reuses the .bp-map motif; place is free text with no
-     coordinates, so it links out to real maps rather than pinning a point) */
-  .bpd-map { min-height: 178px; border-radius: 20px; margin-top: 20px; gap: 11px; }
-  .bpd-map .bp-map-tag { font-size: 15px; padding: 6px 15px; }
-  .bpd-map .bp-map-hint { right: 14px; bottom: 11px; font-size: 10px; }
-  /* resolved-place live map: the real basemap fills the same tile footprint, desaturated to the
-     mist with warm colour blooming around the spot (FogMap treatment); place pill + open-in-maps
-     hint stay overlaid so the band never shifts */
-  .bpd-map--live { padding: 0; cursor: pointer; }
-  /* isolate scopes the saturation blend to this tile, exactly as FogMap's map stack does */
-  .bpd-map-stage { position: absolute; inset: 0; isolation: isolate; border-radius: inherit; overflow: hidden; }
-  .bpd-map-canvas { border-radius: inherit; }
-  .bpd-map-canvas .maplibregl-canvas { outline: none; }
-  /* greys the basemap to the mist; the mask punches the centre open so the venue keeps its colour */
-  .bpd-map-desat {
-    position: absolute; inset: 0; pointer-events: none; z-index: 1;
-    background: #808080; mix-blend-mode: saturation;
-  }
-  /* warm ember bloom at the spot + cream mist toward the edges (background set inline from tokens) */
-  .bpd-map-warm { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-  .bpd-map-marker {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    pointer-events: none; z-index: 2;
-  }
-  .bpd-map--live .bp-map-tag {
-    position: absolute; left: 14px; bottom: 11px; z-index: 3;
-    max-width: calc(100% - 150px); box-shadow: 0 1px 5px rgba(32, 29, 27, 0.14);
-  }
-  .bpd-map--live .bp-map-hint { z-index: 3; }
-  .bpd-map-attr {
-    position: absolute; top: 8px; right: 10px; z-index: 3;
-    font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.3px;
-    color: var(--smoke); background: rgba(255, 255, 255, 0.62);
-    padding: 1px 5px; border-radius: 4px;
-  }
-  .bpd-head-r { display: flex; gap: 9px; flex-shrink: 0; }
+  .bpd-dateline { display: flex; margin-top: 16px; border-top: 1px solid var(--ash); border-bottom: 1px solid var(--ash); }
+  .bpd-dcell { padding: 11px 22px 11px 0; margin-right: 22px; border-right: 1px solid var(--ash); }
+  .bpd-dcell:last-child { margin-right: 0; border-right: none; }
+  .bpd-dk { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--smoke); font-weight: 600; margin-bottom: 4px; }
+  .bpd-dv { font-size: 17px; font-weight: 600; color: var(--coal); display: flex; align-items: center; gap: 7px; line-height: 1.15; }
+  .bpd-dv--live { color: var(--spark); }
+  .bpd-dv--crew { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .bpd-wind { font-family: var(--font-mono); font-size: 16px; font-weight: 500; color: var(--ember-deep); letter-spacing: 0.4px; }
+
+  .bpd-head-r { display: flex; gap: 9px; flex-shrink: 0; margin-top: 4px; }
   .bpd-invite {
     display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px;
     border-radius: 999px; background: var(--ember); color: #fff; border: none; cursor: pointer;
@@ -920,65 +893,166 @@
   }
   .bpd-share:active { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow-warm); }
 
-  /* ── two equal-height cards ── */
-  .bpd-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 22px; align-items: stretch; }
-  .bpd-card { background: var(--hearth); border: 1px solid var(--ash); border-radius: 22px; }
-
-  /* ── left: commit ── */
-  .bpd-commit { padding: 22px 20px; display: flex; flex-direction: column; }
-  .bpd-youstate { margin: 8px 0 15px; font-size: 15px; color: var(--smoke); }
-  .bpd-youstate b { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 19px; }
-  .bpd-notes { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
-  .bpd-foot-wrap { margin-top: auto; padding-top: 18px; }
-
-  /* ── right: the living hearth ── */
-  .bpd-hearth { padding: 18px 20px; display: flex; flex-direction: column; overflow: hidden; }
-  .bpd-hearth-head { display: flex; align-items: baseline; gap: 12px; }
-  .bpd-hcount { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 34px; line-height: 1; color: var(--coal); }
-  .bpd-hlab { font-size: 13.5px; color: var(--smoke); }
-  .bpd-hlab b { color: var(--spark); font-weight: 700; }
-  .bpd-search-pill {
-    margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 15px;
-    border-radius: 999px; background: var(--cream); border: 1.5px solid var(--ash); color: var(--smoke);
-    font-family: var(--font-body); font-size: 13px; cursor: pointer;
+  /* ── the hero ── */
+  .bpd-hero {
+    position: relative; margin-top: 22px; height: 560px; border-radius: 24px; overflow: hidden;
+    border: 1px solid var(--ash); isolation: isolate;
   }
-  .bpd-search-pill:hover { border-color: var(--shadow-warm); color: var(--coal); }
+  /* no geocode → the gather on a warm cream surface, faint ember pooling where the fire sits */
+  .bpd-hero--cream {
+    background:
+      radial-gradient(52% 60% at 50% 48%, var(--ember-tint) 0%, rgba(247, 235, 230, 0) 62%),
+      repeating-linear-gradient(0deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(90deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 34px),
+      var(--cream);
+  }
+  .bpd-hero--done .bpd-fire { filter: saturate(0.55) brightness(0.82); opacity: 0.72; }
 
-  .bpd-stage { position: relative; flex: 1; min-height: 360px; }
-  .bpd-bloom {
-    position: absolute; left: 50%; top: 50%; width: 104%; aspect-ratio: 1; max-width: 440px;
-    border-radius: 50%; translate: -50% -50%;
-    background: radial-gradient(circle, rgba(232, 80, 47, 0.20) 0%, rgba(255, 179, 130, 0.12) 40%, rgba(255, 179, 130, 0.05) 60%, transparent 72%);
+  /* map backdrop layers (from HeroMap) */
+  .bpd-hero-mapstage { position: absolute; inset: 0; }
+  /* grey the basemap to the mist — applied to the canvas element itself; a CSS filter on the
+     container div doesn't reliably reach maplibre's separately-composited WebGL layer */
+  .bpd-hero-mapcanvas .maplibregl-canvas { outline: none; filter: grayscale(1) contrast(0.9) brightness(1.07); }
+  .bpd-hero-mapwarm { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+
+  /* range rings — faint concentric guides centred on the fire */
+  .bpd-hero-rings { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .bpd-hero-rings .r { position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px dashed rgba(158, 44, 28, 0.14); }
+  .bpd-hero-rings .r1 { width: 220px; height: 196px; }
+  .bpd-hero-rings .r2 { width: 460px; height: 372px; }
+  .bpd-hero-rings .r3 { width: 700px; height: 540px; }
+
+  /* the hero fire */
+  .bpd-hero-bloom {
+    position: absolute; left: 50%; top: 48%; width: 340px; height: 340px; transform: translate(-50%, -50%);
+    z-index: 3; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, rgba(232, 80, 47, 0.20) 0%, rgba(255, 179, 130, 0.11) 42%, rgba(255, 179, 130, 0.04) 62%, transparent 72%);
     animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
   }
-  .bpd-fire { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 112px; height: 160px; }
+  .bpd-fire { position: absolute; left: 50%; top: 48%; transform: translate(-50%, -58%); z-index: 4; width: 100px; height: 152px; pointer-events: none; }
   .bpd-fl { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); border-radius: 52% 52% 40% 40% / 72% 72% 28% 28%; transform-origin: 50% 90%; }
-  .bpd-f1 { width: 90px; height: 138px; background: radial-gradient(60% 80% at 50% 82%, #e8502f, #E0431F 70%, #9e2c1c); animation: bpd-sway 3.2s ease-in-out infinite; }
-  .bpd-f2 { width: 60px; height: 106px; background: radial-gradient(60% 80% at 50% 82%, #FF8A3D, #e8502f 72%); animation: bpd-sway 2.4s ease-in-out infinite reverse; }
-  .bpd-f3 { width: 34px; height: 72px; background: radial-gradient(60% 80% at 50% 80%, #FFD37A, #FF8A3D 78%); animation: bpd-sway 1.8s ease-in-out infinite; }
-  .bpd-fcore { width: 17px; height: 40px; bottom: 6px; background: radial-gradient(60% 70% at 50% 70%, #fff4d6, #FFD37A 80%); animation: bpd-flick 1.2s ease-in-out infinite; }
+  .bpd-f1 { width: 82px; height: 134px; background: radial-gradient(60% 80% at 50% 82%, #e8502f, #E0431F 70%, #9e2c1c); animation: bpd-sway 3.2s ease-in-out infinite; }
+  .bpd-f2 { width: 54px; height: 100px; background: radial-gradient(60% 80% at 50% 82%, #FF8A3D, #e8502f 72%); animation: bpd-sway 2.4s ease-in-out infinite reverse; }
+  .bpd-f3 { width: 31px; height: 66px; background: radial-gradient(60% 80% at 50% 80%, #FFD37A, #FF8A3D 78%); animation: bpd-sway 1.8s ease-in-out infinite; }
+  .bpd-fcore { width: 15px; height: 37px; bottom: 6px; background: radial-gradient(60% 70% at 50% 70%, #fff4d6, #FFD37A 80%); animation: bpd-flick 1.2s ease-in-out infinite; }
 
-  .bpd-orb {
-    position: absolute; width: 54px; height: 54px; border-radius: 50%; border: 3px solid var(--hearth);
-    color: #fff; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 9px 22px -11px rgba(88, 32, 20, 0.6); transform: translate(-50%, -50%);
+  /* ── the gather ── */
+  .bpd-person { position: absolute; z-index: 5; transform: translate(-50%, -50%); }
+  .bpd-person-av {
+    position: relative; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--hearth);
+    color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 24px -11px rgba(88, 32, 20, 0.7);
   }
-  .bpd-orb .bp-tile-badge { top: -3px; right: -3px; bottom: auto; width: 18px; height: 18px; border-color: var(--hearth); }
-  .bpd-orb--here::after {
-    content: ""; position: absolute; inset: -5px; border-radius: 50%;
-    box-shadow: 0 0 0 2.5px rgba(84, 176, 90, 0.34); animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
+  .bpd-person--here .bpd-person-av { border-color: rgba(84, 176, 90, 0.92); }
+  .bpd-person--here::after {
+    content: ""; position: absolute; inset: -6px; border-radius: 50%; pointer-events: none;
+    box-shadow: 0 0 0 2.5px rgba(84, 176, 90, 0.32); animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
   }
-  .bpd-orb--me { box-shadow: 0 0 0 2px var(--cream), 0 0 0 4px var(--ember); }
-  .bpd-orb-nm { position: absolute; bottom: -17px; left: 50%; transform: translateX(-50%); font-size: 10.5px; font-weight: 600; color: var(--coal); white-space: nowrap; }
-  .bpd-more { background: var(--cream); color: var(--ember-deep); border: 1.5px solid var(--ember-glow); box-shadow: none; font-family: var(--font-body); font-weight: 700; font-size: 14px; cursor: pointer; }
+  .bpd-person--me .bpd-person-av { box-shadow: 0 0 0 2px var(--cream), 0 0 0 4px var(--ember), 0 10px 24px -11px rgba(88, 32, 20, 0.7); }
+  /* on-the-way faces breathe a touch, reading as movement toward the fire */
+  .bpd-person--on_my_way { animation: bpd-approach 3.2s ease-in-out infinite; }
+  .bpd-person .bp-tile-badge { top: -3px; right: -3px; bottom: auto; width: 18px; height: 18px; border-color: var(--hearth); }
+  .bpd-person-nm {
+    position: absolute; top: 52px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600;
+    color: var(--coal); white-space: nowrap; background: rgba(246, 243, 239, 0.72); padding: 0 5px; border-radius: 5px;
+  }
+  .bpd-person-eta {
+    position: absolute; top: 52px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono);
+    font-size: 10.5px; color: #fff; background: var(--dusk); padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .bpd-more {
+    position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 48px; height: 48px; border-radius: 50%;
+    background: var(--cream); border: 1.5px solid var(--ember-glow); color: var(--ember-deep); font-family: var(--font-body);
+    font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: 0 10px 24px -14px rgba(88, 32, 20, 0.5);
+  }
   .bpd-more:hover { border-color: var(--ember); }
+  .bpd-hero-empty { position: absolute; left: 0; right: 0; top: 66%; text-align: center; font-size: 14px; color: var(--smoke); z-index: 5; }
 
-  /* ── expanded, searchable roster (bounded to the card; the list scrolls) ── */
-  .bpd-roster { flex: 1; display: flex; flex-direction: column; min-height: 360px; margin-top: 14px; animation: bpd-fade 0.22s ease; }
+  /* ── the here huddle: the arrived crowd cordoned into one tight cluster at the fire ── */
+  .bpd-huddle {
+    position: absolute; left: 50%; top: 62%; transform: translateX(-50%); z-index: 6;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
+  }
+  /* a soft enclosure behind the faces — the "cordon" */
+  .bpd-huddle::before {
+    content: ""; position: absolute; left: 50%; top: -8px; transform: translateX(-50%);
+    width: calc(100% + 34px); height: 66px; border-radius: 999px; z-index: -1;
+    background: radial-gradient(60% 100% at 50% 40%, rgba(84, 176, 90, 0.10), transparent 72%);
+  }
+  .bpd-huddle-faces { display: flex; }
+  .bpd-huddle-face {
+    width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--spark); margin-left: -14px;
+    color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 24px -12px rgba(88, 32, 20, 0.7);
+  }
+  .bpd-huddle-face:first-child { margin-left: 0; }
+  .bpd-huddle-face--me { border-color: var(--ember); box-shadow: 0 0 0 2px var(--cream), 0 0 0 4px var(--ember); }
+  .bpd-huddle-more { background: var(--spark-tint); color: var(--spark); font-size: 13px; }
+  .bpd-huddle-lab {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--spark);
+    background: rgba(246, 243, 239, 0.82); padding: 2px 10px; border-radius: 999px;
+  }
+
+  /* ── overlays ── */
+  .bpd-hero-count { position: absolute; left: 24px; top: 22px; z-index: 6; }
+  .bpd-hero-count .n { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 44px; line-height: 1; color: var(--coal); }
+  .bpd-hero-count .l { font-size: 14.5px; font-weight: 600; color: var(--coal); margin-top: 4px; }
+  /* the scoreboard: here / on the way / in — the map itself no longer scatters every face */
+  .bpd-hero-breakdown { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
+  .bpd-hero-breakdown .b { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .bpd-hero-breakdown .b--here { color: var(--spark); background: var(--spark-tint); }
+  .bpd-hero-breakdown .b--otw { color: var(--dusk); background: var(--dusk-tint); }
+  .bpd-hero-breakdown .b--in { color: var(--ember-deep); background: var(--ember-tint); }
+
+  .bpd-hero-tr { position: absolute; right: 18px; top: 20px; z-index: 6; display: flex; gap: 8px; }
+  .bpd-hero-maps {
+    display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 15px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92); border: 1px solid var(--ember-glow); color: var(--ember-deep);
+    font-family: var(--font-body); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
+  }
+  .bpd-hero-maps:hover { background: #fff; }
+  .bpd-hero-searchpill {
+    display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 15px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86); border: 1.5px solid var(--ash); color: var(--smoke);
+    font-family: var(--font-body); font-size: 13px; cursor: pointer;
+  }
+  .bpd-hero-searchpill:hover { border-color: var(--shadow-warm); color: var(--coal); }
+
+  /* bottom-left stack: notes above the venue chip */
+  .bpd-hero-bl { position: absolute; left: 24px; bottom: 22px; z-index: 6; display: flex; flex-direction: column; gap: 9px; max-width: 340px; }
+  .bpd-hero-note {
+    align-self: flex-start; background: rgba(255, 255, 255, 0.88); border-radius: 12px; padding: 8px 12px;
+    font-family: var(--font-display); font-style: italic; font-size: 14px; line-height: 1.3; color: var(--coal);
+    box-shadow: 0 2px 12px rgba(32, 29, 27, 0.10); max-width: 300px;
+  }
+  .bpd-hero-note .by { font-family: var(--font-body); font-style: normal; font-size: 11px; color: var(--smoke); margin-left: 5px; }
+  .bpd-hero-venue {
+    align-self: flex-start; background: rgba(255, 255, 255, 0.92); border-radius: 14px; padding: 11px 16px;
+    box-shadow: 0 2px 14px rgba(32, 29, 27, 0.14); max-width: 340px;
+  }
+  .bpd-hero-venue .vn { display: block; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 22px; line-height: 1.05; color: var(--coal); }
+  .bpd-hero-venue .vs { display: block; margin-top: 3px; font-size: 13.5px; color: var(--smoke); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* commit card floats bottom-right (opaque — no glass), the fire's controls */
+  .bpd-commit {
+    position: absolute; right: 20px; bottom: 20px; z-index: 7; width: 300px;
+    background: var(--hearth); border: 1px solid var(--ash); border-radius: 20px; padding: 15px 17px 15px;
+    box-shadow: 0 20px 48px -22px rgba(32, 29, 27, 0.55);
+  }
+  .bpd-youstate { margin: 7px 0 12px; font-size: 14px; color: var(--smoke); }
+  .bpd-youstate b { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 18px; }
+  .bpd-youstate--empty { color: var(--smoke); }
+  .bpd-commit .bp-seg2--desktop { margin-top: 0; }
+  .bpd-commit-wrap { margin-top: 13px; }
+
+  /* ── expanded roster: a panel over the hero (covers the map + gather in place) ── */
+  .bpd-hero-roster {
+    position: absolute; inset: 0; z-index: 8; background: var(--hearth); border-radius: 24px;
+    padding: 20px 22px; display: flex; flex-direction: column; animation: bpd-fade 0.22s ease;
+  }
   .bpd-rsearch { display: flex; gap: 8px; margin-bottom: 16px; flex-shrink: 0; }
-  /* the group list scrolls in place, capped so the card keeps the same footprint as
-     the fire view (≈ stage min-height minus the search bar) no matter the headcount */
-  .bpd-rscroll { flex: 1; min-height: 0; max-height: 300px; overflow-y: auto; margin-right: -8px; padding-right: 8px; scrollbar-width: thin; scrollbar-color: var(--ash) transparent; }
+  .bpd-rscroll { flex: 1; min-height: 0; overflow-y: auto; margin-right: -8px; padding-right: 8px; scrollbar-width: thin; scrollbar-color: var(--ash) transparent; }
   .bpd-rscroll::-webkit-scrollbar { width: 8px; }
   .bpd-rscroll::-webkit-scrollbar-thumb { background: var(--ash); border-radius: 999px; border: 2px solid var(--hearth); }
   .bpd-rscroll::-webkit-scrollbar-track { background: transparent; }
@@ -1017,5 +1091,6 @@
 
   @keyframes bpd-sway { 0%, 100% { transform: translateX(-50%) rotate(-3deg) scaleY(1); } 50% { transform: translateX(-50%) rotate(3deg) scaleY(1.06); } }
   @keyframes bpd-flick { 0%, 100% { opacity: 0.85; transform: translateX(-50%) scaleY(1); } 50% { opacity: 1; transform: translateX(-50%) scaleY(1.14); } }
+  @keyframes bpd-approach { 0%, 100% { scale: 1; } 50% { scale: 1.05; } }
   @keyframes bpd-fade { from { opacity: 0; transform: translateY(6px); } }
 }

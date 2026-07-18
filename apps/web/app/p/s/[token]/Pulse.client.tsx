@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createStore, useStore } from 'zustand'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -8,9 +8,10 @@ import { PULSE_STATUS_LABEL, CAPS, pulseMessage } from '@/lib/pulse/copy'
 import { usePulsePoll } from '@/lib/pulse/usePulsePoll'
 import { EmberMark, EndsAt, avatarColorFor, initialsFor } from '../../ui.client'
 
-// The real map tile ships in its own chunk (maplibre-gl + tile CSS) fetched only when it renders —
-// i.e. only for a resolved coordinate. Unresolved/low_confidence/no-config pulses never load it.
-const PulseMap = dynamic(() => import('./PulseMap.client'), { ssr: false })
+// The desktop hero's basemap ships in its own chunk (maplibre-gl + tile CSS) fetched only when it
+// renders — i.e. only for a resolved coordinate. Unresolved pulses fall back to the cream gather
+// and never load it.
+const HeroMap = dynamic(() => import('./HeroMap.client'), { ssr: false })
 
 // tile ordering: the people already there lead, then arrivals by ETA, then in, then out
 const STATUS_ORDER: Record<PulseStatus, number> = { here: 0, on_my_way: 1, in: 2, out: 3 }
@@ -25,13 +26,67 @@ const DESKTOP_GROUPS: { key: PulseStatus; label: string }[] = [
   { key: 'in', label: 'In' },
   { key: 'out', label: 'Out' },
 ]
-// the fire ring holds at most this many faces; the rest fold into a +N chip
-const RING_CAP = 8
+// The decluttered hero shows only the people in motion. `on_my_way` are individual markers on the
+// approaching ring (the focus); `here` cordon into a huddle at the fire; `in` (committed but not
+// moving) live in the count + roster, never scattered. These cap how many render before a +N chip.
+const HUDDLE_CAP = 4 // faces in the fire huddle before "+N"
+const OTW_CAP = 7    // approaching markers on the ring before "+N"
 // the slider is the attending progression only — 'out' (not coming) is a negation, not a
 // point on it, so it lives as the OptOutToggle below.
 const SLIDER_STATUSES = PULSE_STATUSES.filter((s) => s !== 'out')
 
 const firstName = (n: string) => n.trim().split(/\s+/)[0] ?? n
+
+// ── desktop hero gather geometry (cinematic fixed frame) ──
+// The fire sits at the hero's centre; participants ring it by status. Positions are % of the hero
+// box, tuned so the four corners stay clear for overlays (count / maps / venue+notes / commit).
+// deg convention: 0=right, 90=down, 180=left, 270=up (screen space, y grows down).
+function gPos(cx: number, cy: number, rx: number, ry: number, deg: number): React.CSSProperties {
+  const a = (deg * Math.PI) / 180
+  return { left: `${cx + rx * Math.cos(a)}%`, top: `${cy + ry * Math.sin(a)}%` }
+}
+// even angular spread of n items across [a, b]; a lone item lands at the midpoint
+function gFan(a: number, b: number, n: number, i: number): number {
+  if (n <= 1) return (a + b) / 2
+  return a + ((b - a) * i) / (n - 1)
+}
+// The approaching ring: `on_my_way` markers spread across the upper arc (they close in on the fire
+// from around it), skipping the top-right pills and the bottom-right commit card.
+function otwSeat(n: number, i: number): React.CSSProperties {
+  return gPos(50, 44, 38, 29, gFan(202, 338, n, i))
+}
+
+// A shared 1s clock as an external store, so Winddown can tick without a setState-in-effect and
+// without a hydration mismatch (server snapshot is null → renders nothing until the client mounts).
+let clockNow = 0
+const clockSubs = new Set<() => void>()
+let clockTimer: ReturnType<typeof setInterval> | null = null
+function subscribeClock(cb: () => void) {
+  clockSubs.add(cb)
+  if (!clockTimer) {
+    clockTimer = setInterval(() => { clockNow = Date.now(); clockSubs.forEach((f) => f()) }, 1000)
+  }
+  return () => {
+    clockSubs.delete(cb)
+    if (clockSubs.size === 0 && clockTimer) { clearInterval(clockTimer); clockTimer = null }
+  }
+}
+const getClock = () => (clockNow === 0 ? (clockNow = Date.now()) : clockNow)
+const getClockServer = (): number | null => null
+
+// Ticking wind-down for the dateline: "2:47:12" (h:mm:ss, or m:ss under an hour). Null on the server
+// and the hydration pass, so the client's clock can't mismatch.
+function Winddown({ iso }: { iso: string }) {
+  const now = useSyncExternalStore(subscribeClock, getClock, getClockServer)
+  if (now === null) return null
+  const ms = Math.max(0, new Date(iso).getTime() - now)
+  const s = Math.floor(ms / 1000)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = s % 60
+  const two = (x: number) => String(x).padStart(2, '0')
+  return <span className="bpd-wind">{h > 0 ? `${h}:${two(m)}:${two(ss)}` : `${m}:${two(ss)}`}</span>
+}
 
 // Draggable status slider. Grab the thumb (or press anywhere on the track) and drag: the thumb
 // follows the pointer, morphing to each status's colour as it crosses (in=ember, on-the-way=amber,
@@ -298,15 +353,19 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
   const heroAvs = goingRoster.slice(0, 3)
   const heroExtra = goingCount - heroAvs.length
 
-  // ── desktop hearth: faces ring the fire (present-first); overflow → +N chip ──
-  const otwCount = roster.filter((p) => p.status === 'on_my_way').length
-  const ringOverflow = goingRoster.length > RING_CAP
-  const ringShown = ringOverflow ? goingRoster.slice(0, RING_CAP - 1) : goingRoster
-  const ringSlots = ringShown.length + (ringOverflow ? 1 : 0)
-  const ringPos = (i: number) => {
-    const a = ((-90 + (360 * i) / Math.max(ringSlots, 1)) * Math.PI) / 180
-    return { left: `${50 + 34 * Math.cos(a)}%`, top: `${50 + 37 * Math.sin(a)}%` }
-  }
+  // ── desktop hero: only the people in motion, so the fire stays readable ──
+  // `on_my_way` are the focus — individual approaching markers with ETA. `here` cordon into a
+  // huddle at the fire (a tight cluster + count, never a scatter). `in` stay in the count + roster.
+  const hereList = goingRoster.filter((p) => p.status === 'here')
+  const otwList = goingRoster.filter((p) => p.status === 'on_my_way')
+  const inCount = goingRoster.filter((p) => p.status === 'in').length
+  // huddle shows me first (so "You" is always visible when here), then the rest
+  const hereOrdered = me?.status === 'here' ? [me, ...hereList.filter((p) => !p.me)] : hereList
+  const huddleShown = hereOrdered.slice(0, HUDDLE_CAP)
+  const huddleMore = hereList.length - huddleShown.length
+  const otwShown = otwList.slice(0, OTW_CAP)
+  const otwMore = otwList.length - otwShown.length
+  const heroNotes = notes.slice(0, 2)
   const desktopCount = live ? goingCount : madeItCount
   const rosterQuery = query.trim().toLowerCase()
   const rosterFiltered = rosterQuery ? roster.filter((p) => p.displayName.toLowerCase().includes(rosterQuery)) : roster
@@ -321,6 +380,10 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
   const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(initial.place)}`
   const inviteText = () => pulseMessage(initial.title, initial.place, initial.timeLabel, window.location.href)
   const linkText = () => window.location.href
+  // the place is one free-text field ("The Anchor · Bar on Rivington"); lead with the venue name
+  // and drop the rest to a quiet subline in the hero's venue chip.
+  const [venueName, ...venueRest] = initial.place.split(' · ')
+  const venueSub = venueRest.join(' · ')
 
   return (
     <>
@@ -465,169 +528,182 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
       </div>
     </div>
 
-    {/* ── desktop tree: contained commit + living hearth (shown ≥1100px) ── */}
+    {/* ── desktop tree: unified map-hero — fire on the venue, faces gather toward it (≥1100px) ── */}
     <div className="bpd-desktop">
-      <div className="bpd-details">
-        <div className="bpd-head">
-          <div className="min-w-0">
-            <h1 className="bpd-h1">{initial.title}</h1>
-            <div className="bpd-sub">
-              {live
-                ? <><span className="bp-live-tag"><span className="bonfire-pulse-dot" /> live</span><span>·</span><span>{initial.timeLabel}</span><span>·</span><EndsAt iso={initial.expiresAt} /></>
-                : <><span className="bp-done-tag">wrapped</span><span>·</span><span>{initial.timeLabel}</span></>}
-              {initial.crewName && <><span>·</span><span>{initial.crewName}</span></>}
+      <div className="bpd-head">
+        <div className="min-w-0">
+          <h1 className="bpd-h1">{initial.title}</h1>
+          <div className="bpd-dateline">
+            <div className="bpd-dcell">
+              <div className="bpd-dk">Status</div>
+              <div className={`bpd-dv${live ? ' bpd-dv--live' : ''}`}>
+                {live
+                  ? <><span className="bonfire-pulse-dot" /> Live now</>
+                  : <span style={{ color: 'var(--smoke)' }}>Wrapped</span>}
+              </div>
             </div>
-          </div>
-          <div className="bpd-head-r">
-            {live && <CopyButton text={inviteText} className="bpd-invite" label="Copy invite message" idle={<>＋&nbsp;Invite</>} done="✓ Copied" />}
-            <CopyButton text={linkText} className="bpd-share" label="Copy link" idle="↗" done="✓" />
-            {initial.crewToken && (
-              <Link href={`/p/c/${initial.crewToken}`} className="bpd-share" aria-label={`Back to ${initial.crewName}`}>‹</Link>
+            <div className="bpd-dcell">
+              <div className="bpd-dk">{live ? 'Winds down in' : 'When'}</div>
+              <div className="bpd-dv">{live ? <Winddown iso={initial.expiresAt} /> : initial.timeLabel}</div>
+            </div>
+            {initial.crewName && (
+              <div className="bpd-dcell">
+                <div className="bpd-dk">Crew</div>
+                <div className="bpd-dv bpd-dv--crew">{initial.crewName}</div>
+              </div>
             )}
           </div>
         </div>
-        {mappable ? (
-          <PulseMap lat={initial.placeLat!} lng={initial.placeLng!} place={initial.place} />
-        ) : (
-          <a className="bp-map bpd-map" href={mapsHref} target="_blank" rel="noreferrer">
-            <EmberMark size={30} glow />
-            <span className="bp-map-tag">{initial.place}</span>
-            <span className="bp-map-hint">open in maps ↗</span>
-          </a>
-        )}
+        <div className="bpd-head-r">
+          {live && <CopyButton text={inviteText} className="bpd-invite" label="Copy invite message" idle={<>＋&nbsp;Invite</>} done="✓ Copied" />}
+          <CopyButton text={linkText} className="bpd-share" label="Copy link" idle="↗" done="✓" />
+          {initial.crewToken && (
+            <Link href={`/p/c/${initial.crewToken}`} className="bpd-share" aria-label={`Back to ${initial.crewName}`}>‹</Link>
+          )}
+        </div>
       </div>
 
-      <div className="bpd-grid">
-        {/* left — commit */}
-        <div className="bpd-card bpd-commit">
-          {live ? (
-            <>
-              <div className="bp-overline">You</div>
-              {me && <div className="bpd-youstate">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></div>}
-              {needName && (
-                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={CAPS.displayName}
-                  placeholder="A name your friends will know" className="bp-field" style={{ marginTop: me ? 0 : 12 }} />
-              )}
-              <StatusSegment statuses={SLIDER_STATUSES} current={me?.status ?? null}
-                onPick={(s) => setStatus(s)} disabled={busy} dimmed={me?.status === 'out'} className="bp-seg2--desktop" />
-              <OptOutToggle on={me?.status === 'out'}
-                onToggle={(next) => setStatus(next ? 'out' : 'in')} disabled={busy} />
-              {me?.status === 'on_my_way' && (
-                <div className="mt-3 flex gap-2">
-                  <input value={eta} onChange={(e) => setEta(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric"
-                    placeholder="ETA (min)" className="bp-field" style={{ width: 128 }} />
-                  <button type="button" onClick={() => setStatus('on_my_way', { eta: eta ? Number(eta) : null })} disabled={busy} className="bp-opt">set ETA</button>
-                </div>
-              )}
-              {me?.status === 'here' && (
-                <div className="mt-3 flex gap-2">
-                  <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={CAPS.note}
-                    placeholder="Got us a table, come find me" className="bp-field flex-1" />
-                  <button type="button" onClick={() => setStatus('here', { note: note.trim() || null })} disabled={busy} className="bp-opt">save</button>
-                </div>
-              )}
-              {err && <p className="mt-2" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
+      <div className={`bpd-hero${mappable ? ' bpd-hero--map' : ' bpd-hero--cream'}${live ? '' : ' bpd-hero--done'}`}>
+        {mappable && <HeroMap lat={initial.placeLat!} lng={initial.placeLng!} />}
+        <div className="bpd-hero-rings" aria-hidden><span className="r r1" /><span className="r r2" /><span className="r r3" /></div>
+        <div className="bpd-hero-bloom" aria-hidden />
+        <div className="bpd-fire" aria-hidden>
+          <div className="bpd-fl bpd-f1" /><div className="bpd-fl bpd-f2" /><div className="bpd-fl bpd-f3" /><div className="bpd-fl bpd-fcore" />
+        </div>
 
-              {notes.length > 0 && (
-                <div className="bpd-notes">
-                  <div className="bp-overline" style={{ marginBottom: 2 }}>Notes</div>
-                  {notes.map((p) => (
-                    <p key={p.participantId} className="bp-quote">“{p.note}”<span className="by">— {p.me ? 'you' : firstName(p.displayName)}</span></p>
+        {!expanded ? (
+          <>
+            {/* on the way — the focus: individual markers closing in on the fire, with ETA */}
+            {otwShown.map((p, i) => (
+              <span key={p.participantId} className="bpd-person bpd-person--on_my_way"
+                style={otwSeat(otwShown.length + (otwMore > 0 ? 1 : 0), i)} title={p.displayName}>
+                <span className="bpd-person-av" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                {p.etaMinutes
+                  ? <span className="bpd-person-eta">→ {p.etaMinutes} min</span>
+                  : <span className="bpd-person-nm">{p.me ? 'You' : firstName(p.displayName)}</span>}
+              </span>
+            ))}
+            {otwMore > 0 && (
+              <button type="button" className="bpd-more" style={otwSeat(otwShown.length + 1, otwShown.length)}
+                onClick={() => setExpanded(true)} aria-label="Show everyone on the way">+{otwMore}</button>
+            )}
+
+            {/* here — cordoned into a huddle at the fire */}
+            {hereList.length > 0 && (
+              <div className="bpd-huddle">
+                <div className="bpd-huddle-faces">
+                  {huddleShown.map((p) => (
+                    <span key={p.participantId} className={`bpd-huddle-face${p.me ? ' bpd-huddle-face--me' : ''}`}
+                      style={{ background: avatarColorFor(p.participantId) }} title={p.displayName}>{initialsFor(p.displayName)}</span>
                   ))}
+                  {huddleMore > 0 && <span className="bpd-huddle-face bpd-huddle-more">+{huddleMore}</span>}
+                </div>
+                <span className="bpd-huddle-lab"><span className="bonfire-pulse-dot" /> {hereList.length} here now</span>
+              </div>
+            )}
+
+            {hereList.length === 0 && otwList.length === 0 && (
+              <p className="bpd-hero-empty">
+                {goingCount > 0 ? 'No one’s here yet, be the first to head over.' : 'No one yet. Be the first to gather.'}
+              </p>
+            )}
+
+            {/* overlays: count + breakdown, maps + search, venue + notes, commit */}
+            <div className="bpd-hero-count">
+              <div className="n">{desktopCount}</div>
+              <div className="l">{live ? 'going' : 'made it'}</div>
+              {live && (hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
+                <div className="bpd-hero-breakdown">
+                  {hereList.length > 0 && <span className="b b--here"><span className="bonfire-pulse-dot" />{hereList.length} here</span>}
+                  {otwList.length > 0 && <span className="b b--otw">→ {otwList.length} on the way</span>}
+                  {inCount > 0 && <span className="b b--in">{inCount} in</span>}
                 </div>
               )}
+            </div>
+            <div className="bpd-hero-tr">
+              {live && goingCount > 0 && (
+                <button type="button" className="bpd-hero-searchpill" onClick={() => setExpanded(true)}>⌕ Everyone</button>
+              )}
+              <a className="bpd-hero-maps" href={mapsHref} target="_blank" rel="noreferrer">Open in maps ↗</a>
+            </div>
+            <div className="bpd-hero-bl">
+              {heroNotes.map((p) => (
+                <span key={p.participantId} className="bpd-hero-note">“{p.note}”<span className="by">— {p.me ? 'you' : firstName(p.displayName)}</span></span>
+              ))}
+              <span className="bpd-hero-venue">
+                <span className="vn">{venueName}</span>
+                {venueSub && <span className="vs">{venueSub}</span>}
+              </span>
+            </div>
 
-              <div className="bpd-foot-wrap">
-                <button type="button" className="bp-wrap-row" onClick={doWrap} disabled={busy}>
+            {live && (
+              <div className="bpd-commit">
+                <div className="bp-overline">You</div>
+                {me
+                  ? <div className="bpd-youstate">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></div>
+                  : <div className="bpd-youstate bpd-youstate--empty">Slide to join the fire</div>}
+                {needName && (
+                  <input value={name} onChange={(e) => setName(e.target.value)} maxLength={CAPS.displayName}
+                    placeholder="A name your friends will know" className="bp-field" style={{ marginBottom: 4 }} />
+                )}
+                <StatusSegment statuses={SLIDER_STATUSES} current={me?.status ?? null}
+                  onPick={(s) => setStatus(s)} disabled={busy} dimmed={me?.status === 'out'} className="bp-seg2--desktop" />
+                <OptOutToggle on={me?.status === 'out'}
+                  onToggle={(next) => setStatus(next ? 'out' : 'in')} disabled={busy} />
+                {me?.status === 'on_my_way' && (
+                  <div className="mt-3 flex gap-2">
+                    <input value={eta} onChange={(e) => setEta(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric"
+                      placeholder="ETA (min)" className="bp-field" style={{ width: 108 }} />
+                    <button type="button" onClick={() => setStatus('on_my_way', { eta: eta ? Number(eta) : null })} disabled={busy} className="bp-opt">set</button>
+                  </div>
+                )}
+                {me?.status === 'here' && (
+                  <div className="mt-3 flex gap-2">
+                    <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={CAPS.note}
+                      placeholder="Got us a table, come find me" className="bp-field flex-1" />
+                    <button type="button" onClick={() => setStatus('here', { note: note.trim() || null })} disabled={busy} className="bp-opt">save</button>
+                  </div>
+                )}
+                {err && <p className="mt-2" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
+                <button type="button" className="bp-wrap-row bpd-commit-wrap" onClick={doWrap} disabled={busy}>
                   <span className="k">That’s a wrap</span><span className="s">ends it for everyone</span>
                 </button>
               </div>
-            </>
-          ) : (
-            <div className="bp-card bp-card--primary px-5 py-4" style={{ fontSize: 16 }}>
-              That’s a wrap — <span className="bp-num" style={{ fontSize: 24 }}>{madeItCount}</span> made it.
-            </div>
-          )}
-        </div>
-
-        {/* right — the living hearth */}
-        <div className="bpd-card bpd-hearth">
-          <div className="bpd-hearth-head">
-            <span className="bpd-hcount">{desktopCount}</span>
-            <span className="bpd-hlab">
-              {live
-                ? <><b>{hereCount} here</b> now{otwCount > 0 && <> · {otwCount} on the way</>} · going</>
-                : <>made it</>}
-            </span>
-            {live && ringOverflow && !expanded && (
-              <button type="button" className="bpd-search-pill" onClick={() => setExpanded(true)}>⌕ Search {goingCount}</button>
             )}
-          </div>
-
-          {!expanded ? (
-            <div className="bpd-stage">
-              <div className="bpd-bloom" aria-hidden />
-              <div className="bpd-fire" aria-hidden>
-                <div className="bpd-fl bpd-f1" /><div className="bpd-fl bpd-f2" /><div className="bpd-fl bpd-f3" /><div className="bpd-fl bpd-fcore" />
-              </div>
-              {ringShown.map((p, i) => (
-                <span key={p.participantId}
-                  className={`bpd-orb${p.status === 'here' ? ' bpd-orb--here' : ''}${p.me ? ' bpd-orb--me' : ''}`}
-                  style={{ ...ringPos(i), background: avatarColorFor(p.participantId) }} title={p.displayName}>
-                  {initialsFor(p.displayName)}
-                  {p.status === 'here' && (
-                    <span className="bp-tile-badge bp-tile-badge--here">
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
-                    </span>
-                  )}
-                  {p.status === 'on_my_way' && <span className="bp-tile-badge bp-tile-badge--otw">→</span>}
-                  <span className="bpd-orb-nm">{p.me ? 'You' : firstName(p.displayName)}</span>
-                </span>
-              ))}
-              {ringOverflow && (
-                <button type="button" className="bpd-orb bpd-more" style={ringPos(ringSlots - 1)}
-                  onClick={() => setExpanded(true)} aria-label="Show everyone">
-                  +{goingRoster.length - (RING_CAP - 1)}
-                </button>
-              )}
-              {goingRoster.length === 0 && (
-                <p className="bp-sub" style={{ position: 'absolute', left: 0, right: 0, top: '50%', textAlign: 'center' }}>No one yet. Be the first.</p>
-              )}
+          </>
+        ) : (
+          <div className="bpd-hero-roster">
+            <div className="bpd-rsearch">
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${goingCount} going`} autoFocus />
+              <button type="button" className="bpd-rback" onClick={() => { setExpanded(false); setQuery('') }}>‹ fire</button>
             </div>
-          ) : (
-            <div className="bpd-roster">
-              <div className="bpd-rsearch">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${goingCount} going`} autoFocus />
-                <button type="button" className="bpd-rback" onClick={() => { setExpanded(false); setQuery('') }}>‹ fire</button>
-              </div>
-              <div className="bpd-rscroll">
-                {DESKTOP_GROUPS.map(({ key, label }) => {
-                  const rows = rosterFiltered.filter((p) => p.status === key)
-                  if (rows.length === 0) return null
-                  return (
-                    <div key={key} className={`bpd-rgroup${key === 'out' ? ' bpd-rgroup--out' : ''}`}>
-                      <div className="bpd-rghead">
-                        <span className={`sd ${key}`} /><span className="lab">{label}</span><span className="ct">{rows.length}</span><span className="hr" />
-                      </div>
-                      <div className="bpd-rrows">
-                        {rows.map((p) => (
-                          <div key={p.participantId} className="bpd-rrow">
-                            <span className="a" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
-                            <div className="who">
-                              <div className="nm">{p.me ? 'You' : p.displayName}</div>
-                              <div className={`det ${p.status}`}>{timeFor(p) ?? PULSE_STATUS_LABEL[p.status]}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+            <div className="bpd-rscroll">
+              {DESKTOP_GROUPS.map(({ key, label }) => {
+                const rows = rosterFiltered.filter((p) => p.status === key)
+                if (rows.length === 0) return null
+                return (
+                  <div key={key} className={`bpd-rgroup${key === 'out' ? ' bpd-rgroup--out' : ''}`}>
+                    <div className="bpd-rghead">
+                      <span className={`sd ${key}`} /><span className="lab">{label}</span><span className="ct">{rows.length}</span><span className="hr" />
                     </div>
-                  )
-                })}
-                {rosterFiltered.length === 0 && <p className="bpd-rempty">No one by that name.</p>}
-              </div>
+                    <div className="bpd-rrows">
+                      {rows.map((p) => (
+                        <div key={p.participantId} className="bpd-rrow">
+                          <span className="a" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                          <div className="who">
+                            <div className="nm">{p.me ? 'You' : p.displayName}</div>
+                            <div className={`det ${p.status}`}>{timeFor(p) ?? PULSE_STATUS_LABEL[p.status]}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              {rosterFiltered.length === 0 && <p className="bpd-rempty">No one by that name.</p>}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
     </>
