@@ -61,6 +61,22 @@ describe.skipIf(!url)('pulse repo (requires TEST_DATABASE_URL)', () => {
     expect(read!.placeGeoStatus).toBe('resolved')
   })
 
+  it('setPulseGeo applies an async geocode result and bumps version for pollers', async () => {
+    const { repo, newToken, creator } = await fixtures()
+    const pulse = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Async geo', place: 'Fort Greene Park', timeLabel: '7pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: creator.id, clientUuid: crypto.randomUUID(),
+    })
+    expect(pulse.placeGeoStatus).toBe('unresolved')
+    await repo.setPulseGeo(pulse.id, 40.6913, -73.9742, 'resolved')
+    const read = await repo.getPulseByToken(pulse.token)
+    expect(read!.placeGeoStatus).toBe('resolved')
+    expect(read!.placeLat).toBeCloseTo(40.6913, 4)
+    expect(read!.placeLng).toBeCloseTo(-73.9742, 4)
+    // The version bump is what carries the map to polling viewers (ETag changes).
+    expect(Number(read!.version)).toBe(Number(pulse.version) + 1)
+  })
+
   it('standalone double pulse-create also dedupes (NULLS NOT DISTINCT)', async () => {
     const { repo, newToken, creator } = await fixtures()
     const clientUuid = crypto.randomUUID()
@@ -168,6 +184,22 @@ describe.skipIf(!url)('pulse repo (requires TEST_DATABASE_URL)', () => {
     expect(mine).toBeDefined()
     expect(mine!.myStatus).toBe('in')
     expect(mine!.createdByMe).toBe(false)
+  })
+
+  it('dash pulses: earlier is capped in SQL, most recently ended first', async () => {
+    const { repo, newToken, creator } = await fixtures()
+    const mkEnded = (i: number) => repo.createPulse({
+      token: newToken(), crewId: null, title: `Ended ${i}`, place: 'Spot', timeLabel: 'earlier',
+      // Staggered expiries all in the past relative to the read's `now` below.
+      expiresAt: new Date(Date.now() + i * 60_000), createdBy: creator.id, clientUuid: crypto.randomUUID(),
+    })
+    for (let i = 1; i <= 4; i++) await mkEnded(i)
+    const now = new Date(Date.now() + 3_600_000) // past every expiry
+    const { earlier } = await repo.pulsesForParticipant(creator.id, now, 2)
+    expect(earlier).toHaveLength(2)
+    // Most recently ended first: the i=4 expiry, then i=3.
+    expect(earlier[0].title).toBe('Ended 4')
+    expect(earlier[1].title).toBe('Ended 3')
   })
 
   it('dash crews: presence-only participation is included, with my status', async () => {

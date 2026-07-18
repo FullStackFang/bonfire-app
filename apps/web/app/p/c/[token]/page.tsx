@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
 import * as repo from '@/lib/pulse/repo'
 import { getViewer, toPublicViewer } from '@/lib/pulse/identity'
 import { serializeBoard } from '@/lib/pulse/serialize'
@@ -47,9 +48,10 @@ export default async function CrewPage({ params, searchParams }: {
   ])
 
   // Funnel: count a real human open, not a chat-app crawler fetching the unfurl.
+  // after(): analytics never holds up first paint (same pattern as the dash).
   const ua = (await headers()).get('user-agent')
   if (!isCrawler(ua)) {
-    await repo.logEvent('open', { crewId: crew.id, participantId: viewer?.id ?? null })
+    after(() => repo.logEvent('open', { crewId: crew.id, participantId: viewer?.id ?? null }))
   }
 
   const board = serializeBoard(crew, presence, pulses, members, toPublicViewer(viewer))

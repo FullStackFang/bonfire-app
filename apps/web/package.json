@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev",
     "dev:local": "node scripts/dev-local.mjs",
     "db:local": "node scripts/local-db.mjs",
     "build": "next build --webpack",

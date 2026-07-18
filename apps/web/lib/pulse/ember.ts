@@ -48,13 +48,31 @@ export async function untapEmber(plan: Plan, participantId: string): Promise<voi
 
 const NO_EMBER: PublicEmber = { tapped: false, mutual: false, coTappers: [] }
 
-/** The ONLY ember shape sent to a client — visibility is enforced here, structurally:
+export type EmberTapRow = { participantId: string; displayName: string | null }
+
+/** Pure visibility rules over a plan's tap rows — the single implementation behind both the
+ *  per-plan read and the batched dash read, so the two paths cannot diverge:
  *  - a viewer who hasn't tapped (or has no identity) gets the empty shape: no count, no names,
  *    not even whether the ember exists;
  *  - a solo tapper sees only their own standing tap;
  *  - co-tapper names appear only once the ember is mutual (>= 2 taps), tappers only.
- *  Eligible-but-untapped participants can never appear in any payload — the query starts from
+ *  Eligible-but-untapped participants can never appear in any payload — input starts from
  *  tap rows, so there is no data path to the untapped. */
+export function publicEmberFromTaps(taps: EmberTapRow[], participantId: string | null): PublicEmber {
+  if (!participantId) return NO_EMBER
+  if (!taps.some((t) => t.participantId === participantId)) return NO_EMBER
+  const mutual = taps.length >= 2
+  return {
+    tapped: true,
+    mutual,
+    coTappers: mutual
+      ? taps.filter((t) => t.participantId !== participantId)
+          .map((t) => t.displayName ?? 'someone')
+      : [],
+  }
+}
+
+/** The ONLY ember shape sent to a client (see publicEmberFromTaps for the rules). */
 export async function getPublicEmber(planId: string, participantId: string | null): Promise<PublicEmber> {
   if (!participantId) return NO_EMBER
   const taps = await sql()`
@@ -64,16 +82,29 @@ export async function getPublicEmber(planId: string, participantId: string | nul
     join pulse.participants p on p.id = t.participant_id
     where e.plan_id = ${planId}
     order by t.tapped_at`
-  if (!taps.some((t: any) => t.participantId === participantId)) return NO_EMBER
-  const mutual = taps.length >= 2
-  return {
-    tapped: true,
-    mutual,
-    coTappers: mutual
-      ? taps.filter((t: any) => t.participantId !== participantId)
-          .map((t: any) => (t.displayName as string | null) ?? 'someone')
-      : [],
+  return publicEmberFromTaps(
+    taps.map((t: any) => ({ participantId: t.participantId, displayName: (t.displayName as string | null) ?? null })),
+    participantId,
+  )
+}
+
+/** Tap rows for many plans in one read (dash batch path), grouped by plan, tap order preserved. */
+export async function emberTapsForPlans(planIds: string[]): Promise<Map<string, EmberTapRow[]>> {
+  const byPlan = new Map<string, EmberTapRow[]>()
+  if (planIds.length === 0) return byPlan
+  const rows = await sql()`
+    select e.plan_id, t.participant_id, p.display_name
+    from pulse.ember_taps t
+    join pulse.embers e on e.id = t.ember_id
+    join pulse.participants p on p.id = t.participant_id
+    where e.plan_id in ${sql()(planIds)}
+    order by t.tapped_at`
+  for (const r of rows as any[]) {
+    const list = byPlan.get(r.planId) ?? []
+    list.push({ participantId: r.participantId, displayName: (r.displayName as string | null) ?? null })
+    byPlan.set(r.planId, list)
   }
+  return byPlan
 }
 
 // The seed-intent composer lives in ./ember-seed (pure, client-safe); re-exported here so

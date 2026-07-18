@@ -263,6 +263,66 @@ describe.skipIf(!url)('plan lifecycle transitions (requires TEST_DATABASE_URL)',
     expect(fresh.version).toBe(versionAfter) // no extra transition hit the DB
   })
 
+  // The batched dash read must match the per-plan path: same states, winner labels, ember
+  // visibility, and the same lazy healing a link visit would perform.
+  it('dashPlansForCreator carries state, winner label, ember, and heals due plans', async () => {
+    const repo = await import('./repo')
+    const plan = await import('./plan')
+    const ember = await import('./ember')
+    const { newToken } = await import('../ids')
+    const now = new Date()
+    const dashNow = new Date(now.getTime() + 2 * HOUR)
+    const creator = await repo.createParticipant(newToken())
+    const invitee = await repo.createParticipant(newToken())
+
+    // A: open, no deadline — the dash leaves it alone.
+    const a = await plan.createPlan({
+      token: newToken(), creatorParticipantId: creator.id, intentText: 'Still open',
+    })
+    await plan.setOptions(a.id, [
+      { kind: 'time_place', label: 'Later', startsAt: new Date(now.getTime() + 72 * HOUR) },
+    ])
+    await plan.publishPlan(a.id, creator.id)
+
+    // B: deadline already past at dash time, one pick — the dash visit itself strikes it.
+    const b = await plan.createPlan({
+      token: newToken(), creatorParticipantId: creator.id, intentText: 'Due plan',
+      closesAt: new Date(now.getTime() + HOUR),
+    })
+    const [bOpt] = await plan.setOptions(b.id, [
+      { kind: 'time_place', label: 'Winner slot', startsAt: new Date(now.getTime() + 26 * HOUR) },
+    ])
+    await plan.publishPlan(b.id, creator.id)
+    await plan.recordAvailabilityAndMaybeStrike(b.id, bOpt!.id, invitee.id, now)
+
+    // C: completed before the dash, ember tapped by both — mutual for the creator.
+    const c = await plan.createPlan({
+      token: newToken(), creatorParticipantId: creator.id, intentText: 'Done plan',
+      closesAt: new Date(now.getTime() + HOUR),
+    })
+    const [cOpt] = await plan.setOptions(c.id, [{ kind: 'time', label: 'Sometime', startsAt: null }])
+    await plan.publishPlan(c.id, creator.id)
+    await plan.recordAvailabilityAndMaybeStrike(c.id, cOpt!.id, creator.id, now)
+    const cStruck = await plan.resolvePlanState((await plan.getPlanById(c.id))!, dashNow)
+    expect(cStruck.state).toBe('struck')
+    const cDone = await plan.resolvePlanState(cStruck, new Date(dashNow.getTime() + 25 * HOUR))
+    expect(cDone.state).toBe('completed')
+    await ember.tapEmber(cDone, creator.id)
+    await ember.tapEmber(cDone, invitee.id)
+
+    const dash = await plan.dashPlansForCreator(creator.id, dashNow)
+    const byToken = new Map(dash.map((p) => [p.token, p]))
+
+    expect(byToken.get(a.token)).toMatchObject({ state: 'open', winnerLabel: null, ember: null })
+    expect(byToken.get(b.token)).toMatchObject({ state: 'struck', winnerLabel: 'Winner slot', ember: null })
+    expect(byToken.get(c.token)).toMatchObject({
+      state: 'completed', winnerLabel: 'Sometime',
+      ember: { tapped: true, mutual: true, coTappers: ['someone'] }, // invitee has no display name
+    })
+    // The dash's healing persisted — B is struck in the DB, not just in the payload.
+    expect((await plan.getPlanById(b.id))!.state).toBe('struck')
+  })
+
   // Race-safety needs real concurrent connections; gated like the strike concurrency test above.
   it.skipIf(!process.env.TEST_PG_CONCURRENCY)('racing resolves transition exactly once', async () => {
     const now = new Date()

@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import { resolveOrCreateParticipant, isVerified } from '@/lib/pulse/identity'
 import * as repo from '@/lib/pulse/repo'
 import { newToken } from '@/lib/ids'
@@ -52,16 +53,22 @@ export async function POST(request: Request) {
   })
   if (limited) return limited
 
-  // Resolve the free-text place to a coordinate. Best-effort by contract: geocode() never throws
-  // and returns `unresolved` on any failure/timeout/no-config, so creation is never blocked.
-  const geo = await geocode(place)
-
   const pulse = await repo.createPulse({
     token: newToken(), crewId, title, place, timeLabel, expiresAt,
     createdBy: participant.id, clientUuid,
-    placeLat: geo.lat, placeLng: geo.lng, placeGeoStatus: geo.status,
   })
-  await repo.logEvent('pulse_create', { pulseId: pulse.id, crewId, participantId: participant.id })
+
+  // Geocode after the response — creation never waits on the provider (spec: "geocoding never
+  // blocks creation"). geocode() never throws; a real result lands via setPulseGeo, whose version
+  // bump reaches viewers through the existing poll. The idempotent-retry path (pulse already
+  // geocoded) is skipped so a double-tap can't re-bump the version.
+  after(async () => {
+    if (pulse.placeGeoStatus !== 'unresolved') return
+    const geo = await geocode(place)
+    if (geo.status === 'unresolved') return
+    await repo.setPulseGeo(pulse.id, geo.lat, geo.lng, geo.status)
+  })
+  after(() => repo.logEvent('pulse_create', { pulseId: pulse.id, crewId, participantId: participant.id }))
 
   // Delivery facts for the composer's delivery step. "Text the crew" exists only when the
   // pulse is crew-scoped and the creator is a verified member; quiet hours block it visibly.

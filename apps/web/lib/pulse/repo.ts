@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- row mappers take dynamically-shaped
    postgres rows (camelCased); typing each as `any` is the established asker/repo boundary idiom. */
+import { cache } from 'react'
 import { sql } from '../db'
 import type {
   AvailabilityBaseline, AvailabilityException, Crew, Participant, PhoneVerification,
@@ -95,10 +96,11 @@ export async function createCrew(token: string, name: string, createdBy: string)
     returning *`
   return toCrew(row)
 }
-export async function getCrewByToken(token: string): Promise<Crew | null> {
+// cache(): generateMetadata and the page body both resolve the same token — one query per request.
+export const getCrewByToken = cache(async (token: string): Promise<Crew | null> => {
   const [row] = await sql()`select * from pulse.crews where token = ${token}`
   return row ? toCrew(row) : null
-}
+})
 export async function getCrewById(id: string): Promise<Crew | null> {
   const [row] = await sql()`select * from pulse.crews where id = ${id}`
   return row ? toCrew(row) : null
@@ -193,10 +195,21 @@ export async function createPulse(p: NewPulse): Promise<Pulse> {
       and crew_id is not distinct from ${p.crewId}`
   return toPulse(existing)
 }
-export async function getPulseByToken(token: string): Promise<Pulse | null> {
+/** Apply an async geocode result. Bumps `version` so polling viewers pick up the map. */
+export async function setPulseGeo(
+  pulseId: string, lat: number | null, lng: number | null, status: PlaceGeoStatus,
+): Promise<void> {
+  await sql()`
+    update pulse.pulses
+    set place_lat = ${lat}, place_lng = ${lng}, place_geo_status = ${status},
+        version = version + 1
+    where id = ${pulseId}`
+}
+// cache(): generateMetadata and the page body both resolve the same token — one query per request.
+export const getPulseByToken = cache(async (token: string): Promise<Pulse | null> => {
   const [row] = await sql()`select * from pulse.pulses where token = ${token}`
   return row ? toPulse(row) : null
-}
+})
 export async function getPulseById(id: string): Promise<Pulse | null> {
   const [row] = await sql()`select * from pulse.pulses where id = ${id}`
   return row ? toPulse(row) : null
@@ -313,34 +326,41 @@ export type DashPulseRow = {
   createdByMe: boolean
 }
 /** Pulses where I'm the creator ∪ I have a response row, split by liveness (same predicate as
- *  activePulsesForCrew): live soonest-expiry first, earlier most-recently-ended first, capped. */
+ *  activePulsesForCrew): live soonest-expiry first, earlier most-recently-ended first, capped.
+ *  The split, ordering, and cap run in SQL so history growth never inflates the transfer. */
 export async function pulsesForParticipant(
   participantId: string, now: Date, pastLimit: number,
 ): Promise<{ live: DashPulseRow[]; earlier: DashPulseRow[] }> {
-  const rows = await sql()`
+  const toDashRow = (r: any): DashPulseRow => ({
+    token: r.token, title: r.title, place: r.place, timeLabel: r.timeLabel,
+    expiresAt: r.expiresAt, closedAt: r.closedAt ?? null,
+    crewName: r.crewName ?? null, myStatus: r.myStatus ?? null,
+    createdByMe: r.createdBy === participantId,
+  })
+  // Sequential on purpose: the local PGlite harness serializes one backend session (see
+  // scripts/local-db.mjs) and racing statements would interleave the wire protocol.
+  const liveRows = await sql()`
     select p.token, p.title, p.place, p.time_label, p.expires_at, p.closed_at, p.created_by,
            c.name as crew_name, r.status as my_status
     from pulse.pulses p
     left join pulse.crews c on c.id = p.crew_id
     left join pulse.pulse_responses r
       on r.pulse_id = p.id and r.participant_id = ${participantId}
-    where p.created_by = ${participantId} or r.participant_id is not null`
-  const all: DashPulseRow[] = rows.map((r: any) => ({
-    token: r.token, title: r.title, place: r.place, timeLabel: r.timeLabel,
-    expiresAt: r.expiresAt, closedAt: r.closedAt ?? null,
-    crewName: r.crewName ?? null, myStatus: r.myStatus ?? null,
-    createdByMe: r.createdBy === participantId,
-  }))
-  const endedAt = (p: DashPulseRow) =>
-    Math.min(p.closedAt?.getTime() ?? Infinity, p.expiresAt.getTime())
-  const live = all
-    .filter((p) => p.closedAt == null && p.expiresAt.getTime() > now.getTime())
-    .sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime())
-  const earlier = all
-    .filter((p) => !(p.closedAt == null && p.expiresAt.getTime() > now.getTime()))
-    .sort((a, b) => endedAt(b) - endedAt(a))
-    .slice(0, pastLimit)
-  return { live, earlier }
+    where (p.created_by = ${participantId} or r.participant_id is not null)
+      and p.closed_at is null and p.expires_at > ${now}
+    order by p.expires_at asc`
+  const earlierRows = await sql()`
+    select p.token, p.title, p.place, p.time_label, p.expires_at, p.closed_at, p.created_by,
+           c.name as crew_name, r.status as my_status
+    from pulse.pulses p
+    left join pulse.crews c on c.id = p.crew_id
+    left join pulse.pulse_responses r
+      on r.pulse_id = p.id and r.participant_id = ${participantId}
+    where (p.created_by = ${participantId} or r.participant_id is not null)
+      and not (p.closed_at is null and p.expires_at > ${now})
+    order by least(coalesce(p.closed_at, 'infinity'::timestamptz), p.expires_at) desc
+    limit ${pastLimit}`
+  return { live: liveRows.map(toDashRow), earlier: earlierRows.map(toDashRow) }
 }
 
 // ---- availability (baseline + exceptions; passive — NOTHING here notifies anyone) ----

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- row mappers take dynamically-shaped
    postgres rows (camelCased); typing each as `any` is the established asker/repo boundary idiom. */
 import { sql } from '../db'
-import { getPublicEmber } from './ember'
+import { emberTapsForPlans, publicEmberFromTaps } from './ember'
 import type {
   Plan, PlanOption, PlanPick, PlanVenue, PublicDashPlan, PublicPlan, PublicPlanOption, PublicViewer,
 } from './types'
@@ -187,12 +187,25 @@ export function pickDeadlineWinner(options: PlanOption[], counts: Map<string, nu
  *  pattern as the threshold strike: two racing readers -> one transition, the loser's update
  *  matches zero rows and its re-read returns the winner's result. */
 export async function resolvePlanState(plan: Plan, now: Date): Promise<Plan> {
+  // Fetch only what the due transition needs; the state math lives in resolvePlanStateWith so the
+  // dash batch path (pre-fetched options/counts) and this per-plan path cannot diverge.
+  // Sequential on purpose: the local PGlite harness serializes one backend session (see
+  // plan.test.ts concurrency note) and two racing reads here would interleave the protocol.
+  const needsOptions =
+    (plan.state === 'open' && plan.closesAt && plan.closesAt.getTime() <= now.getTime()) ||
+    (plan.state === 'struck' && plan.struckOptionId)
+  const options = needsOptions ? await optionsForPlan(plan.id) : []
+  const counts = plan.state === 'open' && needsOptions ? await pickCounts(plan.id) : new Map<string, number>()
+  return resolvePlanStateWith(plan, now, options, counts)
+}
+
+/** resolvePlanState against pre-fetched options + pick counts (no reads unless a transition
+ *  actually fires, and then only the conditional update + one re-read). */
+export async function resolvePlanStateWith(
+  plan: Plan, now: Date, options: PlanOption[], counts: Map<string, number>,
+): Promise<Plan> {
   // Deadline resolves the plan instead of killing it (D2). `expired` now means nobody engaged.
   if (plan.state === 'open' && plan.closesAt && plan.closesAt.getTime() <= now.getTime()) {
-    // Sequential on purpose: the local PGlite harness serializes one backend session (see
-    // plan.test.ts concurrency note) and two racing reads here would interleave the protocol.
-    const options = await optionsForPlan(plan.id)
-    const counts = await pickCounts(plan.id)
     const winner = pickDeadlineWinner(options, counts)
     if (winner) {
       await sql()`
@@ -208,8 +221,9 @@ export async function resolvePlanState(plan: Plan, now: Date): Promise<Plan> {
   }
   // The gathering has plausibly ended -> completed. Pre-struck_at rows fall back to created_at.
   if (plan.state === 'struck' && plan.struckOptionId) {
-    const [w] = await sql()`select starts_at from pulse.plan_options where id = ${plan.struckOptionId}`
-    const startsAt = (w as any)?.startsAt ? new Date((w as any).startsAt) : null
+    const struckId = plan.struckOptionId
+    const winner = options.find((o) => o.id === struckId)
+    const startsAt = winner?.startsAt ?? null
     const dueAt = startsAt
       ? startsAt.getTime() + COMPLETE_BUFFER_MS
       : (plan.struckAt ?? plan.createdAt).getTime() + TIMELESS_COMPLETE_MS
@@ -231,23 +245,61 @@ export async function dashPlansForCreator(participantId: string, now: Date, limi
   const rows = await sql()`
     select * from pulse.plans where creator_participant_id = ${participantId}
     order by created_at desc limit ${limit}`
-  const out: PublicDashPlan[] = []
-  for (const r of rows) {
-    const plan = await resolvePlanState(toPlan(r), now)
-    let winnerLabel: string | null = null
-    if (plan.struckOptionId) {
-      const [w] = await sql()`select label from pulse.plan_options where id = ${plan.struckOptionId}`
-      winnerLabel = (w as any)?.label ?? null
-    }
-    out.push({
+  if (rows.length === 0) return []
+  const plans = rows.map(toPlan)
+  const planIds = plans.map((p) => p.id)
+
+  // Set-based reads: every plan's options (labels double as winner labels) and pick counts in one
+  // query each, so the dash costs the same number of queries at 1 plan as at the cap. Sequential
+  // on purpose: the local PGlite harness serializes one backend session (see resolvePlanState).
+  const optionRows = await sql()`
+    select * from pulse.plan_options where plan_id in ${sql()(planIds)}
+    order by ai_rank, created_at`
+  const countRows = await sql()`
+    select plan_id, option_id, count(*)::int as n
+    from pulse.plan_picks where plan_id in ${sql()(planIds)}
+    group by plan_id, option_id`
+  const optionsByPlan = new Map<string, PlanOption[]>()
+  for (const r of optionRows as any[]) {
+    const o = toOption(r)
+    const list = optionsByPlan.get(o.planId) ?? []
+    list.push(o)
+    optionsByPlan.set(o.planId, list)
+  }
+  const countsByPlan = new Map<string, Map<string, number>>()
+  for (const r of countRows as any[]) {
+    const m = countsByPlan.get(r.planId) ?? new Map<string, number>()
+    m.set(r.optionId as string, r.n as number)
+    countsByPlan.set(r.planId, m)
+  }
+
+  // Healing stays sequential (writes fire only for plans actually due — typically none; the PGlite
+  // harness serializes one backend session, see resolvePlanState).
+  const healed: Plan[] = []
+  for (const p of plans) {
+    healed.push(await resolvePlanStateWith(
+      p, now, optionsByPlan.get(p.id) ?? [], countsByPlan.get(p.id) ?? new Map(),
+    ))
+  }
+
+  // Embers for completed plans in one read, shaped by the same visibility rules as the link view.
+  const completedIds = healed.filter((p) => p.state === 'completed').map((p) => p.id)
+  const tapsByPlan = await emberTapsForPlans(completedIds)
+
+  return healed.map((plan) => {
+    const winnerLabel = plan.struckOptionId
+      ? (optionsByPlan.get(plan.id) ?? []).find((o) => o.id === plan.struckOptionId)?.label ?? null
+      : null
+    return {
       token: plan.token,
       intentText: plan.intentText,
       state: plan.state,
       winnerLabel,
-      ember: plan.state === 'completed' ? await getPublicEmber(plan.id, participantId) : null,
-    })
-  }
-  return out
+      ember: plan.state === 'completed'
+        ? publicEmberFromTaps(tapsByPlan.get(plan.id) ?? [], participantId)
+        : null,
+    }
+  })
 }
 
 // ---- serialize (the ONLY plan shape sent to the client; creator id, picker ids never leak) ----

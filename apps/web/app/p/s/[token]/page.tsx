@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
 import * as repo from '@/lib/pulse/repo'
 import { getViewer, toPublicViewer } from '@/lib/pulse/identity'
 import { serializePulse } from '@/lib/pulse/serialize'
@@ -38,9 +39,10 @@ export default async function PulsePage({ params }: { params: Promise<{ token: s
     pulse.crewId ? repo.getCrewById(pulse.crewId) : Promise.resolve(null),
   ])
 
+  // after(): analytics never holds up first paint (same pattern as the dash).
   const ua = (await headers()).get('user-agent')
   if (!isCrawler(ua)) {
-    await repo.logEvent('open', { pulseId: pulse.id, crewId: pulse.crewId, participantId: viewer?.id ?? null })
+    after(() => repo.logEvent('open', { pulseId: pulse.id, crewId: pulse.crewId, participantId: viewer?.id ?? null }))
   }
 
   const initial = serializePulse(pulse, responses, toPublicViewer(viewer), crew, now)

@@ -1,5 +1,7 @@
 # Growth Story — Program Roadmap
 
+> External research triage lives in `INSIGHT-REGISTER.md` (per-insight verdict, build status, evidence).
+
 > Program-level companion to `design/SYSTEM-THESIS.md`. Source design: Claude Design project "Bonfire Design System" → `ui_kits/growth_story/index.html` (a 3-phase product walkthrough). The concrete, buildable spec for Phase 1 lives in OpenSpec at `openspec/changes/add-plan-without-chat/`. Phases 2–3 below are roadmap-level intent, deferred until Phase 1 ships and their conflicts resolve — they become full OpenSpec changes (via `opsx:propose`) when promoted.
 
 ## The arc
