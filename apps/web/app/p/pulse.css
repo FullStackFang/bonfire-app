@@ -842,6 +842,86 @@
   .bp-sheet-wrap { left: var(--rail-w); }
 }
 
+/* ═══ HeroMap backdrop (shared) ═════════════════════════════════════════════
+   The greyed basemap layers, used by both the desktop hero and the mobile tile. */
+.bpd-hero-mapstage { position: absolute; inset: 0; }
+/* grey the basemap to the mist — applied to the canvas element itself; a CSS filter on the
+   container div doesn't reliably reach maplibre's separately-composited WebGL layer */
+.bpd-hero-mapcanvas .maplibregl-canvas { outline: none; filter: grayscale(1) contrast(0.9) brightness(1.07); }
+.bpd-hero-mapwarm { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+
+/* ═══ pulse detail — mobile fire-hero tile ══════════════════════════════════
+   The phone-column version of the unified hero: a compact tile with the basemap (or cream),
+   the bonfire on the venue, the arrived huddle, and the headcount. Renders only inside
+   .bpd-mobile, which is hidden ≥1100px, so these class names never collide with the desktop tree. */
+.bp-when-wind { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; color: var(--smoke); }
+.bp-when-wind .bpd-wind { font-size: 14px; }
+
+.bpm-hero {
+  position: relative; height: 196px; border-radius: 20px; overflow: hidden; border: 1px solid var(--ash); isolation: isolate;
+  background:
+    radial-gradient(56% 66% at 50% 45%, var(--ember-tint) 0%, rgba(247, 235, 230, 0) 64%),
+    repeating-linear-gradient(0deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 30px),
+    repeating-linear-gradient(90deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 30px),
+    var(--hearth);
+}
+.bpm-hero--done .bpm-fire { filter: saturate(0.55) brightness(0.82); opacity: 0.72; }
+.bpm-hero-bloom {
+  position: absolute; left: 50%; top: 44%; width: 180px; height: 180px; transform: translate(-50%, -50%);
+  z-index: 3; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(232, 80, 47, 0.18), rgba(255, 179, 130, 0.09) 44%, transparent 66%);
+  animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
+}
+.bpm-fire { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -58%); z-index: 4; width: 58px; height: 88px; pointer-events: none; }
+.bpm-fl { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); border-radius: 52% 52% 40% 40% / 72% 72% 28% 28%; transform-origin: 50% 90%; }
+.bpm-f1 { width: 48px; height: 78px; background: radial-gradient(60% 80% at 50% 82%, #e8502f, #E0431F 70%, #9e2c1c); animation: bpm-sway 3.2s ease-in-out infinite; }
+.bpm-f2 { width: 32px; height: 58px; background: radial-gradient(60% 80% at 50% 82%, #FF8A3D, #e8502f 72%); animation: bpm-sway 2.4s ease-in-out infinite reverse; }
+.bpm-f3 { width: 18px; height: 38px; background: radial-gradient(60% 80% at 50% 80%, #FFD37A, #FF8A3D 78%); animation: bpm-sway 1.8s ease-in-out infinite; }
+.bpm-fcore { width: 9px; height: 22px; bottom: 4px; background: radial-gradient(60% 70% at 50% 70%, #fff4d6, #FFD37A 80%); animation: bpm-flick 1.2s ease-in-out infinite; }
+@keyframes bpm-sway { 0%, 100% { transform: translateX(-50%) rotate(-3deg) scaleY(1); } 50% { transform: translateX(-50%) rotate(3deg) scaleY(1.06); } }
+@keyframes bpm-flick { 0%, 100% { opacity: 0.85; transform: translateX(-50%) scaleY(1); } 50% { opacity: 1; transform: translateX(-50%) scaleY(1.14); } }
+
+/* the arrived huddle at the fire base */
+.bpm-huddle { position: absolute; left: 50%; top: 57%; transform: translateX(-50%); z-index: 6; pointer-events: none; }
+.bpm-huddle-faces { display: flex; }
+.bpm-huddle-face {
+  width: 34px; height: 34px; border-radius: 50%; border: 2.5px solid var(--spark); margin-left: -11px;
+  color: #fff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 18px -10px rgba(88, 32, 20, 0.7);
+}
+.bpm-huddle-face:first-child { margin-left: 0; }
+.bpm-huddle-face--me { border-color: var(--ember); }
+.bpm-huddle-more { background: var(--spark-tint); color: var(--spark); font-size: 11px; }
+
+/* overlays */
+.bpm-hero-count { position: absolute; left: 14px; top: 12px; z-index: 6; display: flex; align-items: baseline; gap: 5px; }
+.bpm-hero-count .n { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 27px; line-height: 1; color: var(--coal); }
+.bpm-hero-count .l { font-size: 12.5px; font-weight: 600; color: var(--coal); }
+.bpm-hero-maps {
+  position: absolute; right: 12px; top: 12px; z-index: 6; width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92); border: 1px solid var(--ember-glow); color: var(--ember-deep);
+  display: flex; align-items: center; justify-content: center; font-size: 14px; text-decoration: none;
+}
+.bpm-hero-venue {
+  position: absolute; left: 12px; bottom: 12px; z-index: 6; max-width: calc(100% - 24px);
+  background: rgba(255, 255, 255, 0.92); border-radius: 12px; padding: 8px 12px; box-shadow: 0 2px 10px rgba(32, 29, 27, 0.12);
+}
+.bpm-hero-venue .vn { display: block; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 17px; line-height: 1.1; color: var(--coal); }
+.bpm-hero-venue .vs { display: block; margin-top: 2px; font-size: 12px; color: var(--smoke); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* scoreboard row under the tile */
+.bpm-scoreboard { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; }
+.bpm-scoreboard .b { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; }
+.bpm-scoreboard .b--here { color: var(--spark); background: var(--spark-tint); }
+.bpm-scoreboard .b--otw { color: var(--dusk); background: var(--dusk-tint); }
+.bpm-scoreboard .b--in { color: var(--ember-deep); background: var(--ember-tint); }
+.bpm-you { margin-left: auto; font-size: 13px; color: var(--smoke); }
+.bpm-you b { font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bpm-fl, .bpm-hero-bloom { animation: none; }
+}
+
 /* ═══ pulse detail ≥1100px: the unified map-hero ════════════════════════════
    One surface, not two cards. A cinematic (non-pannable) basemap centred on the
    venue, the bonfire burning at map-centre, and participants gathered toward the
@@ -908,12 +988,8 @@
   }
   .bpd-hero--done .bpd-fire { filter: saturate(0.55) brightness(0.82); opacity: 0.72; }
 
-  /* map backdrop layers (from HeroMap) */
-  .bpd-hero-mapstage { position: absolute; inset: 0; }
-  /* grey the basemap to the mist — applied to the canvas element itself; a CSS filter on the
-     container div doesn't reliably reach maplibre's separately-composited WebGL layer */
-  .bpd-hero-mapcanvas .maplibregl-canvas { outline: none; filter: grayscale(1) contrast(0.9) brightness(1.07); }
-  .bpd-hero-mapwarm { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  /* map backdrop layers (from HeroMap) live in the shared section above so both the desktop hero
+     and the mobile tile can use them */
 
   /* range rings — faint concentric guides centred on the fire */
   .bpd-hero-rings { position: absolute; inset: 0; z-index: 3; pointer-events: none; }

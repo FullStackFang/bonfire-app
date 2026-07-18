@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { PULSE_STATUSES, type PulseStatus, type PublicPulse, type PublicPulseResponse, type PublicViewer } from '@/lib/pulse/types'
 import { PULSE_STATUS_LABEL, CAPS, pulseMessage } from '@/lib/pulse/copy'
 import { usePulsePoll } from '@/lib/pulse/usePulsePoll'
-import { EmberMark, EndsAt, avatarColorFor, initialsFor } from '../../ui.client'
+import { avatarColorFor, initialsFor } from '../../ui.client'
 
 // The desktop hero's basemap ships in its own chunk (maplibre-gl + tile CSS) fetched only when it
 // renders — i.e. only for a resolved coordinate. Unresolved pulses fall back to the cream gather
@@ -283,7 +283,6 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
     STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || (a.etaMinutes ?? 999) - (b.etaMinutes ?? 999)
   ), [participants])
   const goingCount = roster.filter((p) => p.status !== 'out').length
-  const hereCount = roster.filter((p) => p.status === 'here').length
   const notes = roster.filter((p) => p.note)
 
   const [name, setName] = useState('')
@@ -416,33 +415,49 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
 
           <div className="bp-when">
             {live
-              ? <span className="bp-live-tag"><span className="bonfire-pulse-dot" /> live</span>
+              ? <span className="bp-live-tag"><span className="bonfire-pulse-dot" /> Live now</span>
               : <span className="bp-done-tag">wrapped</span>}
             <span>{initial.timeLabel}</span>
-            {live && <EndsAt iso={initial.expiresAt} />}
+            {live && <span className="bp-when-wind">winds down <Winddown iso={initial.expiresAt} /></span>}
           </div>
 
-          <a className="bp-map mt-4" href={mapsHref} target="_blank" rel="noreferrer">
-            <EmberMark size={22} glow />
-            <span className="bp-map-tag">{initial.place}</span>
-            <span className="bp-map-hint">open in maps ↗</span>
-          </a>
-
-          <div className="bp-rule" />
-
-          <div className="bp-going">
-            <span className="l">
-              <span className="bp-num" style={{ fontSize: 21 }}>{goingCount}</span> going
-              {hereCount > 0 && <span className="tot">{hereCount} here</span>}
-            </span>
-            {me && (
-              <span className="r">
-                You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b>
-              </span>
+          {/* compact fire-on-the-location hero: the map (or cream), the fire on the venue, the
+              arrived huddle, and the headcount — the phone-column version of the desktop hero */}
+          <div className={`bpm-hero mt-4${live ? '' : ' bpm-hero--done'}`}>
+            {mappable && <HeroMap lat={initial.placeLat!} lng={initial.placeLng!} />}
+            <div className="bpm-hero-bloom" aria-hidden />
+            <div className="bpm-fire" aria-hidden>
+              <div className="bpm-fl bpm-f1" /><div className="bpm-fl bpm-f2" /><div className="bpm-fl bpm-f3" /><div className="bpm-fl bpm-fcore" />
+            </div>
+            {hereList.length > 0 && (
+              <div className="bpm-huddle" aria-hidden>
+                <div className="bpm-huddle-faces">
+                  {huddleShown.slice(0, 3).map((p) => (
+                    <span key={p.participantId} className={`bpm-huddle-face${p.me ? ' bpm-huddle-face--me' : ''}`}
+                      style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                  ))}
+                  {hereList.length > 3 && <span className="bpm-huddle-face bpm-huddle-more">+{hereList.length - 3}</span>}
+                </div>
+              </div>
             )}
+            <div className="bpm-hero-count">
+              <span className="n">{desktopCount}</span><span className="l">{live ? 'going' : 'made it'}</span>
+            </div>
+            <a className="bpm-hero-maps" href={mapsHref} target="_blank" rel="noreferrer" aria-label={`Open ${initial.place} in maps`}>↗</a>
+            <div className="bpm-hero-venue">
+              <span className="vn">{venueName}</span>
+              {venueSub && <span className="vs">{venueSub}</span>}
+            </div>
           </div>
 
-          {!live && (
+          {live ? (
+            <div className="bpm-scoreboard">
+              {hereList.length > 0 && <span className="b b--here"><span className="bonfire-pulse-dot" />{hereList.length} here</span>}
+              {otwList.length > 0 && <span className="b b--otw">→ {otwList.length} on the way</span>}
+              {inCount > 0 && <span className="b b--in">{inCount} in</span>}
+              {me && <span className="bpm-you">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></span>}
+            </div>
+          ) : (
             <div className="bp-card bp-card--primary mt-4 px-5 py-4">
               That’s a wrap — <span className="bp-num" style={{ fontSize: 22 }}>{madeItCount}</span>{' '}
               made it.
