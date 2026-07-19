@@ -38,22 +38,17 @@ const SLIDER_STATUSES = PULSE_STATUSES.filter((s) => s !== 'out')
 const firstName = (n: string) => n.trim().split(/\s+/)[0] ?? n
 
 // ── desktop hero gather geometry (cinematic fixed frame) ──
-// The fire sits at the hero's centre; participants ring it by status. Positions are % of the hero
-// box, tuned so the four corners stay clear for overlays (count / maps / venue+notes / commit).
-// deg convention: 0=right, 90=down, 180=left, 270=up (screen space, y grows down).
-function gPos(cx: number, cy: number, rx: number, ry: number, deg: number): React.CSSProperties {
-  const a = (deg * Math.PI) / 180
-  return { left: `${cx + rx * Math.cos(a)}%`, top: `${cy + ry * Math.sin(a)}%` }
-}
-// even angular spread of n items across [a, b]; a lone item lands at the midpoint
-function gFan(a: number, b: number, n: number, i: number): number {
-  if (n <= 1) return (a + b) / 2
-  return a + ((b - a) * i) / (n - 1)
-}
-// The approaching ring: `on_my_way` markers spread across the upper arc (they close in on the fire
-// from around it), skipping the top-right pills and the bottom-right commit card.
-function otwSeat(n: number, i: number): React.CSSProperties {
-  return gPos(50, 44, 38, 29, gFan(202, 338, n, i))
+// The fire sits just right of the hero's centre (52%, 57%); `on_my_way` markers take fixed seats
+// around it, ordered by preference. Hand-placed in the hero's free zones — clear of the count +
+// timeline (top-left), the filter pills (top-right), the feed + place cards (bottom-left), the
+// here-huddle at the fire's base, and the YOU fab (bottom-right). Positions are % of the hero box;
+// the first two mirror the design composition.
+const OTW_SEATS: [number, number][] = [
+  [57, 29], [25, 51], [72, 34], [17, 44], [80, 46], [65, 21], [87, 56], [39, 62],
+]
+function otwSeat(i: number): React.CSSProperties {
+  const [x, y] = OTW_SEATS[i % OTW_SEATS.length]!
+  return { left: `${x}%`, top: `${y}%` }
 }
 
 // A shared 1s clock as an external store, so Winddown can tick without a setState-in-effect and
@@ -318,6 +313,10 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
   const [err, setErr] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false) // desktop hearth → searchable roster
   const [query, setQuery] = useState('')
+  // YOU panel (both trees): open on arrival for a viewer who hasn't joined yet (the commit step is
+  // the point of the link); collapsed to the status fab once they have a pulse.
+  const [youOpen, setYouOpen] = useState(() => !initial.participants.some((p) => p.me))
+  const [feedOpen, setFeedOpen] = useState(false) // mobile pulse-feed card, collapsed by default
   const needName = !viewer?.displayName
 
   async function setStatus(status: PulseStatus, extra: { eta?: number | null; note?: string | null } = {}) {
@@ -390,7 +389,7 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
   const huddleMore = hereList.length - huddleShown.length
   const otwShown = otwList.slice(0, OTW_CAP)
   const otwMore = otwList.length - otwShown.length
-  const heroNotes = notes.slice(0, 2)
+  const feedRows = notes.slice(0, 3) // desktop pulse feed: the latest noted participants
   const desktopCount = live ? goingCount : madeItCount
   const rosterQuery = query.trim().toLowerCase()
   const rosterFiltered = rosterQuery ? roster.filter((p) => p.displayName.toLowerCase().includes(rosterQuery)) : roster
@@ -437,52 +436,51 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
 
       <div className="bp-hero-sheet flex flex-1 flex-col px-5 pb-6 pt-7">
         <div className="flex-1">
-          <h1 className="bp-title bp-title--big">{initial.title}</h1>
+          <h1 className="bp-title bp-title--big bpm-h1">{initial.title}</h1>
 
-          <div className="bp-when">
-            {live
-              ? <span className="bp-live-tag"><span className="bonfire-pulse-dot" /> Live now</span>
-              : <span className="bp-done-tag">wrapped</span>}
-            <span>{initial.timeLabel}</span>
-            {live && <span className="bp-when-wind">winds down <Winddown iso={initial.expiresAt} /></span>}
+          <div className="bpm-statusline">
+            {live ? (
+              <>
+                <span className="live"><span className="bonfire-pulse-dot" />Live now</span>
+                <span className="sep" aria-hidden>·</span>
+                <span>winds down <Winddown iso={initial.expiresAt} /></span>
+              </>
+            ) : (
+              <>
+                <span className="bp-done-tag">wrapped</span>
+                <span>{initial.timeLabel}</span>
+              </>
+            )}
           </div>
 
-          {/* compact fire-on-the-location hero: the map (or cream), the fire on the venue, the
-              arrived huddle, and the headcount — the phone-column version of the desktop hero */}
-          <div className={`bpm-hero mt-4${live ? '' : ' bpm-hero--done'}`}>
-            {mappable && <HeroMap lat={initial.placeLat!} lng={initial.placeLng!} />}
-            <div className="bpm-hero-bloom" aria-hidden />
-            <div className="bpm-fire" aria-hidden>
-              <div className="bpm-fl bpm-f1" /><div className="bpm-fl bpm-f2" /><div className="bpm-fl bpm-f3" /><div className="bpm-fl bpm-fcore" />
-            </div>
-            {hereList.length > 0 && (
-              <div className="bpm-huddle" aria-hidden>
-                <div className="bpm-huddle-faces">
-                  {huddleShown.slice(0, 3).map((p) => (
-                    <span key={p.participantId} className={`bpm-huddle-face${p.me ? ' bpm-huddle-face--me' : ''}`}
-                      style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
-                  ))}
-                  {hereList.length > 3 && <span className="bpm-huddle-face bpm-huddle-more">+{hereList.length - 3}</span>}
-                </div>
-              </div>
-            )}
-            <div className="bpm-hero-count">
+          {/* lean presence strip: headcount, the arrived cluster, maps link, and the venue —
+              the phone-column condensation of the desktop hero (no fire, no map) */}
+          <div className="bpm-lean">
+            <div className="going">
               <span className="n">{desktopCount}</span><span className="l">{live ? 'going' : 'made it'}</span>
             </div>
-            <a className="bpm-hero-maps" href={mapsHref} target="_blank" rel="noreferrer" aria-label={`Open ${initial.place} in maps`}>↗</a>
-            <div className="bpm-hero-venue">
-              <span className="vn">{venueName}</span>
-              {venueSub && <span className="vs">{venueSub}</span>}
+            {hereOrdered.length > 0 && (
+              <div className="cluster" aria-label={`${hereList.length} here now`}>
+                {huddleShown.slice(0, 3).map((p) => (
+                  <span key={p.participantId} className={`av${p.me ? ' self' : ''}`}
+                    style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                ))}
+                {hereList.length > 3 && <span className="av more">+{hereList.length - 3}</span>}
+              </div>
+            )}
+            <a className="expand" href={mapsHref} target="_blank" rel="noreferrer" aria-label={`Open ${initial.place} in maps`}>↗</a>
+            <div className="venue">
+              <div className="t">{venueName}</div>
+              {venueSub && <div className="s">{venueSub}</div>}
             </div>
           </div>
 
           {live ? (
-            <div className="bpm-scoreboard">
-              {(hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
+            (hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
+              <div className="bpm-tlcard">
                 <StatusPath inN={inCount} otwN={otwList.length} hereN={hereList.length} />
-              )}
-              {me && <span className="bpm-you">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></span>}
-            </div>
+              </div>
+            )
           ) : (
             <div className="bp-card bp-card--primary mt-4 px-5 py-4">
               That’s a wrap — <span className="bp-num" style={{ fontSize: 22 }}>{madeItCount}</span>{' '}
@@ -490,12 +488,53 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
             </div>
           )}
 
-          {live && (
-            <section className="bp-card bp-card--primary mt-4 p-4">
-              <div className="bp-overline mb-2.5">You</div>
+          {notes.length > 0 && (
+            <div className="bpm-feed">
+              <button type="button" className="fh" onClick={() => setFeedOpen((o) => !o)} aria-expanded={feedOpen}>
+                <span className="bp-overline">Pulse feed · {notes.length}</span>
+                <span className={`chev${feedOpen ? ' is-open' : ''}`} aria-hidden>▾</span>
+              </button>
+              {feedOpen && notes.map((p) => (
+                <div key={p.participantId} className="bpd-frow">
+                  <span className="av" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                  <div className="fb">
+                    <div className="top">
+                      <span className="nm">{p.me ? 'You' : firstName(p.displayName)}</span>
+                      <span className={`st ${p.status}`}><span className="d" />{timeFor(p) ?? PULSE_STATUS_LABEL[p.status]}</span>
+                    </div>
+                    <div className="note">“{p.note}”</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {live && !youOpen && (
+            <button type="button" className="bpm-youfab" onClick={() => setYouOpen(true)}>
+              <span className="lead">
+                <span className="k">Your pulse</span>
+                <span className="v">
+                  {me
+                    ? <>You’re <em style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</em></>
+                    : 'Join the fire'}
+                </span>
+              </span>
+              <span className="go" aria-hidden>✎</span>
+            </button>
+          )}
+          {live && youOpen && (
+            <div className="bpm-youpanel">
+              <div className="head">
+                <div className="status">
+                  {me
+                    ? <>You’re <em style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</em></>
+                    : 'Join the fire'}
+                </div>
+                <button type="button" className="x" onClick={() => setYouOpen(false)} aria-label="Close your pulse panel">✕</button>
+              </div>
               {needName && (
                 <input value={name} onChange={(e) => setName(e.target.value)} maxLength={CAPS.displayName}
-                  placeholder="Pick a name your friends will know" autoFocus className="bp-field mb-2.5" />
+                  placeholder="Pick a name your friends will know" className="bp-field mb-2.5" />
               )}
               <StatusSegment statuses={SLIDER_STATUSES} current={me?.status ?? null}
                 onPick={(s) => setStatus(s)} disabled={busy} dimmed={me?.status === 'out'} />
@@ -518,7 +557,13 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
                 </div>
               )}
               {err && <p className="mt-2" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
-            </section>
+              {me && me.status !== 'out' && (
+                <div className="bpd-livenote"><span className="d" aria-hidden />Sharing your live pulse with the crew</div>
+              )}
+              <button type="button" className="bp-wrap-row mt-4" onClick={doWrap} disabled={busy}>
+                <span className="k">That’s a wrap</span><span className="s">ends it for everyone</span>
+              </button>
+            </div>
           )}
 
           <div className="bp-overline mt-6 mb-3">Who’s in</div>
@@ -548,24 +593,7 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
             ))}
           </div>
           {roster.length === 0 && <p className="bp-sub mt-2">No one yet. Be the first.</p>}
-
-          {notes.length > 0 && (
-            <div className="mt-4 space-y-1.5">
-              {notes.map((p) => (
-                <p key={p.participantId} className="bp-quote">
-                  “{p.note}”<span className="by">— {p.me ? 'you' : firstName(p.displayName)}</span>
-                </p>
-              ))}
-            </div>
-          )}
         </div>
-
-        {live && (
-          <button type="button" className="bp-wrap-row mt-6" onClick={doWrap} disabled={busy}>
-            <span className="k">That’s a wrap</span>
-            <span className="s">ends it for everyone</span>
-          </button>
-        )}
       </div>
     </div>
 
@@ -617,7 +645,7 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
             {/* on the way — the focus: individual markers closing in on the fire, with ETA */}
             {otwShown.map((p, i) => (
               <span key={p.participantId} className="bpd-person bpd-person--on_my_way"
-                style={otwSeat(otwShown.length + (otwMore > 0 ? 1 : 0), i)} title={p.displayName}>
+                style={otwSeat(i)} title={p.displayName}>
                 <span className="bpd-person-av" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
                 {p.etaMinutes
                   ? <span className="bpd-person-eta">→ {p.etaMinutes} min</span>
@@ -625,7 +653,7 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
               </span>
             ))}
             {otwMore > 0 && (
-              <button type="button" className="bpd-more" style={otwSeat(otwShown.length + 1, otwShown.length)}
+              <button type="button" className="bpd-more" style={otwSeat(otwShown.length)}
                 onClick={() => setExpanded(true)} aria-label="Show everyone on the way">+{otwMore}</button>
             )}
 
@@ -649,16 +677,16 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
               </p>
             )}
 
-            {/* overlays: count + breakdown, maps + search, venue + notes, commit */}
+            {/* overlays: count + timeline, maps + search, feed + place, YOU fab/panel */}
             <div className="bpd-hero-count">
               <div className="n">{desktopCount}</div>
               <div className="l">{live ? 'going' : 'made it'}</div>
-              {live && (hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
-                <div className="bpd-hero-breakdown">
-                  <StatusPath inN={inCount} otwN={otwList.length} hereN={hereList.length} />
-                </div>
-              )}
             </div>
+            {live && (hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
+              <div className="bpd-hero-path">
+                <StatusPath inN={inCount} otwN={otwList.length} hereN={hereList.length} />
+              </div>
+            )}
             <div className="bpd-hero-tr">
               {live && goingCount > 0 && (
                 <button type="button" className="bpd-hero-searchpill" onClick={() => setExpanded(true)}>⌕ Everyone</button>
@@ -666,24 +694,55 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
               <a className="bpd-hero-maps" href={mapsHref} target="_blank" rel="noreferrer">Open in maps ↗</a>
             </div>
             <div className="bpd-hero-bl">
-              {heroNotes.map((p) => (
-                <span key={p.participantId} className="bpd-hero-note">“{p.note}”<span className="by">— {p.me ? 'you' : firstName(p.displayName)}</span></span>
-              ))}
+              {feedRows.length > 0 && (
+                <div className="bpd-feed">
+                  <div className="bp-overline">Pulse feed</div>
+                  {feedRows.map((p) => (
+                    <div key={p.participantId} className="bpd-frow">
+                      <span className="av" style={{ background: avatarColorFor(p.participantId) }}>{initialsFor(p.displayName)}</span>
+                      <div className="fb">
+                        <div className="top">
+                          <span className="nm">{p.me ? 'You' : firstName(p.displayName)}</span>
+                          <span className={`st ${p.status}`}><span className="d" />{timeFor(p) ?? PULSE_STATUS_LABEL[p.status]}</span>
+                        </div>
+                        <div className="note">“{p.note}”</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <span className="bpd-hero-venue">
                 <span className="vn">{venueName}</span>
                 {venueSub && <span className="vs">{venueSub}</span>}
               </span>
             </div>
 
-            {live && (
-              <div className="bpd-commit">
-                <div className="bp-overline">You</div>
-                {me
-                  ? <div className="bpd-youstate">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></div>
-                  : <div className="bpd-youstate bpd-youstate--empty">Slide to join the fire</div>}
+            {live && !youOpen && (
+              <button type="button" className="bpd-youfab" onClick={() => setYouOpen(true)}>
+                <span className="lead">
+                  <span className="k">Your pulse</span>
+                  <span className="v">
+                    {me
+                      ? <>You’re <em style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</em></>
+                      : 'Join the fire'}
+                  </span>
+                </span>
+                <span className="go" aria-hidden>✎</span>
+              </button>
+            )}
+            {live && youOpen && (
+              <div className="bpd-youpanel">
+                <div className="head">
+                  <div className="status">
+                    {me
+                      ? <>You’re <em style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</em></>
+                      : 'Join the fire'}
+                  </div>
+                  <button type="button" className="x" onClick={() => setYouOpen(false)} aria-label="Close your pulse panel">✕</button>
+                </div>
                 {needName && (
                   <input value={name} onChange={(e) => setName(e.target.value)} maxLength={CAPS.displayName}
-                    placeholder="A name your friends will know" className="bp-field" style={{ marginBottom: 4 }} />
+                    placeholder="A name your friends will know" className="bp-field" style={{ marginBottom: 10 }} />
                 )}
                 <StatusSegment statuses={SLIDER_STATUSES} current={me?.status ?? null}
                   onPick={(s) => setStatus(s)} disabled={busy} dimmed={me?.status === 'out'} className="bp-seg2--desktop" />
@@ -704,7 +763,10 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
                   </div>
                 )}
                 {err && <p className="mt-2" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
-                <button type="button" className="bp-wrap-row bpd-commit-wrap" onClick={doWrap} disabled={busy}>
+                {me && me.status !== 'out' && (
+                  <div className="bpd-livenote"><span className="d" aria-hidden />Sharing your live pulse with the crew</div>
+                )}
+                <button type="button" className="bp-wrap-row bpd-youpanel-wrap" onClick={doWrap} disabled={busy}>
                   <span className="k">That’s a wrap</span><span className="s">ends it for everyone</span>
                 </button>
               </div>

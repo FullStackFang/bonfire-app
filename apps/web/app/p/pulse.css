@@ -436,17 +436,7 @@
   box-shadow: 0 -8px 30px -12px rgba(32, 29, 27, 0.35);
 }
 
-/* ── when row (time lead under the title) ── */
-.bp-when {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-  font-size: 16.5px;
-  font-weight: 600;
-  color: var(--coal);
-}
+/* ── live / wrapped state tags ── */
 .bp-live-tag,
 .bp-done-tag {
   display: inline-flex;
@@ -570,10 +560,6 @@
 .bp-tile-sub { font-family: var(--font-mono); font-size: 10px; line-height: 1; color: var(--smoke); }
 .bp-tile-sub--here { color: var(--spark); }
 .bp-tile-sub--otw { color: var(--dusk); }
-
-/* ── participant quotes ── */
-.bp-quote { font-family: var(--font-display); font-style: italic; font-size: 15.5px; line-height: 1.4; color: var(--coal); }
-.bp-quote .by { font-family: var(--font-body); font-style: normal; font-size: 11.5px; color: var(--smoke); margin-left: 6px; }
 
 /* ── wrap row (the host-ish end action, styled like the design's cancel row) ── */
 .bp-wrap-row {
@@ -884,81 +870,128 @@
   .bp-sheet-wrap { left: var(--rail-w); }
 }
 
-/* ═══ HeroMap backdrop (shared) ═════════════════════════════════════════════
-   The greyed basemap layers, used by both the desktop hero and the mobile tile. */
+/* ═══ HeroMap backdrop (desktop hero) ═══════════════════════════════════════
+   The greyed basemap layers rendered by HeroMap inside the desktop hero. */
 .bpd-hero-mapstage { position: absolute; inset: 0; }
 /* grey the basemap to the mist — applied to the canvas element itself; a CSS filter on the
    container div doesn't reliably reach maplibre's separately-composited WebGL layer */
 .bpd-hero-mapcanvas .maplibregl-canvas { outline: none; filter: grayscale(1) contrast(0.9) brightness(1.07); }
 .bpd-hero-mapwarm { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 
-/* ═══ pulse detail — mobile fire-hero tile ══════════════════════════════════
-   The phone-column version of the unified hero: a compact tile with the basemap (or cream),
-   the bonfire on the venue, the arrived huddle, and the headcount. Renders only inside
-   .bpd-mobile, which is hidden ≥1100px, so these class names never collide with the desktop tree. */
-.bp-when-wind { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; color: var(--smoke); }
-.bp-when-wind .bpd-wind { font-size: 14px; }
+/* ═══ pulse detail — shared feed rows + live-sharing note (both trees) ══════
+   A feed row: avatar · name · colored status chip · italic note. Used by the desktop hero's
+   feed card and the mobile pulse-feed card. */
+.bpd-frow { display: flex; gap: 11px; align-items: flex-start; padding-bottom: 12px; }
+.bpd-frow .av {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; border: 2px solid var(--hearth);
+  color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center;
+}
+.bpd-frow .fb { flex: 1; min-width: 0; }
+.bpd-frow .top { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.bpd-frow .nm { font-weight: 600; font-size: 14px; color: var(--coal); }
+.bpd-frow .st { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--smoke); }
+.bpd-frow .st .d { width: 7px; height: 7px; border-radius: 50%; background: var(--smoke); }
+.bpd-frow .st.here { color: var(--spark); }
+.bpd-frow .st.here .d { background: var(--spark); }
+.bpd-frow .st.on_my_way { color: var(--dusk); }
+.bpd-frow .st.on_my_way .d { background: var(--dusk); }
+.bpd-frow .note { font-family: var(--font-display); font-style: italic; font-size: 14px; color: var(--smoke); margin-top: 2px; line-height: 1.3; }
+.bpd-livenote { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--smoke); font-weight: 500; }
+.bpd-livenote .d { width: 8px; height: 8px; border-radius: 50%; background: var(--spark); flex-shrink: 0; }
 
-.bpm-hero {
-  position: relative; height: 196px; border-radius: 20px; overflow: hidden; border: 1px solid var(--ash); isolation: isolate;
+/* ═══ pulse detail — mobile (hidden ≥1100px) ════════════════════════════════
+   The phone-column condensation of the desktop hero: under the ember banner + cream sheet,
+   a lean presence strip (headcount / arrived cluster / maps link / venue), the status timeline
+   in its own card, a collapsible pulse-feed card, and the YOU fab ↔ panel. No fire and no
+   basemap on the phone — the strip is pure information. Renders only inside .bpd-mobile,
+   so these class names never collide with the desktop tree. */
+.bpm-h1 { font-size: 40px; line-height: 1; }
+.bpm-statusline { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 12px 0 18px; font-size: 14px; color: var(--smoke); }
+.bpm-statusline .live {
+  display: inline-flex; align-items: center; gap: 7px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; font-size: 12px; color: var(--spark);
+}
+.bpm-statusline .sep { color: var(--ash); }
+.bpm-statusline .bpd-wind { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--ember-deep); }
+
+/* lean presence strip */
+.bpm-lean {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 16px;
+  border: 1px solid var(--ash); border-radius: 22px; margin-bottom: 14px;
   background:
-    radial-gradient(56% 66% at 50% 45%, var(--ember-tint) 0%, rgba(247, 235, 230, 0) 64%),
-    repeating-linear-gradient(0deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 30px),
-    repeating-linear-gradient(90deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 30px),
-    var(--hearth);
+    radial-gradient(58% 60% at 50% 62%, rgba(232, 80, 47, 0.12), transparent 62%),
+    linear-gradient(180deg, #fdfbf9, #f6f2ee);
+  box-shadow: 0 16px 34px -22px rgba(88, 32, 20, 0.3);
 }
-.bpm-hero--done .bpm-fire { filter: saturate(0.55) brightness(0.82); opacity: 0.72; }
-.bpm-hero-bloom {
-  position: absolute; left: 50%; top: 44%; width: 180px; height: 180px; transform: translate(-50%, -50%);
-  z-index: 3; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle, rgba(232, 80, 47, 0.18), rgba(255, 179, 130, 0.09) 44%, transparent 66%);
-  animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
+.bpm-lean .going { display: flex; align-items: baseline; gap: 7px; }
+.bpm-lean .going .n { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 34px; line-height: 0.9; color: var(--coal); }
+.bpm-lean .going .l { font-size: 14px; color: var(--smoke); }
+.bpm-lean .cluster { display: flex; margin-left: auto; }
+.bpm-lean .cluster .av {
+  width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid var(--hearth); margin-left: -11px;
+  color: #fff; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center;
 }
-.bpm-fire { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -58%); z-index: 4; width: 58px; height: 88px; pointer-events: none; }
-.bpm-fl { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); border-radius: 52% 52% 40% 40% / 72% 72% 28% 28%; transform-origin: 50% 90%; }
-.bpm-f1 { width: 48px; height: 78px; background: radial-gradient(60% 80% at 50% 82%, #e8502f, #E0431F 70%, #9e2c1c); animation: bpm-sway 3.2s ease-in-out infinite; }
-.bpm-f2 { width: 32px; height: 58px; background: radial-gradient(60% 80% at 50% 82%, #FF8A3D, #e8502f 72%); animation: bpm-sway 2.4s ease-in-out infinite reverse; }
-.bpm-f3 { width: 18px; height: 38px; background: radial-gradient(60% 80% at 50% 80%, #FFD37A, #FF8A3D 78%); animation: bpm-sway 1.8s ease-in-out infinite; }
-.bpm-fcore { width: 9px; height: 22px; bottom: 4px; background: radial-gradient(60% 70% at 50% 70%, #fff4d6, #FFD37A 80%); animation: bpm-flick 1.2s ease-in-out infinite; }
-@keyframes bpm-sway { 0%, 100% { transform: translateX(-50%) rotate(-3deg) scaleY(1); } 50% { transform: translateX(-50%) rotate(3deg) scaleY(1.06); } }
-@keyframes bpm-flick { 0%, 100% { opacity: 0.85; transform: translateX(-50%) scaleY(1); } 50% { opacity: 1; transform: translateX(-50%) scaleY(1.14); } }
+.bpm-lean .cluster .av:first-child { margin-left: 0; }
+.bpm-lean .cluster .av.self { box-shadow: 0 0 0 2.5px var(--ember); }
+.bpm-lean .cluster .av.more { background: var(--spark-tint); color: var(--spark); border-color: var(--spark); }
+.bpm-lean .expand {
+  margin-left: auto; width: 34px; height: 34px; border-radius: 50%; background: var(--hearth);
+  border: 1px solid var(--ash); color: var(--ember); display: flex; align-items: center;
+  justify-content: center; font-size: 15px; text-decoration: none;
+}
+.bpm-lean .cluster ~ .expand { margin-left: 0; }
+.bpm-lean .venue { flex-basis: 100%; border-top: 1px solid var(--ash); padding-top: 8px; }
+.bpm-lean .venue .t { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 16px; line-height: 1.05; color: var(--coal); }
+.bpm-lean .venue .s { font-size: 12.5px; color: var(--smoke); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* the arrived huddle at the fire base */
-.bpm-huddle { position: absolute; left: 50%; top: 57%; transform: translateX(-50%); z-index: 6; pointer-events: none; }
-.bpm-huddle-faces { display: flex; }
-.bpm-huddle-face {
-  width: 34px; height: 34px; border-radius: 50%; border: 2.5px solid var(--spark); margin-left: -11px;
-  color: #fff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 18px -10px rgba(88, 32, 20, 0.7);
+/* the status timeline in its own card */
+.bpm-tlcard {
+  display: flex; align-items: center; padding: 14px 22px 10px; margin-bottom: 14px;
+  border: 1px solid var(--ash); border-radius: 18px; background: var(--hearth);
+  box-shadow: 0 8px 22px -18px rgba(88, 32, 20, 0.3);
 }
-.bpm-huddle-face:first-child { margin-left: 0; }
-.bpm-huddle-face--me { border-color: var(--ember); }
-.bpm-huddle-more { background: var(--spark-tint); color: var(--spark); font-size: 11px; }
+.bpm-tlcard .bp-path { flex: 1; min-width: 0; }
 
-/* overlays */
-.bpm-hero-count { position: absolute; left: 14px; top: 12px; z-index: 6; display: flex; align-items: baseline; gap: 5px; }
-.bpm-hero-count .n { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 27px; line-height: 1; color: var(--coal); }
-.bpm-hero-count .l { font-size: 12.5px; font-weight: 600; color: var(--coal); }
-.bpm-hero-maps {
-  position: absolute; right: 12px; top: 12px; z-index: 6; width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92); border: 1px solid var(--ember-glow); color: var(--ember-deep);
-  display: flex; align-items: center; justify-content: center; font-size: 14px; text-decoration: none;
+/* collapsible pulse-feed card */
+.bpm-feed {
+  border: 1px solid var(--ash); border-radius: 18px; background: var(--hearth);
+  padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 8px 22px -18px rgba(88, 32, 20, 0.3);
 }
-.bpm-hero-venue {
-  position: absolute; left: 12px; bottom: 12px; z-index: 6; max-width: calc(100% - 24px);
-  background: rgba(255, 255, 255, 0.92); border-radius: 12px; padding: 8px 12px; box-shadow: 0 2px 10px rgba(32, 29, 27, 0.12);
+.bpm-feed .fh {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body);
 }
-.bpm-hero-venue .vn { display: block; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 17px; line-height: 1.1; color: var(--coal); }
-.bpm-hero-venue .vs { display: block; margin-top: 2px; font-size: 12px; color: var(--smoke); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpm-feed .fh:not(:last-child) { margin-bottom: 14px; }
+.bpm-feed .chev { color: var(--smoke); font-size: 16px; transition: transform 0.2s; transform: rotate(-90deg); }
+.bpm-feed .chev.is-open { transform: none; }
+.bpm-feed .bpd-frow .av { width: 34px; height: 34px; }
+.bpm-feed .bpd-frow .nm { font-size: 15px; }
+.bpm-feed .bpd-frow .note { font-size: 15px; }
+.bpm-feed .bpd-frow:last-child { padding-bottom: 2px; }
 
-/* scoreboard row under the tile: the status path + the viewer's own state */
-.bpm-scoreboard { display: flex; align-items: flex-end; gap: 12px; margin-top: 14px; }
-.bpm-scoreboard .bp-path { flex: 1; min-width: 0; }
-.bpm-you { margin-left: auto; font-size: 13px; color: var(--smoke); white-space: nowrap; padding-bottom: 2px; }
-.bpm-you b { font-weight: 700; }
-
-@media (prefers-reduced-motion: reduce) {
-  .bpm-fl, .bpm-hero-bloom { animation: none; }
+/* YOU: collapsed full-width status fab ↔ in-flow pulse panel */
+.bpm-youfab {
+  width: 100%; display: flex; align-items: center; gap: 14px; height: 66px; padding: 0 14px 0 20px;
+  border-radius: 18px; background: var(--hearth); border: 1px solid var(--ash);
+  box-shadow: 0 10px 26px -16px rgba(88, 32, 20, 0.35); cursor: pointer;
+  font-family: var(--font-body); text-align: left;
+}
+.bpm-youfab:active { transform: translateY(1px); }
+.bpm-youfab .lead { display: flex; flex-direction: column; line-height: 1.05; }
+.bpm-youfab .k { font-size: 10.5px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--smoke); font-weight: 600; }
+.bpm-youfab .v { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 22px; color: var(--coal); white-space: nowrap; }
+.bpm-youfab .go {
+  margin-left: auto; width: 44px; height: 44px; border-radius: 50%; background: var(--ember-tint);
+  color: var(--ember); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.bpm-youpanel { background: var(--hearth); border: 1px solid var(--ash); border-radius: 20px; padding: 20px; }
+.bpm-youpanel .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.bpm-youpanel .status { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 26px; color: var(--coal); line-height: 1; }
+.bpm-youpanel .status em { font-style: italic; }
+.bpm-youpanel .x {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--ash);
+  background: var(--cream); color: var(--coal); cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
 }
 
 /* ═══ pulse detail ≥1100px: the unified map-hero ════════════════════════════
@@ -987,14 +1020,15 @@
     margin: 0;
     overflow-wrap: break-word;
   }
-  .bpd-dateline { display: flex; margin-top: 16px; border-top: 1px solid var(--ash); border-bottom: 1px solid var(--ash); }
-  .bpd-dcell { padding: 11px 22px 11px 0; margin-right: 22px; border-right: 1px solid var(--ash); }
-  .bpd-dcell:last-child { margin-right: 0; border-right: none; }
-  .bpd-dk { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--smoke); font-weight: 600; margin-bottom: 4px; }
-  .bpd-dv { font-size: 17px; font-weight: 600; color: var(--coal); display: flex; align-items: center; gap: 7px; line-height: 1.15; }
+  /* borderless stats strip: hairline-left separated cells, no top/bottom rule */
+  .bpd-dateline { display: flex; margin-top: 20px; }
+  .bpd-dcell { padding: 2px 28px; border-left: 1px solid var(--ash); }
+  .bpd-dcell:first-child { padding-left: 2px; border-left: none; }
+  .bpd-dk { font-size: 11px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--smoke); font-weight: 600; margin-bottom: 7px; }
+  .bpd-dv { font-size: 20px; font-weight: 600; color: var(--coal); display: flex; align-items: center; gap: 8px; line-height: 1; }
   .bpd-dv--live { color: var(--spark); }
-  .bpd-dv--crew { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-  .bpd-wind { font-family: var(--font-mono); font-size: 16px; font-weight: 500; color: var(--ember-deep); letter-spacing: 0.4px; }
+  .bpd-dv--crew { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .bpd-wind { font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ember-deep); letter-spacing: 1px; }
 
   .bpd-head-r { display: flex; gap: 9px; flex-shrink: 0; margin-top: 4px; }
   .bpd-invite {
@@ -1014,48 +1048,49 @@
 
   /* ── the hero ── */
   .bpd-hero {
-    position: relative; margin-top: 22px; height: 560px; border-radius: 24px; overflow: hidden;
+    position: relative; margin-top: 22px; height: 640px; border-radius: 26px; overflow: hidden;
     border: 1px solid var(--ash); isolation: isolate;
+    box-shadow: 0 24px 50px -30px rgba(88, 32, 20, 0.3);
   }
-  /* no geocode → the gather on a warm cream surface, faint ember pooling where the fire sits */
+  /* no geocode → the gather on a warm paper surface, faint ember pooling where the fire sits */
   .bpd-hero--cream {
     background:
-      radial-gradient(52% 60% at 50% 48%, var(--ember-tint) 0%, rgba(247, 235, 230, 0) 62%),
-      repeating-linear-gradient(0deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 34px),
-      repeating-linear-gradient(90deg, rgba(227, 223, 219, 0.32) 0 1px, transparent 1px 34px),
-      var(--cream);
+      radial-gradient(60% 55% at 52% 56%, rgba(232, 80, 47, 0.10) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, rgba(227, 223, 219, 0.35) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(227, 223, 219, 0.35) 0 1px, transparent 1px 44px),
+      linear-gradient(180deg, #fdfbf9, #f7f3ef);
   }
   .bpd-hero--done .bpd-fire { filter: saturate(0.55) brightness(0.82); opacity: 0.72; }
 
   /* map backdrop layers (from HeroMap) live in the shared section above so both the desktop hero
      and the mobile tile can use them */
 
-  /* range rings — faint concentric guides centred on the fire */
+  /* range rings — faint concentric circles centred on the fire */
   .bpd-hero-rings { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-  .bpd-hero-rings .r { position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px dashed rgba(158, 44, 28, 0.14); }
-  .bpd-hero-rings .r1 { width: 220px; height: 196px; }
-  .bpd-hero-rings .r2 { width: 460px; height: 372px; }
-  .bpd-hero-rings .r3 { width: 700px; height: 540px; }
+  .bpd-hero-rings .r { position: absolute; left: 52%; top: 57%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px dashed rgba(158, 44, 28, 0.16); }
+  .bpd-hero-rings .r1 { width: 280px; height: 280px; }
+  .bpd-hero-rings .r2 { width: 460px; height: 460px; }
+  .bpd-hero-rings .r3 { width: 640px; height: 640px; }
 
   /* the hero fire */
   .bpd-hero-bloom {
-    position: absolute; left: 50%; top: 48%; width: 340px; height: 340px; transform: translate(-50%, -50%);
+    position: absolute; left: 52%; top: 57%; width: 360px; height: 360px; transform: translate(-50%, -50%);
     z-index: 3; border-radius: 50%; pointer-events: none;
     background: radial-gradient(circle, rgba(232, 80, 47, 0.20) 0%, rgba(255, 179, 130, 0.11) 42%, rgba(255, 179, 130, 0.04) 62%, transparent 72%);
     animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
   }
-  .bpd-fire { position: absolute; left: 50%; top: 48%; transform: translate(-50%, -58%); z-index: 4; width: 100px; height: 152px; pointer-events: none; }
+  .bpd-fire { position: absolute; left: 52%; top: 57%; transform: translate(-50%, -58%); z-index: 4; width: 112px; height: 168px; pointer-events: none; }
   .bpd-fl { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); border-radius: 52% 52% 40% 40% / 72% 72% 28% 28%; transform-origin: 50% 90%; }
-  .bpd-f1 { width: 82px; height: 134px; background: radial-gradient(60% 80% at 50% 82%, #e8502f, #E0431F 70%, #9e2c1c); animation: bpd-sway 3.2s ease-in-out infinite; }
-  .bpd-f2 { width: 54px; height: 100px; background: radial-gradient(60% 80% at 50% 82%, #FF8A3D, #e8502f 72%); animation: bpd-sway 2.4s ease-in-out infinite reverse; }
-  .bpd-f3 { width: 31px; height: 66px; background: radial-gradient(60% 80% at 50% 80%, #FFD37A, #FF8A3D 78%); animation: bpd-sway 1.8s ease-in-out infinite; }
-  .bpd-fcore { width: 15px; height: 37px; bottom: 6px; background: radial-gradient(60% 70% at 50% 70%, #fff4d6, #FFD37A 80%); animation: bpd-flick 1.2s ease-in-out infinite; }
+  .bpd-f1 { width: 92px; height: 148px; background: radial-gradient(60% 80% at 50% 82%, #e8502f, #E0431F 70%, #9e2c1c); animation: bpd-sway 3.2s ease-in-out infinite; }
+  .bpd-f2 { width: 60px; height: 110px; background: radial-gradient(60% 80% at 50% 82%, #FF8A3D, #e8502f 72%); animation: bpd-sway 2.4s ease-in-out infinite reverse; }
+  .bpd-f3 { width: 34px; height: 73px; background: radial-gradient(60% 80% at 50% 80%, #FFD37A, #FF8A3D 78%); animation: bpd-sway 1.8s ease-in-out infinite; }
+  .bpd-fcore { width: 17px; height: 41px; bottom: 6px; background: radial-gradient(60% 70% at 50% 70%, #fff4d6, #FFD37A 80%); animation: bpd-flick 1.2s ease-in-out infinite; }
 
   /* ── the gather ── */
   .bpd-person { position: absolute; z-index: 5; transform: translate(-50%, -50%); }
   .bpd-person-av {
-    position: relative; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--hearth);
-    color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    position: relative; width: 54px; height: 54px; border-radius: 50%; border: 3px solid var(--hearth);
+    color: #fff; font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 10px 24px -11px rgba(88, 32, 20, 0.7);
   }
   .bpd-person--here .bpd-person-av { border-color: rgba(84, 176, 90, 0.92); }
@@ -1068,12 +1103,13 @@
   .bpd-person--on_my_way { animation: bpd-approach 3.2s ease-in-out infinite; }
   .bpd-person .bp-tile-badge { top: -3px; right: -3px; bottom: auto; width: 18px; height: 18px; border-color: var(--hearth); }
   .bpd-person-nm {
-    position: absolute; top: 52px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600;
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600;
     color: var(--coal); white-space: nowrap; background: rgba(246, 243, 239, 0.72); padding: 0 5px; border-radius: 5px;
   }
   .bpd-person-eta {
-    position: absolute; top: 52px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono);
-    font-size: 10.5px; color: #fff; background: var(--dusk); padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center;
+    height: 26px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: #fff;
+    background: var(--dusk); padding: 0 11px; border-radius: 999px; white-space: nowrap;
   }
   .bpd-more {
     position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 48px; height: 48px; border-radius: 50%;
@@ -1082,80 +1118,97 @@
     box-shadow: 0 10px 24px -14px rgba(88, 32, 20, 0.5);
   }
   .bpd-more:hover { border-color: var(--ember); }
-  .bpd-hero-empty { position: absolute; left: 0; right: 0; top: 66%; text-align: center; font-size: 14px; color: var(--smoke); z-index: 5; }
+  .bpd-hero-empty { position: absolute; left: 0; right: 0; top: 72%; text-align: center; font-size: 14px; color: var(--smoke); z-index: 5; }
 
-  /* ── the here huddle: the arrived crowd cordoned into one tight cluster at the fire ── */
+  /* ── the here huddle: the arrived crowd clustered just below the fire ── */
   .bpd-huddle {
-    position: absolute; left: 50%; top: 62%; transform: translateX(-50%); z-index: 6;
-    display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
-  }
-  /* a soft enclosure behind the faces — the "cordon" */
-  .bpd-huddle::before {
-    content: ""; position: absolute; left: 50%; top: -8px; transform: translateX(-50%);
-    width: calc(100% + 34px); height: 66px; border-radius: 999px; z-index: -1;
-    background: radial-gradient(60% 100% at 50% 40%, rgba(84, 176, 90, 0.10), transparent 72%);
+    position: absolute; left: 52%; top: 78%; transform: translateX(-50%); z-index: 6;
+    display: flex; flex-direction: column; align-items: center; gap: 9px; pointer-events: none;
   }
   .bpd-huddle-faces { display: flex; }
   .bpd-huddle-face {
-    width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--spark); margin-left: -14px;
-    color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--hearth); margin-left: -12px;
+    color: #fff; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 10px 24px -12px rgba(88, 32, 20, 0.7);
   }
   .bpd-huddle-face:first-child { margin-left: 0; }
-  .bpd-huddle-face--me { border-color: var(--ember); box-shadow: 0 0 0 2px var(--cream), 0 0 0 4px var(--ember); }
+  .bpd-huddle-face--me { box-shadow: 0 0 0 3px var(--ember), 0 10px 24px -12px rgba(88, 32, 20, 0.7); }
   .bpd-huddle-more { background: var(--spark-tint); color: var(--spark); font-size: 13px; }
-  .bpd-huddle-lab {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--spark);
-    background: rgba(246, 243, 239, 0.82); padding: 2px 10px; border-radius: 999px;
-  }
+  .bpd-huddle-lab { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--spark); }
 
   /* ── overlays ── */
-  .bpd-hero-count { position: absolute; left: 24px; top: 22px; z-index: 6; }
-  .bpd-hero-count .n { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 44px; line-height: 1; color: var(--coal); }
-  .bpd-hero-count .l { font-size: 14.5px; font-weight: 600; color: var(--coal); margin-top: 4px; }
-  /* the scoreboard: the status path (in → on the way → here) under the headcount */
-  .bpd-hero-breakdown { margin-top: 14px; width: 250px; }
+  .bpd-hero-count { position: absolute; left: 34px; top: 30px; z-index: 6; }
+  .bpd-hero-count .n { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 66px; line-height: 0.9; color: var(--coal); }
+  .bpd-hero-count .l { font-size: 17px; color: var(--smoke); margin-top: 2px; }
+  /* the timeline: the status path (in → on the way → here) scaled up under the headcount */
+  .bpd-hero-path { position: absolute; left: 36px; top: 150px; width: 392px; z-index: 6; }
+  .bpd-hero-path .bp-path { height: 64px; }
+  .bpd-hero-path .bp-path-line { top: 32px; }
+  .bpd-hero-path .bp-path-stop .pn { font-size: 22px; line-height: 24px; }
+  .bpd-hero-path .bp-path-stop .pl { font-size: 12px; }
 
-  .bpd-hero-tr { position: absolute; right: 18px; top: 20px; z-index: 6; display: flex; gap: 8px; }
+  .bpd-hero-tr { position: absolute; right: 34px; top: 34px; z-index: 6; display: flex; gap: 10px; }
   .bpd-hero-maps {
-    display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 15px; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92); border: 1px solid var(--ember-glow); color: var(--ember-deep);
-    font-family: var(--font-body); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 999px;
+    background: var(--hearth); border: 1px solid var(--ember-glow); color: var(--ember-deep);
+    font-family: var(--font-body); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap;
+    box-shadow: 0 2px 0 var(--shadow-warm);
   }
   .bpd-hero-maps:hover { background: #fff; }
   .bpd-hero-searchpill {
-    display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 15px; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.86); border: 1.5px solid var(--ash); color: var(--smoke);
-    font-family: var(--font-body); font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 999px;
+    background: var(--hearth); border: 1px solid var(--ash); color: var(--coal);
+    font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 2px 0 var(--shadow-warm); white-space: nowrap;
   }
-  .bpd-hero-searchpill:hover { border-color: var(--shadow-warm); color: var(--coal); }
+  .bpd-hero-searchpill:hover { border-color: var(--shadow-warm); }
 
-  /* bottom-left stack: notes above the venue chip */
-  .bpd-hero-bl { position: absolute; left: 24px; bottom: 22px; z-index: 6; display: flex; flex-direction: column; gap: 9px; max-width: 340px; }
-  .bpd-hero-note {
-    align-self: flex-start; background: rgba(255, 255, 255, 0.88); border-radius: 12px; padding: 8px 12px;
-    font-family: var(--font-display); font-style: italic; font-size: 14px; line-height: 1.3; color: var(--coal);
-    box-shadow: 0 2px 12px rgba(32, 29, 27, 0.10); max-width: 300px;
+  /* bottom-left stack: the pulse feed card above the place card */
+  .bpd-hero-bl { position: absolute; left: 34px; bottom: 30px; z-index: 6; display: flex; flex-direction: column; gap: 12px; width: 326px; }
+  .bpd-feed {
+    background: var(--hearth); border: 1px solid var(--ash); border-radius: 16px; padding: 14px 16px 8px;
+    box-shadow: 0 10px 26px -16px rgba(88, 32, 20, 0.3);
   }
-  .bpd-hero-note .by { font-family: var(--font-body); font-style: normal; font-size: 11px; color: var(--smoke); margin-left: 5px; }
+  .bpd-feed .bp-overline { margin-bottom: 12px; }
   .bpd-hero-venue {
-    align-self: flex-start; background: rgba(255, 255, 255, 0.92); border-radius: 14px; padding: 11px 16px;
-    box-shadow: 0 2px 14px rgba(32, 29, 27, 0.14); max-width: 340px;
+    align-self: flex-start; background: var(--hearth); border: 1px solid var(--ash); border-radius: 16px;
+    padding: 14px 18px; box-shadow: 0 10px 26px -16px rgba(88, 32, 20, 0.3); max-width: 326px;
   }
-  .bpd-hero-venue .vn { display: block; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 22px; line-height: 1.05; color: var(--coal); }
-  .bpd-hero-venue .vs { display: block; margin-top: 3px; font-size: 13.5px; color: var(--smoke); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bpd-hero-venue .vn { display: block; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 20px; line-height: 1.1; color: var(--coal); }
+  .bpd-hero-venue .vs { display: block; margin-top: 3px; font-size: 14px; color: var(--smoke); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* commit card floats bottom-right (opaque — no glass), the fire's controls */
-  .bpd-commit {
-    position: absolute; right: 20px; bottom: 20px; z-index: 7; width: 300px;
-    background: var(--hearth); border: 1px solid var(--ash); border-radius: 20px; padding: 15px 17px 15px;
-    box-shadow: 0 20px 48px -22px rgba(32, 29, 27, 0.55);
+  /* ── YOU: collapsed status fab ↔ full-height pulse panel (bottom-right) ── */
+  .bpd-youfab {
+    position: absolute; right: 30px; bottom: 30px; z-index: 7; display: flex; align-items: center; gap: 14px;
+    height: 62px; padding: 0 14px 0 22px; border-radius: 999px; background: var(--hearth);
+    border: 1px solid var(--ash); box-shadow: 0 16px 36px -16px rgba(88, 32, 20, 0.42);
+    cursor: pointer; font-family: var(--font-body); text-align: left;
   }
-  .bpd-youstate { margin: 7px 0 12px; font-size: 14px; color: var(--smoke); }
-  .bpd-youstate b { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 18px; }
-  .bpd-youstate--empty { color: var(--smoke); }
-  .bpd-commit .bp-seg2--desktop { margin-top: 0; }
-  .bpd-commit-wrap { margin-top: 13px; }
+  .bpd-youfab:active { transform: translateY(1px); }
+  .bpd-youfab .lead { display: flex; flex-direction: column; line-height: 1.05; }
+  .bpd-youfab .k { font-size: 10.5px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--smoke); font-weight: 600; }
+  .bpd-youfab .v { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 21px; color: var(--coal); }
+  .bpd-youfab .v em { font-style: italic; }
+  .bpd-youfab .go {
+    width: 42px; height: 42px; border-radius: 50%; background: var(--ember-tint); color: var(--ember);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .bpd-youpanel {
+    position: absolute; right: 30px; bottom: 30px; top: 150px; width: 352px; z-index: 8;
+    background: var(--hearth); border: 1px solid var(--ash); border-radius: 24px; padding: 22px 26px 24px;
+    box-shadow: 0 26px 60px -24px rgba(88, 32, 20, 0.4); display: flex; flex-direction: column;
+    animation: bpd-fade 0.22s ease;
+  }
+  .bpd-youpanel .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  .bpd-youpanel .status { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 28px; color: var(--coal); line-height: 1; }
+  .bpd-youpanel .status em { font-style: italic; }
+  .bpd-youpanel .x {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--ash);
+    background: var(--hearth); color: var(--coal); cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 0 var(--shadow-warm);
+  }
+  .bpd-youpanel .x:active { transform: translateY(3px); box-shadow: 0 0 0 var(--shadow-warm); }
+  .bpd-youpanel-wrap { margin-top: auto; }
 
   /* ── expanded roster: a panel over the hero (covers the map + gather in place) ── */
   .bpd-hero-roster {
