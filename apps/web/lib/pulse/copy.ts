@@ -148,4 +148,12 @@ export const authCopy = {
   phoneLabel: 'Phone',
   signOutCta: 'Sign out',
   signOutBlurb: 'Signs this device out. Your crews and availability stay with your number — sign back in anytime.',
+  // Partiful-style "save" nudges after an anonymous create/join. Statements, no guilt, no flame —
+  // an offer to keep the thing you just made, never a wall in front of it.
+  savePulseHeading: 'Save your pulse',
+  savePulseBlurb: 'Add your number and this pulse follows you to any device.',
+  savePrivacyLine: 'Your number is only used to verify you and for event updates — never shown to anyone.',
+  saveSpotLine: 'Save your spot — add your number so this follows you.',
+  saveSkipCta: 'or just grab the link',
+  savedAck: 'Saved. This pulse is yours on any device you verify this number.',
 }

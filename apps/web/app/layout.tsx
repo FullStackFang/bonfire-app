@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Onest, Source_Serif_4 } from "next/font/google";
+import { ViewTransitions } from "next-view-transitions";
 import "./globals.css";
 
 // Self-hosted via next/font: no render-blocking Google CSS request, fonts served from our
@@ -30,7 +31,12 @@ export default function RootLayout({
       lang="en"
       className={`${geist.variable} ${geistMono.variable} ${onest.variable} ${sourceSerif.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {/* Wraps App Router navigations in document.startViewTransition (Next 16 / React 19 have
+            no native flag). Inert unless a next-view-transitions <Link> triggers the nav and the
+            browser supports the API — used only for the / ↔ /p brand-mark morph. */}
+        <ViewTransitions>{children}</ViewTransitions>
+      </body>
     </html>
   );
 }

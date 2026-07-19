@@ -4,9 +4,10 @@ import { createStore, useStore } from 'zustand'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { PULSE_STATUSES, type PulseStatus, type PublicPulse, type PublicPulseResponse, type PublicViewer } from '@/lib/pulse/types'
-import { PULSE_STATUS_LABEL, CAPS, pulseMessage } from '@/lib/pulse/copy'
+import { PULSE_STATUS_LABEL, CAPS, pulseMessage, authCopy } from '@/lib/pulse/copy'
 import { usePulsePoll } from '@/lib/pulse/usePulsePoll'
 import { avatarColorFor, initialsFor } from '../../ui.client'
+import { VerifySheet } from '../../verify.client'
 
 // The desktop hero's basemap ships in its own chunk (maplibre-gl + tile CSS) fetched only when it
 // renders — i.e. only for a resolved coordinate. Unresolved pulses fall back to the cream gather
@@ -224,6 +225,25 @@ function CopyButton({ text, className, label, idle, done }: {
   )
 }
 
+// Soft "save your spot" nudge in the YOU panel after an anon guest joins. One line + a dismiss —
+// never covers the status control, suppressed for verified viewers and after dismiss (see saveState).
+// Inline styles (not a new .bpd- class) so it reads identically in both trees and both themes.
+function SaveSpotLine({ onSave, onDismiss }: { onSave: () => void; onDismiss: () => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+      <button type="button" onClick={onSave}
+        style={{ flex: 1, textAlign: 'left', fontSize: 13, lineHeight: 1.4, color: 'var(--ember-deep)',
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+        {authCopy.saveSpotLine}
+      </button>
+      <button type="button" onClick={onDismiss} aria-label="Dismiss"
+        style={{ flexShrink: 0, fontSize: 13, color: 'var(--smoke)', background: 'none', border: 'none', padding: 4, cursor: 'pointer', lineHeight: 1 }}>
+        ✕
+      </button>
+    </div>
+  )
+}
+
 // The headcount breakdown as a journey, not three tags: stations (in → on the way → here)
 // along a dashed approach line, ending at the spark terminus — the same "here" vocabulary
 // the arrived faces carry. Stations with zero people drop out; "here" stays (dimmed) so the
@@ -318,6 +338,11 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
   const [youOpen, setYouOpen] = useState(() => !initial.participants.some((p) => p.me))
   const [feedOpen, setFeedOpen] = useState(false) // mobile pulse-feed card, collapsed by default
   const needName = !viewer?.displayName
+  // Save-your-spot nudge: once an unverified guest sets a status, offer to attach a phone. One
+  // line, dismissible, once per pulse — 'dismissed' is terminal so it never nags after that.
+  const [saveState, setSaveState] = useState<'hidden' | 'shown' | 'dismissed'>('hidden')
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const showSaveLine = saveState === 'shown' && !!viewer && !viewer.verified
 
   async function setStatus(status: PulseStatus, extra: { eta?: number | null; note?: string | null } = {}) {
     if (busy || !live) return
@@ -348,6 +373,8 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
         participantId: data.viewer.participantId, displayName: data.viewer.displayName,
         status, etaMinutes: etaVal, note: noteVal, me: true,
       })
+      // First status from an unverified guest → surface the save nudge (unless already dismissed).
+      if (!data.viewer.verified) setSaveState((s) => (s === 'dismissed' ? 'dismissed' : 'shown'))
       setHold(false)
     } catch {
       setErr('network error'); setHold(false)
@@ -560,6 +587,9 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
               {me && me.status !== 'out' && (
                 <div className="bpd-livenote"><span className="d" aria-hidden />Sharing your live pulse with the crew</div>
               )}
+              {showSaveLine && (
+                <SaveSpotLine onSave={() => setVerifyOpen(true)} onDismiss={() => setSaveState('dismissed')} />
+              )}
               <button type="button" className="bp-wrap-row mt-4" onClick={doWrap} disabled={busy}>
                 <span className="k">That’s a wrap</span><span className="s">ends it for everyone</span>
               </button>
@@ -766,6 +796,9 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
                 {me && me.status !== 'out' && (
                   <div className="bpd-livenote"><span className="d" aria-hidden />Sharing your live pulse with the crew</div>
                 )}
+                {showSaveLine && (
+                  <SaveSpotLine onSave={() => setVerifyOpen(true)} onDismiss={() => setSaveState('dismissed')} />
+                )}
                 <button type="button" className="bp-wrap-row bpd-youpanel-wrap" onClick={doWrap} disabled={busy}>
                   <span className="k">That’s a wrap</span><span className="s">ends it for everyone</span>
                 </button>
@@ -807,6 +840,14 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
         )}
       </div>
     </div>
+
+    {/* Shared save-your-spot verify sheet (both trees). On success the server may have re-pointed
+        the cookie (ghost merge, which now carries this response onto the canonical); the fresh
+        viewer comes back verified, so the line self-suppresses and never gates the status tap. */}
+    {verifyOpen && (
+      <VerifySheet onClose={() => setVerifyOpen(false)} blurb={authCopy.savePrivacyLine}
+        onVerified={(v) => { setViewer(v); setSaveState('dismissed'); setVerifyOpen(false) }} />
+    )}
     </>
   )
 }

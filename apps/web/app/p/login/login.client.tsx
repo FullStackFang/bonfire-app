@@ -11,8 +11,26 @@ import { useVerifyFlow } from '../verify.client'
 // already set/re-pointed by the API; a nameless viewer (brand-new account) gets an inline
 // name step first, then push + refresh renders the (possibly ghost-merged) identity's dash.
 
+// A ticket mark for the guest-code path — reads as "admit one", not the flame (spec: one fire only).
+function TicketIcon() {
+  return (
+    <svg className="tk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h13A1.5 1.5 0 0 1 20 8.5v2a2 2 0 0 0 0 4v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2 2 0 0 0 0-4Z" />
+      <path d="M14 7v10" strokeDasharray="2 2.4" />
+    </svg>
+  )
+}
+function ChevronIcon() {
+  return (
+    <svg className="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+
 export function LoginFlow() {
   const router = useRouter()
+  const [guestOpen, setGuestOpen] = useState(false)
   const [nameStep, setNameStep] = useState(false)
   const [name, setName] = useState('')
   const [nameBusy, setNameBusy] = useState(false)
@@ -84,16 +102,13 @@ export function LoginFlow() {
 
             {step === 'phone' ? (
               <>
-                {err && <p className="mb-2.5" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
+                {/* Suppressed while the guest panel is open — the shared error surfaces there instead. */}
+                {err && !guestOpen && <p className="mb-2.5" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
                 <button type="submit" disabled={busy || !phone.trim()} className="bp-btn bp-btn--primary w-full">
                   {authCopy.sendCodeCta}
                 </button>
                 <p className="mt-2.5 text-center" style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--smoke)' }}>
                   {authCopy.consentLine}
-                </p>
-                {/* Guest-code bridge (pre-Twilio): make the invited-tester path explicit here. */}
-                <p className="mt-2 text-center" style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--smoke)' }}>
-                  Have a guest code? Enter your number, then type the code you were given.
                 </p>
               </>
             ) : (
@@ -127,6 +142,34 @@ export function LoginFlow() {
               </>
             )}
           </form>
+
+          {/* Guest-code bridge (pre-Twilio): a tester with an allowlisted number types the shared
+              code here and skips the SMS round-trip entirely (confirm() hits the same bypass).
+              Kept out of the <form> so its Enter never triggers "Text me a code". */}
+          {step === 'phone' && (
+            <div className="bp-guestcode">
+              <button type="button" className="bp-guestcode-toggle" onClick={() => setGuestOpen((v) => !v)}
+                aria-expanded={guestOpen} aria-controls="guestcode-panel">
+                <TicketIcon />
+                <span>Have a guest code?</span>
+                <ChevronIcon />
+              </button>
+              {guestOpen && (
+                <div id="guestcode-panel" className="bp-guestcode-panel">
+                  <p className="bp-guestcode-hint">Enter your number above, then the code you were given.</p>
+                  <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirm() } }}
+                    inputMode="numeric" placeholder="Guest code" aria-label="Guest code" className="bp-field mb-2.5" />
+                  {err && <p className="mb-2.5" style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{err}</p>}
+                  <button type="button" onClick={confirm}
+                    disabled={busy || !phone.trim() || code.trim().length < 6}
+                    className="bp-btn bp-btn--primary w-full">
+                    Continue
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </main>

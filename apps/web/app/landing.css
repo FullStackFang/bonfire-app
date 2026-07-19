@@ -160,6 +160,18 @@
 .bonfire-landing .site-head.dark .wordmark { color: var(--cream); }
 .bonfire-landing .site-head.dark .nav-login { color: var(--smoke-on-dark); }
 .bonfire-landing .site-head.dark .nav-login:hover { color: var(--cream); }
+/* ≥860px the app's bottom bar lifts into a top bar (pulse.css --topbar-h 64, 28px inset). Match
+   the marketing header to it full-bleed so the brand mark and the Log in/Create cluster hold the
+   same screen positions — crossing / ↔ /p reads as the nav tabs appearing, not a header reshuffle. */
+@media (min-width: 860px) {
+  .bonfire-landing .site-head .wrap { max-width: none; padding: 0 28px; }
+  .bonfire-landing .site-head .row { padding: 0; height: 64px; gap: 9px; }
+  /* Shared element for the / → /p view transition: the ember mark holds/morphs into the app
+     top-bar's mark (pulse.css .bp-nav-brand .bp-ember shares this name). Only ≥860px, where both
+     marks exist and sit at the same coordinates; below that the app has no top brand so we let the
+     default root crossfade carry it. Named element must be unique per page — scoped to the header. */
+  .bonfire-landing .site-head .ember-mark { view-transition-name: bonfire-brand; }
+}
 
 /* shared floated product-frame (marketing screenshots lift; app chrome never does) */
 .bonfire-landing .frame { background: var(--hearth); border: 1px solid var(--ash); border-radius: 22px; }

@@ -217,6 +217,23 @@
 .bp-field::placeholder { color: var(--smoke); opacity: 0.75; }
 .bp-field:focus { outline: none; border-color: var(--ember); }
 
+/* ── guest-code disclosure (login) — sits under "Text me a code" on both breakpoints ── */
+.bp-guestcode { margin-top: 14px; text-align: center; }
+.bp-guestcode-toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: none; border: none; cursor: pointer;
+  padding: 6px 4px; color: var(--smoke); font-weight: 600; font-size: 13px;
+}
+.bp-guestcode-toggle .tk { width: 16px; height: 16px; color: var(--ember); }
+.bp-guestcode-toggle .cv { width: 13px; height: 13px; transition: transform 0.15s ease; }
+.bp-guestcode-toggle[aria-expanded='true'] .cv { transform: rotate(180deg); }
+.bp-guestcode-panel {
+  margin-top: 10px; text-align: left;
+  padding: 14px; border-radius: 14px;
+  background: var(--ember-tint); border: 1px solid var(--ember-glow);
+}
+.bp-guestcode-hint { font-size: 12.5px; line-height: 1.45; color: var(--smoke); margin-bottom: 10px; }
+
 /* ── segmented pill options ── */
 .bp-seg { display: flex; gap: 7px; flex-wrap: wrap; }
 .bp-opt {
@@ -803,6 +820,9 @@
     text-decoration: none;
   }
   .bp-nav-brand .bp-wordmark { display: inline; }
+  /* Receiving end of the / → /p view transition — shares bonfire-brand with landing.css so the
+     ember mark morphs across the navigation instead of hard-cutting (see landing.css). */
+  .bp-nav-brand .bp-ember { view-transition-name: bonfire-brand; }
 
   /* tabs read as icon + label pills up top, ember-tint when active. The chunky press
      belongs to the phone bar; the top bar is a quiet horizontal strip. */
@@ -847,31 +867,38 @@
     border: 1.5px solid var(--hearth);
   }
 
-  /* ── right cluster: guest-code entry (signed out) / account chip (signed in) ── */
+  /* ── right cluster: Log in + Create (signed out) / account chip (signed in) ── */
   .bp-nav-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     margin-left: auto;
   }
-  .bp-nav-guest {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 16px;
-    border-radius: 999px;
-    background: var(--hearth);
-    border: 1.5px solid var(--ember-glow);
-    color: var(--ember-deep);
+  /* Mirror the marketing header's auth affordance (landing.css .nav-login/.nav-create) so the
+     top-right holds the same shape across / and /p. */
+  .bp-nav-login {
     font-weight: 600;
-    font-size: 14.5px;
+    font-size: 13.5px;
+    color: var(--smoke);
+    padding: 8px 12px;
+    border-radius: 999px;
     text-decoration: none;
-    box-shadow: 0 3px 0 var(--shadow-warm);
-    transition: transform 0.06s, box-shadow 0.06s;
+    transition: color 160ms ease;
   }
-  .bp-nav-guest:active { transform: translateY(3px); box-shadow: 0 0 0 var(--shadow-warm); }
-  .bp-nav-guest svg { width: 17px; height: 17px; color: var(--ember); }
+  .bp-nav-login:hover { color: var(--coal); }
+  .bp-nav-create {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--hearth);
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: var(--ember);
+    box-shadow: 0 3px 0 var(--ember-deep);
+    text-decoration: none;
+    transition: transform 90ms ease, box-shadow 90ms ease, filter 90ms ease;
+  }
+  .bp-nav-create:hover { filter: brightness(1.05); }
+  .bp-nav-create:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ember-deep); }
   .bp-nav-account {
     display: inline-flex;
     align-items: center;

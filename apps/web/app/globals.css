@@ -116,3 +116,17 @@ html, body {
 /* === Backdrop and sheet transitions === */
 .sheet-enter { transform: translateY(0); }
 .sheet-exit  { transform: translateY(110%); }
+
+/* === View Transitions (next-view-transitions): the / ↔ /p brand-mark morph + page crossfade ===
+   The ::view-transition pseudo-elements attach to the document root, so they can't be scoped to a
+   surface class — they live here (globals loads on both surfaces). The named group is the ember
+   mark holding position across the boundary; ease-out-quint so it settles, never bounces. */
+::view-transition-group(bonfire-brand) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}

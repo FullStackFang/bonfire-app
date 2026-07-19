@@ -63,6 +63,27 @@ export async function setPhoneVerified(participantId: string, phone: string): Pr
     where id = ${participantId} returning *`
   return toParticipant(row)
 }
+/** Ghost merge: carry a device's anonymous pulse footprint onto the canonical participant it just
+ *  verified into. Reassigns pulses it created and pulse responses it holds. `pulse_responses` is
+ *  PK (pulse_id, participant_id), so where the canonical already responded to the same pulse the
+ *  ghost's row is dropped first — the canonical's response (the durable identity being consolidated
+ *  onto) is the one kept; a differing status/note/ETA on the ghost's is lost, which is rare and
+ *  low-stakes (presence, not durable data). Statements run sequentially: the local PGlite harness
+ *  serializes one backend session (see scripts/local-db.mjs) and racing statements interleave the
+ *  wire protocol. Each is idempotent by predicate, so a partial failure is safe to re-run. */
+export async function reassignPulseFootprint(fromGhostId: string, toCanonicalId: string): Promise<void> {
+  await sql()`
+    delete from pulse.pulse_responses g
+    where g.participant_id = ${fromGhostId}
+      and exists (select 1 from pulse.pulse_responses c
+                  where c.pulse_id = g.pulse_id and c.participant_id = ${toCanonicalId})`
+  await sql()`
+    update pulse.pulse_responses set participant_id = ${toCanonicalId}
+    where participant_id = ${fromGhostId}`
+  await sql()`
+    update pulse.pulses set created_by = ${toCanonicalId}
+    where created_by = ${fromGhostId}`
+}
 
 // ---- phone verifications (OTP) ----
 export async function createVerification(phone: string, codeHash: string, expiresAt: Date): Promise<PhoneVerification> {

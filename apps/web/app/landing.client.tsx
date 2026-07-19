@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { Link } from 'next-view-transitions'
 import './landing.css'
 
 // The public marketing front door. Server-renders its full markup (so no-JS visitors and

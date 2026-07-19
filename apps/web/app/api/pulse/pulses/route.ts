@@ -88,6 +88,9 @@ export async function POST(request: Request) {
     path: `/p/s/${pulse.token}`,
     url,
     message: pulseMessage(title, place, timeLabel, url),
+    // The creator's own tier, so the delivery screen can decide whether to offer the save step
+    // without an extra round-trip. Additive — no existing consumer reads it.
+    verified: isVerified(participant),
     sms,
   })
 }

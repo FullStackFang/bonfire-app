@@ -58,7 +58,11 @@ export function isGuestBypass(phone: string, code: string): boolean {
 async function finalizeVerification(participantId: string, phone: string): Promise<ConfirmResult> {
   const canonical = await repo.getParticipantByPhone(phone)
   if (canonical && canonical.id !== participantId) {
-    // Ghost merge: the phone already has a canonical identity — the device adopts it.
+    // Ghost merge: the phone already has a canonical identity — the device adopts it. Carry the
+    // ghost's anonymous pulse footprint (created pulses + responses) onto the canonical first, so
+    // a pulse just made under the cookie survives "saving" it. A throw here propagates as a verify
+    // error the caller can retry (both statements are idempotent) rather than a silent half-merge.
+    await repo.reassignPulseFootprint(participantId, canonical.id)
     await repo.logEvent('phone_verified', { participantId: canonical.id })
     return { ok: true, participant: canonical, merged: true }
   }
@@ -90,7 +94,9 @@ export async function issueVerification(phoneInput: string, ip: string): Promise
 /** Confirm a code for the acting participant. On success, either the participant gains the
  *  phone (first verify) or — if the phone already belongs to a canonical row — that canonical
  *  participant is returned with merged=true and the caller re-points the device cookie to it.
- *  The ghost row's tier-0 activity is not migrated (ephemeral by design). */
+ *  On merge the ghost's pulse footprint (created pulses + responses) is migrated onto the
+ *  canonical; other tier-0 activity (availability, crew membership) is not (verify-first, so an
+ *  anon device won't hold it). */
 export async function confirmVerification(
   participantId: string, phoneInput: string, code: string,
 ): Promise<ConfirmResult> {

@@ -49,16 +49,6 @@ function PersonIcon() {
     </svg>
   )
 }
-// A ticket mark for the guest-code entry — reads as "admit one", not the flame (spec: one fire only).
-function TicketIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h13A1.5 1.5 0 0 1 20 8.5v2a2 2 0 0 0 0 4v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2 2 0 0 0 0-4Z" />
-      <path d="M14 7v10" strokeDasharray="2 2.4" />
-    </svg>
-  )
-}
-
 type Tab = { href: string; label: string; icon: React.ReactNode; active: (p: string) => boolean }
 
 const TABS: Tab[] = [
@@ -109,8 +99,9 @@ export function PulseTabBar(
           </Link>
         )
       })}
-      {/* Desktop top-bar right cluster (hidden on the phone bar): a discoverable guest-code entry
-          when signed out, and a signed-in account chip — the "you're logged in" signal — when verified. */}
+      {/* Desktop top-bar right cluster (hidden on the phone bar, where the auth chip rides the
+          bottom bar as a tab). Signed out it mirrors the marketing header's Log in + Create so
+          crossing / ↔ /p holds the same chrome; signed in it becomes the account chip. */}
       <div className="bp-nav-right">
         {verified ? (
           <Link href="/p/account" className="bp-nav-account" aria-label={navCopy.account}>
@@ -124,10 +115,10 @@ export function PulseTabBar(
             </span>
           </Link>
         ) : (
-          <Link href="/p/login" className="bp-nav-guest">
-            <TicketIcon />
-            <span>Enter guest code</span>
-          </Link>
+          <>
+            <Link href="/p/login" className="bp-nav-login">{navCopy.login}</Link>
+            <Link href="/p/new" className="bp-nav-create">Create</Link>
+          </>
         )}
       </div>
     </nav>

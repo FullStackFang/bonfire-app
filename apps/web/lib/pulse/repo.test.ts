@@ -224,6 +224,61 @@ describe.skipIf(!url)('pulse repo (requires TEST_DATABASE_URL)', () => {
     expect(crews.find((c) => c.token === crew.token)).toBeUndefined()
   })
 
+  // ---- ghost-merge footprint reassignment ----
+
+  it('reassignPulseFootprint moves a created pulse onto the canonical participant', async () => {
+    const { repo, newToken, creator: canonical } = await fixtures()
+    const ghost = await repo.createParticipant(newToken())
+    const pulse = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Anon drop', place: 'Park', timeLabel: '7pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: ghost.id, clientUuid: crypto.randomUUID(),
+    })
+    await repo.reassignPulseFootprint(ghost.id, canonical.id)
+    const read = await repo.getPulseByToken(pulse.token)
+    expect(read!.createdBy).toBe(canonical.id)
+    // It now appears on the canonical's dashboard, and never on the ghost's.
+    const mine = await repo.pulsesForParticipant(canonical.id, new Date(), 10)
+    expect(mine.live.some((p) => p.token === pulse.token)).toBe(true)
+    const ghosts = await repo.pulsesForParticipant(ghost.id, new Date(), 10)
+    expect([...ghosts.live, ...ghosts.earlier].some((p) => p.token === pulse.token)).toBe(false)
+  })
+
+  it('reassignPulseFootprint moves a response with no conflict', async () => {
+    const { repo, newToken, creator } = await fixtures()
+    const ghost = await repo.createParticipant(newToken())
+    const canonical = await repo.createParticipant(newToken())
+    const pulse = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Joinable', place: 'Bar', timeLabel: '9pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: creator.id, clientUuid: crypto.randomUUID(),
+    })
+    await repo.upsertResponse(pulse, ghost.id, 'here', null, 'got a table')
+    await repo.reassignPulseFootprint(ghost.id, canonical.id)
+    const rows = await repo.responsesForPulse(pulse.id)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].participantId).toBe(canonical.id)
+    expect(rows[0].status).toBe('here')
+    expect(rows[0].note).toBe('got a table')
+  })
+
+  it('reassignPulseFootprint resolves a response conflict to one row, keeping the canonical', async () => {
+    const { repo, newToken, creator } = await fixtures()
+    const ghost = await repo.createParticipant(newToken())
+    const canonical = await repo.createParticipant(newToken())
+    const pulse = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Both responded', place: 'Court', timeLabel: '6pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: creator.id, clientUuid: crypto.randomUUID(),
+    })
+    // Both identities responded to the SAME pulse — a blind participant_id update would collide.
+    await repo.upsertResponse(pulse, ghost.id, 'on_my_way', 10, 'ghost note')
+    await repo.upsertResponse(pulse, canonical.id, 'in', null, 'canonical note')
+    await repo.reassignPulseFootprint(ghost.id, canonical.id)
+    const rows = await repo.responsesForPulse(pulse.id)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].participantId).toBe(canonical.id)
+    expect(rows[0].status).toBe('in')       // the canonical's response is kept
+    expect(rows[0].note).toBe('canonical note')
+  })
+
   it("dash reads never return another participant's rows", async () => {
     const { repo, newToken, creator } = await fixtures()
     const bystander = await repo.createParticipant(newToken())

@@ -215,6 +215,42 @@ describe.skipIf(!url)('phone verification (requires TEST_DATABASE_URL)', () => {
     const ghostAfter = await repo.getParticipantByToken(ghost.token)
     expect(ghostAfter!.phone).toBeNull()
   })
+
+  it('ghost merge carries the ghost’s created pulse + response onto the canonical', async () => {
+    const { repo, phone, participant: canonicalDevice, newToken } = await fixtures()
+    const p = freshPhone()
+    await repo.createVerification(p, phone.hashCode('333333'), new Date(Date.now() + 60_000))
+    const first = await phone.confirmVerification(canonicalDevice.id, p, '333333')
+    expect(first.ok).toBe(true)
+
+    // A fresh device creates a pulse and joins another one, all under its cookie identity.
+    const ghost = await repo.createParticipant(newToken())
+    const created = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Made anon', place: 'Oia', timeLabel: '8pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: ghost.id, clientUuid: crypto.randomUUID(),
+    })
+    const joined = await repo.createPulse({
+      token: newToken(), crewId: null, title: 'Joined anon', place: 'Bar', timeLabel: '9pm',
+      expiresAt: new Date(Date.now() + 3_600_000), createdBy: canonicalDevice.id, clientUuid: crypto.randomUUID(),
+    })
+    await repo.upsertResponse(joined, ghost.id, 'in', null, null)
+
+    await repo.createVerification(p, phone.hashCode('444444'), new Date(Date.now() + 60_000))
+    const merged = await phone.confirmVerification(ghost.id, p, '444444')
+    expect(merged.ok).toBe(true)
+    if (!merged.ok) return
+    expect(merged.merged).toBe(true)
+    expect(merged.participant.id).toBe(canonicalDevice.id)
+
+    // Both survive on the canonical identity's dashboard — the "save" was honest.
+    const dash = await repo.pulsesForParticipant(canonicalDevice.id, new Date(), 10)
+    const tokens = [...dash.live, ...dash.earlier].map((x) => x.token)
+    expect(tokens).toContain(created.token)
+    expect(tokens).toContain(joined.token)
+    // The created pulse is now owned by the canonical.
+    const readCreated = await repo.getPulseByToken(created.token)
+    expect(readCreated!.createdBy).toBe(canonicalDevice.id)
+  })
 })
 
 // Temporary pre-Twilio bridge — delete alongside the guest-code block in phone.ts.
