@@ -229,6 +229,32 @@ function CopyButton({ text, className, label, idle, done }: {
   )
 }
 
+// The headcount breakdown as a journey, not three tags: stations (in → on the way → here)
+// along a dashed approach line, ending at the spark terminus — the same "here" vocabulary
+// the arrived faces carry. Stations with zero people drop out; "here" stays (dimmed) so the
+// destination reads even before anyone arrives. Keying the numeral on its value replays the
+// pop animation whenever a count changes.
+const PATH_POS: number[][] = [[], [93], [9, 93], [9, 48, 93]]
+function StatusPath({ inN, otwN, hereN }: { inN: number; otwN: number; hereN: number }) {
+  const stops: { key: string; cls: string; n: number; label: string }[] = []
+  if (inN > 0) stops.push({ key: 'in', cls: '', n: inN, label: 'in' })
+  if (otwN > 0) stops.push({ key: 'otw', cls: ' bp-path-stop--otw', n: otwN, label: 'on the way' })
+  stops.push({ key: 'here', cls: ` bp-path-stop--here${hereN === 0 ? ' bp-path-stop--empty' : ''}`, n: hereN, label: 'here' })
+  const pos = PATH_POS[stops.length]
+  return (
+    <div className="bp-path">
+      <div className="bp-path-line" />
+      {stops.map((s, i) => (
+        <div key={s.key} className={`bp-path-stop${s.cls}`} style={{ left: `${pos[i]}%` }}>
+          <span key={s.n} className="pn">{s.n}</span>
+          {s.key === 'here' ? <span className="pt"><i /></span> : <span className="pd" />}
+          <span className="pl">{s.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 type PulseStore = {
   participants: PublicPulseResponse[]
   viewer: PublicViewer
@@ -452,9 +478,9 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
 
           {live ? (
             <div className="bpm-scoreboard">
-              {hereList.length > 0 && <span className="b b--here"><span className="bonfire-pulse-dot" />{hereList.length} here</span>}
-              {otwList.length > 0 && <span className="b b--otw">→ {otwList.length} on the way</span>}
-              {inCount > 0 && <span className="b b--in">{inCount} in</span>}
+              {(hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
+                <StatusPath inN={inCount} otwN={otwList.length} hereN={hereList.length} />
+              )}
               {me && <span className="bpm-you">You’re <b style={{ color: YOU_COLOR[me.status] }}>{PULSE_STATUS_LABEL[me.status]}</b></span>}
             </div>
           ) : (
@@ -629,9 +655,7 @@ export function PulseView({ initial, pulseToken }: { initial: PublicPulse; pulse
               <div className="l">{live ? 'going' : 'made it'}</div>
               {live && (hereList.length > 0 || otwList.length > 0 || inCount > 0) && (
                 <div className="bpd-hero-breakdown">
-                  {hereList.length > 0 && <span className="b b--here"><span className="bonfire-pulse-dot" />{hereList.length} here</span>}
-                  {otwList.length > 0 && <span className="b b--otw">→ {otwList.length} on the way</span>}
-                  {inCount > 0 && <span className="b b--in">{inCount} in</span>}
+                  <StatusPath inN={inCount} otwN={otwList.length} hereN={hereList.length} />
                 </div>
               )}
             </div>

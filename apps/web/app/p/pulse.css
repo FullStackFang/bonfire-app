@@ -117,6 +117,46 @@
   animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
 }
 
+/* ── the status path: the headcount breakdown as a journey toward the fire ──
+   Stations (in → on the way → here) on a dashed approach line — the same dashed
+   vocabulary as the hero's range rings — ending at the spark terminus. Numbers
+   typeset in display italic, never chipped. Shared by the desktop hero overlay
+   and the mobile scoreboard row. */
+.bp-path { position: relative; height: 52px; }
+.bp-path-line { position: absolute; left: 8px; right: 10px; top: 27px; border-top: 1.5px dashed rgba(158, 44, 28, 0.28); }
+.bp-path-stop { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.bp-path-stop .pn {
+  font-family: var(--font-display); font-style: italic; font-weight: 700;
+  font-size: 19px; line-height: 20px; color: var(--coal);
+  animation: bp-path-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bp-path-stop .pd {
+  width: 9px; height: 9px; margin: 3px 0 2px; border-radius: 50%; background: var(--ember-deep);
+  border: 2px solid var(--hearth); box-shadow: 0 1px 4px rgba(32, 29, 27, 0.18);
+}
+.bp-path-stop--otw .pn { color: var(--dusk); }
+.bp-path-stop--otw .pd { background: var(--dusk); animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite; }
+.bp-path-stop--here .pn { color: var(--spark); }
+.bp-path-stop--here .pt { position: relative; width: 13px; height: 13px; margin-top: 1px; }
+.bp-path-stop--here .pt::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 50%;
+  box-shadow: 0 0 0 2.5px rgba(84, 176, 90, 0.3);
+  animation: bonfire-breathe var(--pulse-cadence) ease-in-out infinite;
+}
+.bp-path-stop--here .pt i {
+  position: absolute; inset: 0; border-radius: 50%; background: var(--spark);
+  border: 2px solid var(--hearth); box-shadow: 0 1px 4px rgba(32, 29, 27, 0.18);
+}
+.bp-path-stop--empty { opacity: 0.38; }
+.bp-path-stop--empty .pt::before { animation: none; }
+.bp-path-stop .pl { margin-top: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.3px; color: var(--smoke); white-space: nowrap; }
+.bp-path-stop--otw .pl { color: var(--dusk); }
+.bp-path-stop--here .pl { color: var(--spark); }
+@keyframes bp-path-pop {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* ── loading skeletons (the /p loading shell — quiet warm blocks, no spinner) ── */
 .bp-skel {
   border-radius: 16px;
@@ -700,6 +740,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bonfire-pulse-dot { animation: none; }
+  /* the status path: numerals land instantly; the otw dot and here halo hold static */
+  .bp-path-stop .pn, .bp-path-stop--otw .pd, .bp-path-stop--here .pt::before { animation: none; }
   .bp-skel { animation: none; }
   .bp-sheet, .bp-scrim { animation: none; }
   /* the desktop hero: keep a calm static glow, drop the flicker/sway/breathe/approach */
@@ -909,13 +951,10 @@
 .bpm-hero-venue .vn { display: block; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 17px; line-height: 1.1; color: var(--coal); }
 .bpm-hero-venue .vs { display: block; margin-top: 2px; font-size: 12px; color: var(--smoke); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* scoreboard row under the tile */
-.bpm-scoreboard { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; }
-.bpm-scoreboard .b { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; }
-.bpm-scoreboard .b--here { color: var(--spark); background: var(--spark-tint); }
-.bpm-scoreboard .b--otw { color: var(--dusk); background: var(--dusk-tint); }
-.bpm-scoreboard .b--in { color: var(--ember-deep); background: var(--ember-tint); }
-.bpm-you { margin-left: auto; font-size: 13px; color: var(--smoke); }
+/* scoreboard row under the tile: the status path + the viewer's own state */
+.bpm-scoreboard { display: flex; align-items: flex-end; gap: 12px; margin-top: 14px; }
+.bpm-scoreboard .bp-path { flex: 1; min-width: 0; }
+.bpm-you { margin-left: auto; font-size: 13px; color: var(--smoke); white-space: nowrap; padding-bottom: 2px; }
 .bpm-you b { font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1074,12 +1113,8 @@
   .bpd-hero-count { position: absolute; left: 24px; top: 22px; z-index: 6; }
   .bpd-hero-count .n { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 44px; line-height: 1; color: var(--coal); }
   .bpd-hero-count .l { font-size: 14.5px; font-weight: 600; color: var(--coal); margin-top: 4px; }
-  /* the scoreboard: here / on the way / in — the map itself no longer scatters every face */
-  .bpd-hero-breakdown { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
-  .bpd-hero-breakdown .b { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
-  .bpd-hero-breakdown .b--here { color: var(--spark); background: var(--spark-tint); }
-  .bpd-hero-breakdown .b--otw { color: var(--dusk); background: var(--dusk-tint); }
-  .bpd-hero-breakdown .b--in { color: var(--ember-deep); background: var(--ember-tint); }
+  /* the scoreboard: the status path (in → on the way → here) under the headcount */
+  .bpd-hero-breakdown { margin-top: 14px; width: 250px; }
 
   .bpd-hero-tr { position: absolute; right: 18px; top: 20px; z-index: 6; display: flex; gap: 8px; }
   .bpd-hero-maps {
