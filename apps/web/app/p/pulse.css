@@ -32,8 +32,8 @@
   /* bottom-nav chrome height (padding + chip + offset), excluding the safe-area inset.
      Surfaces reserve this below so nothing hides behind the fixed bar; bp-foot lifts by it. */
   --pulse-nav-h: 68px;
-  /* desktop (≥860px) slim icon-rail width; unused on the phone bottom bar. */
-  --rail-w: 76px;
+  /* desktop (≥860px) top-navbar height; unused on the phone bottom bar. */
+  --topbar-h: 64px;
 
   /* own scroll container: the root layout locks body scrolling for the map view */
   height: 100dvh;
@@ -685,8 +685,10 @@
 }
 .bp-nav-tab--active:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ember-deep); }
 .bp-nav-tab svg { width: 22px; height: 22px; display: block; }
-/* Rail-only chrome — off on the phone bottom bar, switched on at the desktop breakpoint. */
+/* Top-bar-only chrome — off on the phone bottom bar, switched on at the desktop breakpoint. */
 .bp-nav-brand { display: none; }
+.bp-nav-label { display: none; }
+.bp-nav-right { display: none; }
 
 /* Desktop layout primitives — inert on phones (plain block / vertical list), they
    become the wide two-column spread and card grids at the desktop breakpoint. */
@@ -754,7 +756,7 @@
 @media (min-width: 860px) {
   .bonfire-pulse {
     padding-bottom: 0;
-    padding-left: var(--rail-w); /* clear the fixed rail */
+    padding-top: var(--topbar-h); /* clear the fixed top bar */
     /* one warm surface for the whole viewport; faint ember warmth, not a gradient wall */
     background:
       radial-gradient(50rem 50rem at 14% 12%, rgba(232, 80, 47, 0.05), transparent 60%),
@@ -768,55 +770,60 @@
     max-width: 34rem;
   }
 
-  /* the per-surface wordmark defers to the rail; keep any children (ShareChip).
+  /* the per-surface wordmark defers to the top bar's brand; keep any children (ShareChip).
      Scoped through .bonfire-pulse so it outranks the Tailwind .flex utility on the
      same element regardless of layer order. */
   .bonfire-pulse .bp-brandrow-home { display: none; }
 
-  /* ── bottom bar → slim icon rail (the Partiful desktop idiom) ── */
+  /* ── bottom bar → top navbar ── */
   .bp-nav {
     top: 0;
-    bottom: 0;
+    bottom: auto;
     left: 0;
-    right: auto;
+    right: 0;
     transform: none;
-    width: var(--rail-w);
+    width: 100%;
     max-width: none;
-    height: 100dvh;
-    flex-direction: column;
+    height: var(--topbar-h);
+    flex-direction: row;
     align-items: center;
     justify-content: flex-start;
-    gap: 6px;
-    padding: 22px 0;
-    background: var(--cream);
+    gap: 4px;
+    padding: 0 28px;
+    background: var(--hearth);
     border-top: none;
-    border-right: 1px solid var(--ash);
+    border-bottom: 1px solid var(--ash);
   }
-  /* brand mark only — the slim rail has no room for the wordmark */
+  /* brand mark + wordmark — the top bar has room for both */
   .bp-nav-brand {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 4px 0 18px;
+    gap: 9px;
+    margin-right: 22px;
     text-decoration: none;
   }
-  .bp-nav-brand .bp-wordmark { display: none; }
+  .bp-nav-brand .bp-wordmark { display: inline; }
 
-  /* icon-only tabs (the destination rides aria-label): flat, ember-tint when active.
-     The chunky press belongs to the phone bar; the rail is a quiet icon strip. */
+  /* tabs read as icon + label pills up top, ember-tint when active. The chunky press
+     belongs to the phone bar; the top bar is a quiet horizontal strip. */
   .bp-nav-tab {
-    width: 48px;
-    height: 48px;
+    width: auto;
+    height: 40px;
     justify-content: center;
-    gap: 0;
-    padding: 0;
-    border-radius: 14px;
+    gap: 8px;
+    padding: 0 15px;
+    border-radius: 12px;
     background: transparent;
     border-color: transparent;
     box-shadow: none;
+    color: var(--smoke);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 15px;
     text-decoration: none;
   }
-  .bp-nav-tab:hover { background: #eee9e3; }
+  .bp-nav-label { display: inline; }
+  .bp-nav-tab:hover { background: var(--cream); color: var(--coal); }
   .bp-nav-tab:active { transform: none; box-shadow: none; }
   .bp-nav-tab:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
   .bp-nav-tab--active,
@@ -827,16 +834,85 @@
     box-shadow: none;
     transform: none;
   }
-  .bp-nav-tab svg { width: 22px; height: 22px; }
-  .bp-nav-spark { /* back to notching the icon corner */
+  .bp-nav-tab svg { width: 20px; height: 20px; }
+  /* the auth destination lives in the right cluster up top, not as a tab */
+  .bp-nav-tab--auth { display: none; }
+  .bp-nav-spark {
     position: absolute;
-    top: 7px;
-    right: 10px;
+    top: 4px;
+    right: 8px;
     margin: 0;
     width: 9px;
     height: 9px;
-    border: 1.5px solid var(--cream);
+    border: 1.5px solid var(--hearth);
   }
+
+  /* ── right cluster: guest-code entry (signed out) / account chip (signed in) ── */
+  .bp-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  .bp-nav-guest {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--hearth);
+    border: 1.5px solid var(--ember-glow);
+    color: var(--ember-deep);
+    font-weight: 600;
+    font-size: 14.5px;
+    text-decoration: none;
+    box-shadow: 0 3px 0 var(--shadow-warm);
+    transition: transform 0.06s, box-shadow 0.06s;
+  }
+  .bp-nav-guest:active { transform: translateY(3px); box-shadow: 0 0 0 var(--shadow-warm); }
+  .bp-nav-guest svg { width: 17px; height: 17px; color: var(--ember); }
+  .bp-nav-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 4px 14px 4px 4px;
+    border-radius: 999px;
+    background: var(--cream);
+    border: 1px solid var(--ash);
+    text-decoration: none;
+    transition: border-color 0.12s;
+  }
+  .bp-nav-account:hover { border-color: var(--smoke); }
+  .bp-nav-account:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .bp-nav-avatar {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .bp-nav-avatar-dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--spark);
+    border: 2px solid var(--cream);
+  }
+  .bp-nav-acctmeta { display: flex; flex-direction: column; line-height: 1.1; }
+  .bp-nav-acctname { font-weight: 600; font-size: 13.5px; color: var(--coal); }
+  .bp-nav-acctsub { font-size: 11px; color: var(--smoke); }
 
   /* ── content uses the width ──
      The three list surfaces opt into the wide spread (bp-main-wide); forms and detail
@@ -866,8 +942,8 @@
     background: linear-gradient(rgba(246, 243, 239, 0), var(--cream) 30%);
   }
 
-  /* slide-up sheets center over the content area, not under the rail */
-  .bp-sheet-wrap { left: var(--rail-w); }
+  /* slide-up sheets center over the full content area (no rail to clear) */
+  .bp-sheet-wrap { left: 0; }
 }
 
 /* ═══ HeroMap backdrop (desktop hero) ═══════════════════════════════════════

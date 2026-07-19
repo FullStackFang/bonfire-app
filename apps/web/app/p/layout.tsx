@@ -27,5 +27,5 @@ export default function PulseLayout({ children }: { children: React.ReactNode })
 async function LiveTabBar() {
   const viewer = await getViewer()
   const live = viewer ? (await viewerPulses(viewer.id)).live.length > 0 : false
-  return <PulseTabBar live={live} verified={isVerified(viewer)} />
+  return <PulseTabBar live={live} verified={isVerified(viewer)} displayName={viewer?.displayName ?? null} />
 }

@@ -49,6 +49,15 @@ function PersonIcon() {
     </svg>
   )
 }
+// A ticket mark for the guest-code entry — reads as "admit one", not the flame (spec: one fire only).
+function TicketIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h13A1.5 1.5 0 0 1 20 8.5v2a2 2 0 0 0 0 4v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2 2 0 0 0 0-4Z" />
+      <path d="M14 7v10" strokeDasharray="2 2.4" />
+    </svg>
+  )
+}
 
 type Tab = { href: string; label: string; icon: React.ReactNode; active: (p: string) => boolean }
 
@@ -61,16 +70,21 @@ const TABS: Tab[] = [
   { href: '/p/groups', label: navCopy.groups, icon: <PeopleIcon />, active: (p) => p === '/p/groups' || p.startsWith('/p/c/') },
 ]
 
-export function PulseTabBar({ live = false, verified = false }: { live?: boolean; verified?: boolean }) {
+export function PulseTabBar(
+  { live = false, verified = false, displayName = null }:
+  { live?: boolean; verified?: boolean; displayName?: string | null },
+) {
   const pathname = usePathname()
   // The auth chip: the one route in when signed out, the account surface when signed in.
-  // Same chunky-chip states as the tabs; active only on its own route.
+  // Same chunky-chip states as the tabs; active only on its own route. Rendered as a tab for
+  // the phone bottom bar; on the desktop top bar it's hidden in favor of the right cluster below.
   const auth: Tab = verified
     ? { href: '/p/account', label: navCopy.account, icon: <PersonIcon />, active: (p) => p === '/p/account' }
     : { href: '/p/login', label: navCopy.login, icon: <PersonIcon />, active: (p) => p === '/p/login' }
+  const initial = (displayName?.trim().charAt(0) || '?').toUpperCase()
   return (
     <nav className="bp-nav" aria-label="Primary">
-      {/* Rail-only brand + way home (desktop). Hidden on the phone bottom bar. */}
+      {/* Brand + way home. Hidden on the phone bottom bar; mark + wordmark up top on desktop. */}
       <Link href="/p" className="bp-nav-brand" aria-label="Bonfire home">
         <EmberMark glow size={18} />
         <span className="bp-wordmark">BONFIRE</span>
@@ -79,19 +93,43 @@ export function PulseTabBar({ live = false, verified = false }: { live?: boolean
         const active = tab.active(pathname)
         // The spark rides the Events tab: it points at the surface where a live pulse lives.
         const showSpark = live && tab.href === '/p/events'
+        const isAuth = tab.href === auth.href
         return (
           <Link
             key={tab.href}
             href={tab.href}
             aria-label={tab.label}
             aria-current={active ? 'page' : undefined}
-            className={`bp-nav-tab${active ? ' bp-nav-tab--active' : ''}`}
+            className={`bp-nav-tab${active ? ' bp-nav-tab--active' : ''}${isAuth ? ' bp-nav-tab--auth' : ''}`}
           >
             {tab.icon}
+            {/* Label shows only on the desktop top bar; the phone bar stays icon-only. */}
+            <span className="bp-nav-label">{tab.label}</span>
             {showSpark && <span className="bp-nav-spark" aria-hidden />}
           </Link>
         )
       })}
+      {/* Desktop top-bar right cluster (hidden on the phone bar): a discoverable guest-code entry
+          when signed out, and a signed-in account chip — the "you're logged in" signal — when verified. */}
+      <div className="bp-nav-right">
+        {verified ? (
+          <Link href="/p/account" className="bp-nav-account" aria-label={navCopy.account}>
+            <span className="bp-nav-avatar">
+              {initial}
+              <span className="bp-nav-avatar-dot" aria-hidden />
+            </span>
+            <span className="bp-nav-acctmeta">
+              <span className="bp-nav-acctname">{displayName || 'You'}</span>
+              <span className="bp-nav-acctsub">Signed in</span>
+            </span>
+          </Link>
+        ) : (
+          <Link href="/p/login" className="bp-nav-guest">
+            <TicketIcon />
+            <span>Enter guest code</span>
+          </Link>
+        )}
+      </div>
     </nav>
   )
 }

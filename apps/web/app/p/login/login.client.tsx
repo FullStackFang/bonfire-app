@@ -91,6 +91,10 @@ export function LoginFlow() {
                 <p className="mt-2.5 text-center" style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--smoke)' }}>
                   {authCopy.consentLine}
                 </p>
+                {/* Guest-code bridge (pre-Twilio): make the invited-tester path explicit here. */}
+                <p className="mt-2 text-center" style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--smoke)' }}>
+                  Have a guest code? Enter your number, then type the code you were given.
+                </p>
               </>
             ) : (
               <>
