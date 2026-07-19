@@ -28,6 +28,45 @@ export function hashCode(code: string): string {
   return createHash('sha256').update(code).digest('hex')
 }
 
+// --- Guest-code bridge (TEMPORARY: remove once Twilio SMS delivery is live) ------------------
+// While real SMS isn't wired up, an allowlisted tester number can verify by typing a shared
+// 6-digit guest code instead of a texted one. Off unless BOTH env vars are set:
+//   GUEST_VERIFY_CODE=424242            the shared code (6 digits — the code input is numeric-only)
+//   GUEST_VERIFY_PHONES=+16462268158,…  comma-separated allowlist of tester numbers
+// The allowlist is the security boundary: only these trusted numbers can bypass, so the normal
+// ghost-merge behavior downstream stays safe. Unset either var to disable the bridge entirely.
+function guestAllowlist(): Set<string> {
+  return new Set(
+    (process.env.GUEST_VERIFY_PHONES ?? '')
+      .split(',')
+      .map((s) => normalizePhone(s))
+      .filter((p): p is string => Boolean(p)),
+  )
+}
+
+/** Does this (already-normalized) phone + submitted code satisfy the guest bridge? The
+ *  allowlist is the security boundary: exported so its decision logic is unit-tested directly. */
+export function isGuestBypass(phone: string, code: string): boolean {
+  const guestCode = process.env.GUEST_VERIFY_CODE
+  if (!guestCode) return false
+  if (code.trim() !== guestCode.trim()) return false
+  return guestAllowlist().has(phone)
+}
+
+/** Adopt or create the durable identity for a freshly-verified phone. Shared by the real SMS
+ *  path and the guest-code bridge so merge/create behavior never diverges between them. */
+async function finalizeVerification(participantId: string, phone: string): Promise<ConfirmResult> {
+  const canonical = await repo.getParticipantByPhone(phone)
+  if (canonical && canonical.id !== participantId) {
+    // Ghost merge: the phone already has a canonical identity — the device adopts it.
+    await repo.logEvent('phone_verified', { participantId: canonical.id })
+    return { ok: true, participant: canonical, merged: true }
+  }
+  const participant = canonical ?? (await repo.setPhoneVerified(participantId, phone))
+  await repo.logEvent('phone_verified', { participantId: participant.id })
+  return { ok: true, participant, merged: false }
+}
+
 /** Send a 6-digit code to the phone. Rate-limited per phone and per IP. */
 export async function issueVerification(phoneInput: string, ip: string): Promise<IssueResult> {
   const phone = normalizePhone(phoneInput)
@@ -58,6 +97,9 @@ export async function confirmVerification(
   const phone = normalizePhone(phoneInput)
   if (!phone) return { ok: false, error: 'invalid_phone' }
 
+  // Guest-code bridge: an allowlisted number + the shared code skips the SMS round-trip.
+  if (isGuestBypass(phone, code)) return finalizeVerification(participantId, phone)
+
   const v = await repo.latestVerification(phone)
   if (!v) return { ok: false, error: 'no_code' }
   if (v.expiresAt.getTime() <= Date.now()) return { ok: false, error: 'expired' }
@@ -69,14 +111,5 @@ export async function confirmVerification(
   }
 
   await repo.consumeVerification(v.id) // single-use, even for a merge
-
-  const canonical = await repo.getParticipantByPhone(phone)
-  if (canonical && canonical.id !== participantId) {
-    // Ghost merge: the phone already has a canonical identity — the device adopts it.
-    await repo.logEvent('phone_verified', { participantId: canonical.id })
-    return { ok: true, participant: canonical, merged: true }
-  }
-  const participant = canonical ?? (await repo.setPhoneVerified(participantId, phone))
-  await repo.logEvent('phone_verified', { participantId: participant.id })
-  return { ok: true, participant, merged: false }
+  return finalizeVerification(participantId, phone)
 }

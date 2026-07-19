@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach } from 'vitest'
 
 // normalizePhone + requireVerified are pure — always run. The OTP round-trip needs real rows
 // and is DB-gated like repo.test.ts (set TEST_DATABASE_URL; SMS_DRY_RUN keeps Twilio out).
@@ -63,6 +63,44 @@ describe('requireVerified gating matrix', () => {
   it('blocks a missing participant', async () => {
     const { requireVerified } = await import('./identity')
     expect(requireVerified(null)).not.toBeNull()
+  })
+})
+
+// Pure decision logic for the temporary guest-code bridge — no DB, always runs.
+describe('isGuestBypass', () => {
+  afterEach(() => {
+    delete process.env.GUEST_VERIFY_CODE
+    delete process.env.GUEST_VERIFY_PHONES
+  })
+
+  it('is off unless GUEST_VERIFY_CODE is set', async () => {
+    const { isGuestBypass } = await import('./phone')
+    process.env.GUEST_VERIFY_PHONES = '+16462268158'
+    expect(isGuestBypass('+16462268158', '424242')).toBe(false)
+  })
+
+  it('accepts an allowlisted number with the exact code', async () => {
+    const { isGuestBypass } = await import('./phone')
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = '+16462268158'
+    expect(isGuestBypass('+16462268158', '424242')).toBe(true)
+    expect(isGuestBypass('+16462268158', ' 424242 ')).toBe(true) // input is trimmed
+  })
+
+  it('rejects the wrong code or a number not on the allowlist', async () => {
+    const { isGuestBypass } = await import('./phone')
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = '+16462268158'
+    expect(isGuestBypass('+16462268158', '000000')).toBe(false)
+    expect(isGuestBypass('+19170000000', '424242')).toBe(false)
+  })
+
+  it('normalizes allowlist entries so any input format matches', async () => {
+    const { isGuestBypass } = await import('./phone')
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = '(646) 226-8158, +19171112222'
+    expect(isGuestBypass('+16462268158', '424242')).toBe(true) // bare US entry → +1…
+    expect(isGuestBypass('+19171112222', '424242')).toBe(true) // second entry in the list
   })
 })
 
@@ -176,5 +214,87 @@ describe.skipIf(!url)('phone verification (requires TEST_DATABASE_URL)', () => {
     // The ghost row is untouched — orphaned, never given the phone.
     const ghostAfter = await repo.getParticipantByToken(ghost.token)
     expect(ghostAfter!.phone).toBeNull()
+  })
+})
+
+// Temporary pre-Twilio bridge — delete alongside the guest-code block in phone.ts.
+describe.skipIf(!url)('guest-code bridge (requires TEST_DATABASE_URL)', () => {
+  beforeAll(() => {
+    process.env.DATABASE_URL = url
+    process.env.PG_POOL_MAX = '4'
+    process.env.SMS_DRY_RUN = '1'
+  })
+  afterEach(() => {
+    delete process.env.GUEST_VERIFY_CODE
+    delete process.env.GUEST_VERIFY_PHONES
+  })
+
+  // Own prefix + seq space so rows never collide with the block above in the persistent dev DB.
+  let seq = (Date.now() % 10_000_000) + 5_000_000
+  const freshPhone = () => `+1213${String(seq++).padStart(7, '0').slice(-7)}`
+
+  async function fixtures() {
+    const repo = await import('./repo')
+    const phone = await import('./phone')
+    const { newToken } = await import('../ids')
+    const participant = await repo.createParticipant(newToken())
+    return { repo, phone, newToken, participant }
+  }
+
+  it('allowlisted number + guest code verifies without any SMS row', async () => {
+    const { phone, participant } = await fixtures()
+    const p = freshPhone()
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = p
+    const res = await phone.confirmVerification(participant.id, p, '424242')
+    expect(res.ok).toBe(true)
+    if (res.ok) {
+      expect(res.merged).toBe(false)
+      expect(res.participant.phone).toBe(p)
+      expect(res.participant.phoneVerifiedAt).not.toBeNull()
+    }
+  })
+
+  it('guest code merges into an existing canonical identity', async () => {
+    const { repo, phone, participant: canonicalDevice, newToken } = await fixtures()
+    const p = freshPhone()
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = p
+    const first = await phone.confirmVerification(canonicalDevice.id, p, '424242')
+    expect(first.ok).toBe(true)
+
+    const ghost = await repo.createParticipant(newToken())
+    const merged = await phone.confirmVerification(ghost.id, p, '424242')
+    expect(merged.ok).toBe(true)
+    if (merged.ok) {
+      expect(merged.merged).toBe(true)
+      expect(merged.participant.id).toBe(canonicalDevice.id) // canonical, not the ghost
+    }
+  })
+
+  it('a non-allowlisted number falls through to the normal SMS path', async () => {
+    const { phone, participant } = await fixtures()
+    const p = freshPhone()
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = freshPhone() // a DIFFERENT number is allowlisted, not p
+    const res = await phone.confirmVerification(participant.id, p, '424242')
+    expect(res).toEqual({ ok: false, error: 'no_code' }) // no row was ever issued for p
+  })
+
+  it('an allowlisted number with the wrong code falls through to the normal path', async () => {
+    const { phone, participant } = await fixtures()
+    const p = freshPhone()
+    process.env.GUEST_VERIFY_CODE = '424242'
+    process.env.GUEST_VERIFY_PHONES = p
+    const res = await phone.confirmVerification(participant.id, p, '999999')
+    expect(res).toEqual({ ok: false, error: 'no_code' })
+  })
+
+  it('is fully disabled when GUEST_VERIFY_CODE is unset', async () => {
+    const { phone, participant } = await fixtures()
+    const p = freshPhone()
+    process.env.GUEST_VERIFY_PHONES = p // allowlisted, but no code configured
+    const res = await phone.confirmVerification(participant.id, p, '424242')
+    expect(res).toEqual({ ok: false, error: 'no_code' })
   })
 })
