@@ -1,9 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TTL_PRESETS, DEFAULT_TTL_PRESET, CAPS, authCopy } from '@/lib/pulse/copy'
+import { CAPS, authCopy } from '@/lib/pulse/copy'
 import { formatPhoneDisplay } from '@/lib/pulse/phone-format'
-import { resolveExpiry } from '@/lib/pulse/time'
+import { WhenPicker, type WhenValue } from '../WhenPicker.client'
 import { EmberMark } from '../ui.client'
 import { VerifySheet, useVerifyFlow } from '../verify.client'
 import { OnboardingAvailabilitySheet } from '../availability.client'
@@ -21,8 +21,12 @@ export function CreateForm() {
   // pulse fields
   const [title, setTitle] = useState('')
   const [place, setPlace] = useState('')
-  const [timeLabel, setTimeLabel] = useState('')
-  const [ttlKey, setTtlKey] = useState(DEFAULT_TTL_PRESET.key)
+  const [when, setWhen] = useState<WhenValue | null>(null)
+  // Optional venue facts behind a single "booking a table?" disclosure. Facts about the venue,
+  // never a gate on people; both unset = exactly today's form. Creation-time only in v1.
+  const [reservation, setReservation] = useState(false)
+  const [seatsCap, setSeatsCap] = useState<number | null>(null)
+  const [countNeededBy, setCountNeededBy] = useState('') // datetime-local value, local wall clock
 
   // Stable across re-submits so a double-tap is idempotent (one pulse).
   const [clientUuid] = useState(() => crypto.randomUUID())
@@ -57,16 +61,23 @@ export function CreateForm() {
       if (mode === 'crew') {
         await createCrew()
       } else {
-        // Resolve the TTL preset to an absolute instant in THIS device's timezone before posting.
-        const preset = TTL_PRESETS.find((p) => p.key === ttlKey) ?? DEFAULT_TTL_PRESET
-        const expiresAt = resolveExpiry(preset, new Date()).toISOString()
+        // The WhenPicker resolved absolute start/end instants in this device's timezone; the server
+        // derives the human label from them. Refuse a Later start that has slipped into the past.
+        if (!when || !when.valid) { setError('Pick a start time in the future'); return }
+        // datetime-local parses as local wall clock — the same resolution rule as the when itself.
+        const cutoff = reservation && countNeededBy ? new Date(countNeededBy) : null
+        if (cutoff && cutoff.getTime() > when.endsAt.getTime()) {
+          setError('The count needs to land before the pulse ends'); return
+        }
         const res = await fetch('/api/pulse/pulses', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            title: title.trim(), place: place.trim(), timeLabel: timeLabel.trim(),
-            expiresAt, clientUuid,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            title: title.trim(), place: place.trim(),
+            startAt: when.startAt.toISOString(), endsAt: when.endsAt.toISOString(),
+            timezone: when.timezone, clientUuid,
+            seatsCap: reservation && seatsCap ? seatsCap : undefined,
+            countNeededBy: cutoff ? cutoff.toISOString() : undefined,
           }),
         })
         const data = await res.json()
@@ -133,26 +144,53 @@ export function CreateForm() {
             className="bp-field" placeholder="What — “Sunset at the windmills”" autoFocus />
           <input value={place} onChange={(e) => setPlace(e.target.value)} maxLength={CAPS.pulsePlace}
             className="bp-field" placeholder="Where — “Oia”" />
-          <input value={timeLabel} onChange={(e) => setTimeLabel(e.target.value)} maxLength={CAPS.pulseTimeLabel}
-            className="bp-field" placeholder="When — “8:30pm” (or “now”)" />
-          <div>
-            <div className="bp-overline mt-4 mb-2">Stays live for</div>
-            <div className="bp-seg">
-              {TTL_PRESETS.map((p) => (
-                <button key={p.key} type="button" onClick={() => setTtlKey(p.key)}
-                  className={`bp-opt${ttlKey === p.key ? ' bp-opt--sel' : ''}`}>
-                  {p.label}
+          <WhenPicker onChange={setWhen} />
+
+          {/* Venue facts, collapsed behind one disclosure — unset keeps today's form exactly. */}
+          {!reservation ? (
+            <button type="button" className="bp-btn bp-btn--ghost w-full" onClick={() => setReservation(true)}
+              style={{ fontSize: 13.5 }}>
+              Booking a table? Add the details
+            </button>
+          ) : (
+            <div className="bp-card px-4 py-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="bp-overline">The reservation</span>
+                <button type="button" aria-label="Remove reservation details"
+                  onClick={() => { setReservation(false); setSeatsCap(null); setCountNeededBy('') }}
+                  style={{ fontSize: 13, color: 'var(--smoke)', background: 'none', border: 'none', padding: 2, cursor: 'pointer' }}>
+                  ✕
                 </button>
-              ))}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span style={{ fontSize: 13.5 }}>Table for</span>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" className="bp-opt" aria-label="Fewer seats"
+                    onClick={() => setSeatsCap((n) => (n && n > 2 ? n - 1 : null))}>−</button>
+                  <span className="bp-num" style={{ minWidth: 34, textAlign: 'center', fontSize: 17 }}>
+                    {seatsCap ?? '—'}
+                  </span>
+                  <button type="button" className="bp-opt" aria-label="More seats"
+                    onClick={() => setSeatsCap((n) => Math.min(50, (n ?? 7) + 1))}>+</button>
+                </div>
+              </div>
+              <label className="flex items-center justify-between gap-2" style={{ fontSize: 13.5 }}>
+                <span>Count needed by</span>
+                <input type="datetime-local" value={countNeededBy} onChange={(e) => setCountNeededBy(e.target.value)}
+                  className="bp-field" style={{ width: 'auto', fontSize: 13 }} aria-label="Count needed by" />
+              </label>
+              <p className="bp-sub" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                Facts for the group, not a limit — nobody gets blocked from joining.
+              </p>
             </div>
-          </div>
+          )}
         </div>
       )}
 
       {error && <p style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{error}</p>}
 
       <button className="bp-btn bp-btn--primary w-full"
-        disabled={busy || (mode === 'crew' ? !name.trim() : !title.trim() || !place.trim() || !timeLabel.trim())}>
+        disabled={busy || (mode === 'crew' ? !name.trim() : !title.trim() || !place.trim() || !when?.valid)}>
         <EmberMark size={15} />
         {busy ? '…' : mode === 'crew' ? 'Make the board' : 'Drop the pulse'}
       </button>

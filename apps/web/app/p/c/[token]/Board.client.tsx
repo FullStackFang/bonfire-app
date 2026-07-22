@@ -2,9 +2,10 @@
 import { useMemo, useState } from 'react'
 import { createStore, useStore } from 'zustand'
 import Link from 'next/link'
-import { BOARD_STATUSES, type BoardStatus, type PublicBoard, type PublicCrewMember, type PublicPresence, type PublicPulseListItem, type PublicViewer } from '@/lib/pulse/types'
+import { BOARD_STATUSES, pulsePhase, type BoardStatus, type PublicBoard, type PublicCrewMember, type PublicPresence, type PublicPulseListItem, type PublicViewer } from '@/lib/pulse/types'
 import { BOARD_STATUS_LABEL, CAPS } from '@/lib/pulse/copy'
 import { usePulsePoll } from '@/lib/pulse/usePulsePoll'
+import { WhenPicker, type WhenValue } from '../../WhenPicker.client'
 import { BrandRow, EmberMark, EndsAt, PresenceItem, ShareChip, Sheet, StatusPill } from '../../ui.client'
 import { VerifySheet } from '../../verify.client'
 import { AvailabilityCorrectionSheet, OnboardingAvailabilitySheet, Toast } from '../../availability.client'
@@ -327,7 +328,7 @@ function PulseSheet({ onClose, crewToken, crewName, onCreated }: {
 }) {
   const [title, setTitle] = useState('')
   const [place, setPlace] = useState('')
-  const [timeLabel, setTimeLabel] = useState('')
+  const [when, setWhen] = useState<WhenValue | null>(null)
   const [busy, setBusy] = useState(false)
   const [clientUuid, setClientUuid] = useState(() => crypto.randomUUID())
   // The delivery step: creator-controlled, explicit about who gets texted. Copy is always
@@ -338,23 +339,26 @@ function PulseSheet({ onClose, crewToken, crewName, onCreated }: {
   const [smsErr, setSmsErr] = useState<string | null>(null)
 
   async function create() {
-    if (busy || !title.trim() || !place.trim() || !timeLabel.trim()) return
+    if (busy || !title.trim() || !place.trim() || !when || !when.valid) return
     setBusy(true)
-    // End-of-today in this device's timezone — pulses created from a board default to today.
-    const exp = new Date(); exp.setHours(23, 59, 59, 999)
     try {
       const res = await fetch('/api/pulse/pulses', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          title: title.trim(), place: place.trim(), timeLabel: timeLabel.trim(),
-          expiresAt: exp.toISOString(), crewToken, clientUuid,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          title: title.trim(), place: place.trim(),
+          startAt: when.startAt.toISOString(), endsAt: when.endsAt.toISOString(),
+          crewToken, clientUuid, timezone: when.timezone,
         }),
       })
       const data = await res.json().catch(() => null)
       if (res.ok && data?.token) {
-        onCreated({ token: data.token, title: title.trim(), place: place.trim(), timeLabel: timeLabel.trim(), expiresAt: exp.toISOString() })
+        // Optimistic card: derive its phase/label locally the same way the server serializes it.
+        const phase = pulsePhase({ startAt: when.startAt, expiresAt: when.endsAt, closedAt: null }, new Date())
+        onCreated({
+          token: data.token, title: title.trim(), place: place.trim(), timeLabel: data.timeLabel ?? '',
+          startAt: when.startAt.toISOString(), expiresAt: when.endsAt.toISOString(), phase,
+        })
         setClientUuid(crypto.randomUUID())
         setDelivery({ token: data.token, url: data.url, message: data.message, sms: data.sms })
       }
@@ -430,10 +434,9 @@ function PulseSheet({ onClose, crewToken, crewName, onCreated }: {
         placeholder="What’s the plan?" className="bp-field mb-2.5" autoFocus />
       <input value={place} onChange={(e) => setPlace(e.target.value)} maxLength={CAPS.pulsePlace}
         placeholder="Where?" className="bp-field mb-2.5" />
-      <input value={timeLabel} onChange={(e) => setTimeLabel(e.target.value)} maxLength={CAPS.pulseTimeLabel}
-        placeholder="When? (or “now”)" className="bp-field mb-4" />
+      <div className="mb-4"><WhenPicker onChange={setWhen} /></div>
       <button type="button" onClick={create} className="bp-btn bp-btn--primary w-full"
-        disabled={busy || !title.trim() || !place.trim() || !timeLabel.trim()}>
+        disabled={busy || !title.trim() || !place.trim() || !when?.valid}>
         <EmberMark size={15} />Drop it
       </button>
     </Sheet>

@@ -9,9 +9,11 @@ import { serializeDash } from '@/lib/pulse/serialize'
 import { isCrawler } from '@/lib/pulse/ratelimit'
 import { dashCopy, emberCopy } from '@/lib/pulse/copy'
 import { getPublicReconnect } from '@/lib/pulse/reconnect'
+import { resolveIntents } from '@/lib/pulse/intent-resolver'
 import { BrandRow, CrewCard, PlanCard, PulseCard } from './ui.client'
 import { RecoveryEntry } from './dash.client'
 import { ReconnectCard } from './Reconnect.client'
+import { CandidatesCard } from './Candidates.client'
 
 // The home of the pulse rail: everything the viewer is part of, read once from the cookie
 // identity and rendered server-side. A launchpad, not a live surface — no polling; freshness
@@ -40,9 +42,13 @@ export default async function DashPage() {
   // Proactive reconnect suggestion (Phase 3) — opt-in, crew-mate-scoped, derived from co-presence.
   const reconnect = viewer ? await getPublicReconnect(toPublicViewer(viewer)) : { enabled: false, suggestion: null }
 
+  // Intent-resolver candidates (add-intent-layer) — pure read-time join of mutual embers × mutual
+  // person intents × availability. Pull-only: computing them sends nothing; accept drafts the plan.
+  const candidates = viewer ? await resolveIntents(viewer.id) : []
+
   const dash = serializeDash(crews, pulses, toPublicViewer(viewer))
   const empty = dash.live.length === 0 && dash.crews.length === 0 && dash.earlier.length === 0
-    && plans.length === 0
+    && plans.length === 0 && candidates.length === 0
   // Identity chrome only when it can help: unverified (verify makes this device durable) or
   // empty (a returning participant on a fresh device recovers everything here).
   const showRecovery = !isVerified(viewer) || empty
@@ -54,6 +60,7 @@ export default async function DashPage() {
       <BrandRow />
 
       <ReconnectCard initial={reconnect} hasPeople={crews.length > 0} />
+      <CandidatesCard initial={candidates} />
 
       {empty ? (
         <>

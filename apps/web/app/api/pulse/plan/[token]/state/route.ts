@@ -1,6 +1,7 @@
 import { getViewer, toPublicViewer } from '@/lib/pulse/identity'
 import { getPlanByToken, getPublicPlanByToken } from '@/lib/pulse/plan'
 import { getPublicEmber } from '@/lib/pulse/ember'
+import { personFacesForPlan } from '@/lib/pulse/person-intent'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,8 +15,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const viewer = await getViewer()
   const plan = await getPublicPlanByToken(token, toPublicViewer(viewer))
   if (!plan) return Response.json({ error: 'not found' }, { status: 404 })
-  const ember = plan.state === 'completed'
-    ? await getPublicEmber((await getPlanByToken(token))!.id, viewer?.id ?? null)
-    : null
-  return Response.json({ plan, ember })
+  const planRow = plan.state === 'completed' ? await getPlanByToken(token) : null
+  const ember = planRow ? await getPublicEmber(planRow.id, viewer?.id ?? null) : null
+  const faces = planRow ? await personFacesForPlan(planRow, viewer?.id ?? null) : []
+  return Response.json({ plan, ember, faces })
 }

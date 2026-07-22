@@ -5,7 +5,7 @@ import { sql } from '../db'
 import type {
   AvailabilityBaseline, AvailabilityException, Crew, Participant, PhoneVerification,
   Presence, PresenceRow, Pulse, PulseResponse, PulseResponseRow, BoardStatus, PulseStatus,
-  PlaceGeoStatus,
+  PlaceGeoStatus, Pod, PodKind, PodMemberRow,
 } from './types'
 
 // ---- mapping helpers (postgres.camel gives camelCase keys; bigint comes back as string) ----
@@ -24,10 +24,16 @@ const toCrew = (r: any): Crew => ({
 const toPulse = (r: any): Pulse => ({
   id: r.id, token: r.token, crewId: r.crewId ?? null,
   title: r.title, place: r.place, timeLabel: r.timeLabel,
-  expiresAt: r.expiresAt, closedAt: r.closedAt ?? null, version: String(r.version),
+  // Legacy rows may have a null start_at (backfill sets it = created_at); coalesce so phase is
+  // always computable. `expires_at` is the end instant.
+  startAt: r.startAt ?? r.createdAt,
+  expiresAt: r.expiresAt, timezone: r.timezone ?? null,
+  closedAt: r.closedAt ?? null, version: String(r.version),
   createdBy: r.createdBy, clientUuid: r.clientUuid, createdAt: r.createdAt,
   placeLat: r.placeLat ?? null, placeLng: r.placeLng ?? null,
   placeGeoStatus: r.placeGeoStatus ?? 'unresolved',
+  seatsCap: r.seatsCap ?? null, countNeededBy: r.countNeededBy ?? null,
+  tableCalledAt: r.tableCalledAt ?? null,
 })
 const toPresenceRow = (r: any): PresenceRow => ({
   crewId: r.crewId, participantId: r.participantId, status: r.status,
@@ -35,8 +41,17 @@ const toPresenceRow = (r: any): PresenceRow => ({
 })
 const toResponseRow = (r: any): PulseResponseRow => ({
   pulseId: r.pulseId, participantId: r.participantId, status: r.status,
-  etaMinutes: r.etaMinutes ?? null, note: r.note ?? null, updatedAt: r.updatedAt,
+  etaMinutes: r.etaMinutes ?? null, note: r.note ?? null,
+  partySize: r.partySize ?? 0, updatedAt: r.updatedAt,
   displayName: r.displayName ?? null,
+})
+const toPod = (r: any): Pod => ({
+  id: r.id, pulseId: r.pulseId, kind: r.kind, label: r.label,
+  seats: r.seats ?? null, ownerParticipantId: r.ownerParticipantId, createdAt: r.createdAt,
+})
+const toPodMemberRow = (r: any): PodMemberRow => ({
+  podId: r.podId, pulseId: r.pulseId, participantId: r.participantId,
+  joinedAt: r.joinedAt, displayName: r.displayName ?? null,
 })
 
 // ---- participants ----
@@ -64,13 +79,14 @@ export async function setPhoneVerified(participantId: string, phone: string): Pr
   return toParticipant(row)
 }
 /** Ghost merge: carry a device's anonymous pulse footprint onto the canonical participant it just
- *  verified into. Reassigns pulses it created and pulse responses it holds. `pulse_responses` is
- *  PK (pulse_id, participant_id), so where the canonical already responded to the same pulse the
- *  ghost's row is dropped first — the canonical's response (the durable identity being consolidated
- *  onto) is the one kept; a differing status/note/ETA on the ghost's is lost, which is rare and
- *  low-stakes (presence, not durable data). Statements run sequentially: the local PGlite harness
- *  serializes one backend session (see scripts/local-db.mjs) and racing statements interleave the
- *  wire protocol. Each is idempotent by predicate, so a partial failure is safe to re-run. */
+ *  verified into. Reassigns pulses it created, pulse responses it holds, and person intents it holds
+ *  or received. `pulse_responses` is PK (pulse_id, participant_id), so where the canonical already
+ *  responded to the same pulse the ghost's row is dropped first — the canonical's response (the
+ *  durable identity being consolidated onto) is the one kept; a differing status/note/ETA on the
+ *  ghost's is lost, which is rare and low-stakes (presence, not durable data). Statements run
+ *  sequentially: the local PGlite harness serializes one backend session (see scripts/local-db.mjs)
+ *  and racing statements interleave the wire protocol. Each is idempotent by predicate, so a partial
+ *  failure is safe to re-run. */
 export async function reassignPulseFootprint(fromGhostId: string, toCanonicalId: string): Promise<void> {
   await sql()`
     delete from pulse.pulse_responses g
@@ -83,6 +99,58 @@ export async function reassignPulseFootprint(fromGhostId: string, toCanonicalId:
   await sql()`
     update pulse.pulses set created_by = ${toCanonicalId}
     where created_by = ${fromGhostId}`
+  await reassignPersonIntents(fromGhostId, toCanonicalId)
+}
+
+/** Re-point person_intents (add-intent-layer) from a merging ghost onto its canonical. person_intents
+ *  is PK (from, to) with a from<>to check, so the merge must (a) drop any ghost↔canonical pair — a
+ *  person can't hold intent toward themself — and (b) on a pair-PK collision, KEEP THE EARLIEST row
+ *  (the design contract: the original timestamp stands). We drop the LATER duplicate on each side
+ *  before promoting the survivor. Sequential, idempotent-by-predicate, safe to re-run. */
+async function reassignPersonIntents(fromGhostId: string, toCanonicalId: string): Promise<void> {
+  // (a) Ghost↔canonical rows would become self-taps after the merge — drop them outright.
+  await sql()`
+    delete from pulse.person_intents
+    where (from_participant_id = ${fromGhostId} and to_participant_id = ${toCanonicalId})
+       or (from_participant_id = ${toCanonicalId} and to_participant_id = ${fromGhostId})`
+
+  // (b) from = ghost → canonical. Collision is a canonical row with the same `to`; keep the earliest.
+  await sql()`
+    delete from pulse.person_intents g
+    where g.from_participant_id = ${fromGhostId}
+      and exists (select 1 from pulse.person_intents c
+                  where c.from_participant_id = ${toCanonicalId}
+                    and c.to_participant_id = g.to_participant_id
+                    and c.created_at <= g.created_at)`
+  await sql()`
+    delete from pulse.person_intents c
+    where c.from_participant_id = ${toCanonicalId}
+      and exists (select 1 from pulse.person_intents g
+                  where g.from_participant_id = ${fromGhostId}
+                    and g.to_participant_id = c.to_participant_id
+                    and g.created_at < c.created_at)`
+  await sql()`
+    update pulse.person_intents set from_participant_id = ${toCanonicalId}
+    where from_participant_id = ${fromGhostId}`
+
+  // to = ghost → canonical. Collision is a row with the same `from`; keep the earliest.
+  await sql()`
+    delete from pulse.person_intents g
+    where g.to_participant_id = ${fromGhostId}
+      and exists (select 1 from pulse.person_intents c
+                  where c.to_participant_id = ${toCanonicalId}
+                    and c.from_participant_id = g.from_participant_id
+                    and c.created_at <= g.created_at)`
+  await sql()`
+    delete from pulse.person_intents c
+    where c.to_participant_id = ${toCanonicalId}
+      and exists (select 1 from pulse.person_intents g
+                  where g.to_participant_id = ${fromGhostId}
+                    and g.from_participant_id = c.from_participant_id
+                    and g.created_at < c.created_at)`
+  await sql()`
+    update pulse.person_intents set to_participant_id = ${toCanonicalId}
+    where to_participant_id = ${fromGhostId}`
 }
 
 // ---- phone verifications (OTP) ----
@@ -184,8 +252,12 @@ export type NewPulse = {
   crewId: string | null
   title: string
   place: string
-  timeLabel: string
-  expiresAt: Date
+  timeLabel: string // machine-derived display snapshot (deriveWhenLabel), not free-text input
+  // Absolute start instant, resolved from the creator's local wall clock. Optional: when omitted the
+  // column is left null and reads coalesce start_at -> created_at (legacy "now" semantics).
+  startAt?: Date | null
+  expiresAt: Date // absolute END instant (start + duration)
+  timezone?: string | null // creator's IANA tz
   createdBy: string
   clientUuid: string
   // Best-effort geocode of `place`, resolved before insert. Defaults keep creation working when
@@ -193,16 +265,20 @@ export type NewPulse = {
   placeLat?: number | null
   placeLng?: number | null
   placeGeoStatus?: PlaceGeoStatus
+  // Venue facts (add-restaurant-pods). Optional and creation-time only in v1; unset = feature off.
+  seatsCap?: number | null
+  countNeededBy?: Date | null
 }
 /** Idempotent on (crew_id, created_by, client_uuid) — a double-tap/retry yields one pulse. */
 export async function createPulse(p: NewPulse): Promise<Pulse> {
   const [row] = await sql()`
     insert into pulse.pulses (
-      token, crew_id, title, place, time_label, expires_at, created_by, client_uuid,
-      place_lat, place_lng, place_geo_status)
+      token, crew_id, title, place, time_label, start_at, expires_at, timezone, created_by, client_uuid,
+      place_lat, place_lng, place_geo_status, seats_cap, count_needed_by)
     values (
-      ${p.token}, ${p.crewId}, ${p.title}, ${p.place}, ${p.timeLabel}, ${p.expiresAt}, ${p.createdBy}, ${p.clientUuid},
-      ${p.placeLat ?? null}, ${p.placeLng ?? null}, ${p.placeGeoStatus ?? 'unresolved'})
+      ${p.token}, ${p.crewId}, ${p.title}, ${p.place}, ${p.timeLabel}, ${p.startAt ?? null}, ${p.expiresAt}, ${p.timezone ?? null}, ${p.createdBy}, ${p.clientUuid},
+      ${p.placeLat ?? null}, ${p.placeLng ?? null}, ${p.placeGeoStatus ?? 'unresolved'},
+      ${p.seatsCap ?? null}, ${p.countNeededBy ?? null})
     on conflict (crew_id, created_by, client_uuid) do nothing
     returning *`
   if (row) {
@@ -243,6 +319,16 @@ export async function activePulsesForCrew(crewId: string, now: Date): Promise<Pu
     order by expires_at`
   return rows.map(toPulse)
 }
+async function bumpPulseVersion(id: string): Promise<void> {
+  await sql()`update pulse.pulses set version = version + 1 where id = ${id}`
+}
+/** "Table called": egalitarian, idempotent marker that someone phoned the venue. First set wins
+ *  (and bumps the version so pollers see it); every later tap is a no-op. Never notifies. */
+export async function setTableCalled(pulseId: string): Promise<void> {
+  await sql()`
+    update pulse.pulses set table_called_at = now(), version = version + 1
+    where id = ${pulseId} and table_called_at is null`
+}
 /** Wrap a pulse: close it and bump versions. Idempotent — returns the (already) closed row. */
 export async function closePulse(pulse: Pulse): Promise<Pulse> {
   const [row] = await sql()`
@@ -278,22 +364,28 @@ export async function presenceForCrew(crewId: string): Promise<PresenceRow[]> {
 }
 
 // ---- pulse responses ----
+/** `partySize` null = leave as-is (0 on first insert) — the one-tap join never touches it and a
+ *  later status tap must not reset a chosen party. Any write re-dates `updated_at`, which is what
+ *  the count snapshot keys on (an edit after the cutoff re-dates the party into "after the count"). */
 export async function upsertResponse(
   pulse: Pulse, participantId: string, status: PulseStatus,
-  etaMinutes: number | null, note: string | null,
+  etaMinutes: number | null, note: string | null, partySize: number | null = null,
 ): Promise<PulseResponse> {
   const [row] = await sql()`
-    insert into pulse.pulse_responses (pulse_id, participant_id, status, eta_minutes, note)
-    values (${pulse.id}, ${participantId}, ${status}, ${etaMinutes}, ${note})
+    insert into pulse.pulse_responses (pulse_id, participant_id, status, eta_minutes, note, party_size)
+    values (${pulse.id}, ${participantId}, ${status}, ${etaMinutes}, ${note}, ${partySize ?? 0})
     on conflict (pulse_id, participant_id)
     do update set status = excluded.status, eta_minutes = excluded.eta_minutes,
-                  note = excluded.note, updated_at = now()
+                  note = excluded.note,
+                  party_size = coalesce(${partySize}, pulse.pulse_responses.party_size),
+                  updated_at = now()
     returning *`
-  await sql()`update pulse.pulses set version = version + 1 where id = ${pulse.id}`
+  await bumpPulseVersion(pulse.id)
   if (pulse.crewId) await bumpCrewVersion(pulse.crewId)
   return {
     pulseId: row.pulseId, participantId: row.participantId, status: row.status,
-    etaMinutes: row.etaMinutes ?? null, note: row.note ?? null, updatedAt: row.updatedAt,
+    etaMinutes: row.etaMinutes ?? null, note: row.note ?? null,
+    partySize: row.partySize ?? 0, updatedAt: row.updatedAt,
   }
 }
 export async function responsesForPulse(pulseId: string): Promise<PulseResponseRow[]> {
@@ -303,6 +395,135 @@ export async function responsesForPulse(pulseId: string): Promise<PulseResponseR
     where pr.pulse_id = ${pulseId}
     order by pr.updated_at desc`
   return rows.map(toResponseRow)
+}
+
+// ---- pods (add-restaurant-pods) ----
+// Egalitarian writes with two asymmetries (design D5): only the owner edits/deletes; only yourself
+// leaves. Every write bumps the pulse `version` so pods ride the existing ETag poll. An over pulse
+// rejects all pod writes. Discriminated results, not throws — the routes map errors to statuses.
+
+export type PodWriteError =
+  | 'pulse_over' | 'pod_not_found' | 'not_owner' | 'not_member'
+  | 'pod_full' | 'seats_below_members'
+export type PodResult<T = undefined> =
+  | { ok: true; value: T } | { ok: false; error: PodWriteError }
+
+const podOver = (pulse: Pulse, now: Date): boolean =>
+  pulse.closedAt != null || now.getTime() >= pulse.expiresAt.getTime()
+
+/** Open a pod. The owner is a member from creation (one insert each). */
+export async function createPod(
+  pulse: Pulse, ownerParticipantId: string, kind: PodKind, label: string, seats: number | null,
+  now: Date,
+): Promise<PodResult<Pod>> {
+  if (podOver(pulse, now)) return { ok: false, error: 'pulse_over' }
+  const [row] = await sql()`
+    insert into pulse.pulse_pods (pulse_id, kind, label, seats, owner_participant_id)
+    values (${pulse.id}, ${kind}, ${label}, ${seats}, ${ownerParticipantId})
+    returning *`
+  // Owner auto-membership MOVES them out of any pod they were in (one pod per pulse).
+  await sql()`
+    insert into pulse.pulse_pod_members as m (pod_id, pulse_id, participant_id)
+    values (${row.id}, ${pulse.id}, ${ownerParticipantId})
+    on conflict (pulse_id, participant_id)
+    do update set pod_id = excluded.pod_id, joined_at = now()`
+  await bumpPulseVersion(pulse.id)
+  if (pulse.crewId) await bumpCrewVersion(pulse.crewId)
+  return { ok: true, value: toPod(row) }
+}
+
+/** Owner-only label/seats edit. Shrinking seats below the current member count is refused —
+ *  nobody is ever ejected by an edit. */
+export async function updatePod(
+  pulse: Pulse, podId: string, participantId: string,
+  patch: { label?: string; seats?: number | null }, now: Date,
+): Promise<PodResult<Pod>> {
+  if (podOver(pulse, now)) return { ok: false, error: 'pulse_over' }
+  const [pod] = await sql()`
+    select * from pulse.pulse_pods where id = ${podId} and pulse_id = ${pulse.id}`
+  if (!pod) return { ok: false, error: 'pod_not_found' }
+  if (pod.ownerParticipantId !== participantId) return { ok: false, error: 'not_owner' }
+  const label = patch.label ?? pod.label
+  const seats = patch.seats === undefined ? (pod.seats ?? null) : patch.seats
+  if (seats != null) {
+    const [{ n }] = await sql()`
+      select count(*)::int as n from pulse.pulse_pod_members where pod_id = ${podId}`
+    if (Number(n) > seats) return { ok: false, error: 'seats_below_members' }
+  }
+  const [row] = await sql()`
+    update pulse.pulse_pods set label = ${label}, seats = ${seats}
+    where id = ${podId} returning *`
+  await bumpPulseVersion(pulse.id)
+  return { ok: true, value: toPod(row) }
+}
+
+/** Owner-only disband. Memberships cascade away; members just fall out — no notification. */
+export async function deletePod(
+  pulse: Pulse, podId: string, participantId: string, now: Date,
+): Promise<PodResult> {
+  if (podOver(pulse, now)) return { ok: false, error: 'pulse_over' }
+  const [pod] = await sql()`
+    select * from pulse.pulse_pods where id = ${podId} and pulse_id = ${pulse.id}`
+  if (!pod) return { ok: false, error: 'pod_not_found' }
+  if (pod.ownerParticipantId !== participantId) return { ok: false, error: 'not_owner' }
+  await sql()`delete from pulse.pulse_pods where id = ${podId}`
+  await bumpPulseVersion(pulse.id)
+  return { ok: true, value: undefined }
+}
+
+/** Join a pod; joining while in another pod atomically MOVES the membership (one upsert on the
+ *  one-pod-per-pulse unique index). A set `seats` is the only hard limit anywhere in the pulse
+ *  system: the insert's WHERE guard makes overfill impossible even under a race. */
+export async function joinPod(
+  pulse: Pulse, podId: string, participantId: string, now: Date,
+): Promise<PodResult<{ moved: boolean }>> {
+  if (podOver(pulse, now)) return { ok: false, error: 'pulse_over' }
+  const [pod] = await sql()`
+    select * from pulse.pulse_pods where id = ${podId} and pulse_id = ${pulse.id}`
+  if (!pod) return { ok: false, error: 'pod_not_found' }
+  const [existing] = await sql()`
+    select pod_id from pulse.pulse_pod_members
+    where pulse_id = ${pulse.id} and participant_id = ${participantId}`
+  if (existing?.podId === podId) return { ok: true, value: { moved: false } } // already in — no-op
+  const rows = await sql()`
+    insert into pulse.pulse_pod_members as m (pod_id, pulse_id, participant_id)
+    select ${podId}, ${pulse.id}, ${participantId}
+    where (select count(*)::int from pulse.pulse_pod_members where pod_id = ${podId})
+          < coalesce(${pod.seats ?? null}::int, 2147483647)
+    on conflict (pulse_id, participant_id)
+    do update set pod_id = excluded.pod_id, joined_at = now()
+    returning pod_id`
+  if (rows.length === 0) return { ok: false, error: 'pod_full' }
+  await bumpPulseVersion(pulse.id)
+  return { ok: true, value: { moved: !!existing } }
+}
+
+/** Leave a pod — only ever done by the member themselves (the route passes the viewer's own id). */
+export async function leavePod(
+  pulse: Pulse, podId: string, participantId: string, now: Date,
+): Promise<PodResult> {
+  if (podOver(pulse, now)) return { ok: false, error: 'pulse_over' }
+  const rows = await sql()`
+    delete from pulse.pulse_pod_members
+    where pod_id = ${podId} and participant_id = ${participantId}
+    returning pod_id`
+  if (rows.length === 0) return { ok: false, error: 'not_member' }
+  await bumpPulseVersion(pulse.id)
+  return { ok: true, value: undefined }
+}
+
+export async function podsForPulse(pulseId: string): Promise<Pod[]> {
+  const rows = await sql()`
+    select * from pulse.pulse_pods where pulse_id = ${pulseId} order by created_at`
+  return rows.map(toPod)
+}
+export async function podMembersForPulse(pulseId: string): Promise<PodMemberRow[]> {
+  const rows = await sql()`
+    select pm.*, pa.display_name from pulse.pulse_pod_members pm
+    join pulse.participants pa on pa.id = pm.participant_id
+    where pm.pulse_id = ${pulseId}
+    order by pm.joined_at`
+  return rows.map(toPodMemberRow)
 }
 
 // ---- dashboard reads (participant-scoped: only MY memberships/responses, never a roster) ----
@@ -340,28 +561,31 @@ export type DashPulseRow = {
   title: string
   place: string
   timeLabel: string
+  startAt: Date
   expiresAt: Date
   closedAt: Date | null
   crewName: string | null
   myStatus: PulseStatus | null
   createdByMe: boolean
 }
-/** Pulses where I'm the creator ∪ I have a response row, split by liveness (same predicate as
- *  activePulsesForCrew): live soonest-expiry first, earlier most-recently-ended first, capped.
- *  The split, ordering, and cap run in SQL so history growth never inflates the transfer. */
+/** Pulses where I'm the creator ∪ I have a response row, split by the lifecycle: the active set is
+ *  "not over" (closed_at is null and expires_at > now) — which SPANS upcoming and live — ordered by
+ *  soonest start first so "what's next" leads; earlier is over/wrapped, most-recently-ended first,
+ *  capped. The split, ordering, and cap run in SQL so history growth never inflates the transfer. */
 export async function pulsesForParticipant(
   participantId: string, now: Date, pastLimit: number,
 ): Promise<{ live: DashPulseRow[]; earlier: DashPulseRow[] }> {
   const toDashRow = (r: any): DashPulseRow => ({
     token: r.token, title: r.title, place: r.place, timeLabel: r.timeLabel,
-    expiresAt: r.expiresAt, closedAt: r.closedAt ?? null,
+    startAt: r.startAt, expiresAt: r.expiresAt, closedAt: r.closedAt ?? null,
     crewName: r.crewName ?? null, myStatus: r.myStatus ?? null,
     createdByMe: r.createdBy === participantId,
   })
   // Sequential on purpose: the local PGlite harness serializes one backend session (see
   // scripts/local-db.mjs) and racing statements would interleave the wire protocol.
   const liveRows = await sql()`
-    select p.token, p.title, p.place, p.time_label, p.expires_at, p.closed_at, p.created_by,
+    select p.token, p.title, p.place, p.time_label,
+           coalesce(p.start_at, p.created_at) as start_at, p.expires_at, p.closed_at, p.created_by,
            c.name as crew_name, r.status as my_status
     from pulse.pulses p
     left join pulse.crews c on c.id = p.crew_id
@@ -369,9 +593,10 @@ export async function pulsesForParticipant(
       on r.pulse_id = p.id and r.participant_id = ${participantId}
     where (p.created_by = ${participantId} or r.participant_id is not null)
       and p.closed_at is null and p.expires_at > ${now}
-    order by p.expires_at asc`
+    order by coalesce(p.start_at, p.created_at) asc`
   const earlierRows = await sql()`
-    select p.token, p.title, p.place, p.time_label, p.expires_at, p.closed_at, p.created_by,
+    select p.token, p.title, p.place, p.time_label,
+           coalesce(p.start_at, p.created_at) as start_at, p.expires_at, p.closed_at, p.created_by,
            c.name as crew_name, r.status as my_status
     from pulse.pulses p
     left join pulse.crews c on c.id = p.crew_id

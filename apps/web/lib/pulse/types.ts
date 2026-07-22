@@ -48,8 +48,10 @@ export type Pulse = {
   crewId: string | null
   title: string
   place: string
-  timeLabel: string
-  expiresAt: Date
+  timeLabel: string // machine-derived display snapshot (deriveWhenLabel); legacy rows keep free text
+  startAt: Date // absolute start instant (coalesces to createdAt for legacy rows)
+  expiresAt: Date // absolute END instant — the pulse auto-wraps here (reused as the end column)
+  timezone: string | null // creator's IANA tz, captured at creation
   closedAt: Date | null
   version: string // bigint — opaque monotonic ETag value
   createdBy: string
@@ -58,6 +60,24 @@ export type Pulse = {
   placeLat: number | null
   placeLng: number | null
   placeGeoStatus: PlaceGeoStatus
+  // Venue facts (add-restaurant-pods): facts about the venue, never a gate on people. All three
+  // null = exactly the pulse before this capability. Creation-time only in v1.
+  seatsCap: number | null
+  countNeededBy: Date | null
+  tableCalledAt: Date | null
+}
+
+// A pulse's lifecycle phase for a given `now`: upcoming (before start), live (within the window),
+// or over (past end or wrapped). `isLive` (lib/pulse/time.ts) is exactly `phase === 'live'`. The
+// pulse auto-wraps into `over` at `expiresAt` with no cron — it just falls out of every live list.
+export type PulsePhase = 'upcoming' | 'live' | 'over'
+
+export function pulsePhase(
+  pulse: { startAt: Date; expiresAt: Date; closedAt: Date | null }, now: Date,
+): PulsePhase {
+  if (pulse.closedAt != null || now.getTime() >= pulse.expiresAt.getTime()) return 'over'
+  if (now.getTime() < pulse.startAt.getTime()) return 'upcoming'
+  return 'live'
 }
 
 export type Presence = {
@@ -74,7 +94,32 @@ export type PulseResponse = {
   status: PulseStatus
   etaMinutes: number | null
   note: string | null
+  // Guests riding on this response (0–3). Counts, never identities — no roster row, status, or
+  // name exists for a guest. Only counts while status ≠ 'out'.
+  partySize: number
   updatedAt: Date
+}
+
+// ---- pods (add-restaurant-pods; "pod" is a provisional product noun — see copy.POD_NOUN) ----
+
+export type PodKind = 'car' | 'walk' | 'meetup' | 'other'
+export const POD_KINDS: readonly PodKind[] = ['car', 'walk', 'meetup', 'other']
+
+export type Pod = {
+  id: string
+  pulseId: string
+  kind: PodKind
+  label: string
+  seats: number | null // null = uncapped; a set value is the only hard capacity in the pulse system
+  ownerParticipantId: string
+  createdAt: Date
+}
+
+export type PodMember = {
+  podId: string
+  pulseId: string
+  participantId: string
+  joinedAt: Date
 }
 
 export type AvailabilityBaseline = {
@@ -102,6 +147,7 @@ export type AvailabilityException = {
 // Enriched read rows (joined with the participant's display name).
 export type PresenceRow = Presence & { displayName: string | null }
 export type PulseResponseRow = PulseResponse & { displayName: string | null }
+export type PodMemberRow = PodMember & { displayName: string | null }
 
 // ---- public (client-facing) shapes ----
 
@@ -122,7 +168,9 @@ export type PublicPulseListItem = {
   title: string
   place: string
   timeLabel: string
+  startAt: string
   expiresAt: string
+  phase: PulsePhase
 }
 
 // Roster rows carry display names ONLY — never phones (spec: phone-identity).
@@ -147,7 +195,50 @@ export type PublicPulseResponse = {
   status: PulseStatus
   etaMinutes: number | null
   note: string | null
+  // Guests riding on this response (0–3); renders as a "+N" chip. Editable on the viewer's own row.
+  partySize: number
+  // True when the pulse has a passed count cutoff and this party was NOT in the locked count
+  // (joined or re-dated after count_needed_by). Always false when no cutoff / cutoff not passed.
+  afterCount: boolean
   me: boolean
+}
+
+// The headcount block on a pulse with venue facts; null when neither fact is set (facts unset =
+// exactly the pulse before this capability). All numbers are computed at read time (design D3).
+export type PublicPulseHeadcount = {
+  people: number // non-'out' responses
+  guests: number // Σ party_size over non-'out' responses
+  headcount: number // people + guests — the reservation number
+  seatsCap: number | null
+  countNeededBy: string | null
+  // Locked count snapshot: headcount over parties whose updated_at <= count_needed_by. Null until
+  // the cutoff passes. afterCount is the remainder (headcount - locked), the "after the count" side.
+  lockedCount: number | null
+  afterCount: number | null
+  tableCalledAt: string | null
+}
+
+// A pod member: display name + their EXISTING pulse status/ETA only (read-time join over
+// responses — day-of grouping is derived, never stored). Never a phone.
+export type PublicPulsePodMember = {
+  participantId: string
+  displayName: string
+  status: PulseStatus | null
+  etaMinutes: number | null
+  me: boolean
+}
+
+// A pod as serialized inside the pulse state payload. Nothing anywhere identifies participants
+// who joined no pod beyond their absence from these rosters.
+export type PublicPulsePod = {
+  id: string
+  kind: PodKind
+  label: string
+  seats: number | null
+  ownerParticipantId: string
+  members: PublicPulsePodMember[]
+  mine: boolean // viewer is a member
+  owned: boolean // viewer is the owner
 }
 
 export type PublicPulse = {
@@ -155,8 +246,10 @@ export type PublicPulse = {
   title: string
   place: string
   timeLabel: string
+  startAt: string
   expiresAt: string
-  live: boolean
+  phase: PulsePhase
+  live: boolean // back-compat: === (phase === 'live')
   closedAt: string | null
   crewToken: string | null
   crewName: string | null
@@ -168,6 +261,10 @@ export type PublicPulse = {
   placeLat: number | null
   placeLng: number | null
   placeGeoStatus: PlaceGeoStatus
+  // Venue facts + reservation math; null when the pulse carries no venue facts.
+  headcount: PublicPulseHeadcount | null
+  // Pods on this pulse (may be empty — zero pods renders exactly as before the capability).
+  pods: PublicPulsePod[]
 }
 
 // Dash shapes carry ONLY the viewer's own participation (my status, my note) — never another
@@ -177,7 +274,9 @@ export type PublicDashPulse = {
   title: string
   place: string
   timeLabel: string
+  startAt: string
   expiresAt: string
+  phase: PulsePhase
   crewName: string | null
   myStatus: PulseStatus | null
   droppedByMe: boolean
@@ -301,6 +400,46 @@ export type PublicDashPlan = {
   state: PlanState
   winnerLabel: string | null
   ember: PublicEmber | null
+}
+
+// ---- intent layer (add-intent-layer) ----
+
+// The directed "see them again" tap. Stored as one row per directed pair; all visibility rules
+// live in lib/pulse/person-intent.ts (mirroring the ember). `source` is context only, never shown.
+export type PersonIntent = {
+  fromParticipantId: string
+  toParticipantId: string
+  sourcePlanId: string
+  createdAt: Date
+}
+
+// The ONLY person-intent shape sent to a client, and only ever the VIEWER'S OWN standing. `tapped`
+// is whether the viewer tapped this person; `mutual` is true only once both directed rows exist.
+// A one-sided intent TOWARD the viewer resolves to { tapped: false, mutual: false } — indistinguishable
+// from silence (person-intent spec). Tap order and timestamps never appear.
+export type PublicPersonIntent = { tapped: boolean; mutual: boolean }
+
+// A tappable co-attendee on the afterglow screen (zone two): a winning-option marker other than the
+// viewer. Attendance is mutually known (they were there), so the face itself leaks nothing; it carries
+// only the VIEWER'S OWN tap state and any mutual reveal — never whether anyone else tapped anyone.
+export type PublicFace = {
+  participantId: string
+  displayName: string
+  tapped: boolean
+  mutual: boolean
+}
+
+// A draft-plan candidate the resolver derived at read time (never materialized). `kind` ranks the
+// signal (compound > ember > person); `people` are the co-owned names; `activity` is the ember's
+// snapshot when present; `seedIntent` seeds the plan proposer on accept; `suggestedWindow` is a
+// system-chosen default (a better time), NEVER a stated fact about a person's availability.
+export type PublicIntentCandidate = {
+  key: string
+  kind: 'compound' | 'ember' | 'person'
+  people: string[]
+  activity: string | null
+  seedIntent: string
+  suggestedWindow: { startsAt: string; endsAt: string } | null
 }
 
 // ---- network discovery ("who's around", growth-story Phase 2) ----

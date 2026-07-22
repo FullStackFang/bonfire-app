@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import type { BoardStatus, PublicDashCrew, PublicDashPlan, PublicDashPulse, PublicPlanOption, PulseStatus } from '@/lib/pulse/types'
 import { BOARD_STATUS_LABEL, PULSE_STATUS_LABEL, dashCopy, emberCopy } from '@/lib/pulse/copy'
+import { startsLabel } from '@/lib/pulse/time'
 
 // Shared Live Pulse primitives, ported from design/bonfire-design-system
 // (Ember, Overline, StatusPill, Avatar, chunky press, slide-up sheet).
@@ -169,7 +170,8 @@ export function PulseCard({ p, variant }: { p: PublicDashPulse; variant: 'live' 
     <Link href={`/p/s/${p.token}`} className="bp-card bp-card--spark block px-4 py-3.5" style={{ color: 'inherit' }}>
       <span className="flex items-baseline gap-2">
         <span className="bp-num" style={{ fontSize: 18 }}>{p.title}</span>
-        <span className="ml-auto"><EndsAt iso={p.expiresAt} /></span>
+        {/* Upcoming pulses lead the active section with a start label, not a live wind-down. */}
+        <span className="ml-auto">{p.phase === 'upcoming' ? <StartsAt iso={p.startAt} /> : <EndsAt iso={p.expiresAt} />}</span>
       </span>
       <span className="mt-0.5 block" style={{ fontSize: 12, color: 'var(--smoke)' }}>
         <b style={{ color: 'var(--coal)', fontWeight: 600 }}>{p.place}</b> · {p.timeLabel}
@@ -277,6 +279,14 @@ export function EndsAt({ iso }: { iso: string }) {
   h = h % 12 || 12
   const label = `ends ${h}${m ? ':' + String(m).padStart(2, '0') : ''}${ap}`
   return <span className="bp-mono whitespace-nowrap" style={{ fontSize: 9.5 }}>{label}</span>
+}
+
+// Upcoming counterpart of EndsAt: "starts in 20 min" / "starts at 8:30pm". Client-only (own clock),
+// so the dash launchpad never needs polling to read a fresh start.
+export function StartsAt({ iso }: { iso: string }) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
+  if (!mounted) return null
+  return <span className="bp-mono whitespace-nowrap" style={{ fontSize: 9.5 }}>{startsLabel(new Date(iso), new Date())}</span>
 }
 
 // ── slide-up sheet ───────────────────────────────────────────────────

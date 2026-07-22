@@ -37,8 +37,13 @@ export async function PUT(request: Request) {
     ? (etaRaw as number) : null
   const note = typeof body?.note === 'string' && body.note.trim()
     ? body.note.trim().slice(0, CAPS.note) : null
+  // Optional party size (add-restaurant-pods): 0–3 guests riding on this response. Absent = keep
+  // the current value — the one-tap join and later status taps never reset a chosen party.
+  const partyRaw = body?.partySize
+  const partySize = Number.isInteger(partyRaw) && partyRaw >= 0 && partyRaw <= 3
+    ? (partyRaw as number) : null
 
-  await repo.upsertResponse(pulse, participant.id, status, eta, note)
+  await repo.upsertResponse(pulse, participant.id, status, eta, note, partySize)
   await repo.logEvent('status_set', { pulseId: pulse.id, crewId: pulse.crewId, participantId: participant.id })
 
   return Response.json({ ok: true, viewer: toPublicViewer(participant) })

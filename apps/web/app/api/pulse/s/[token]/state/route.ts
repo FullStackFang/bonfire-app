@@ -19,10 +19,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
   const viewer = await getViewer()
   const now = new Date()
-  const [responses, crew] = await Promise.all([
+  const [responses, crew, pods, podMembers] = await Promise.all([
     repo.responsesForPulse(pulse.id),
     pulse.crewId ? repo.getCrewById(pulse.crewId) : Promise.resolve(null),
+    repo.podsForPulse(pulse.id),
+    repo.podMembersForPulse(pulse.id),
   ])
-  const payload = serializePulse(pulse, responses, toPublicViewer(viewer), crew, now)
+  const payload = serializePulse(pulse, responses, toPublicViewer(viewer), crew, now, pods, podMembers)
   return Response.json(payload, { headers: noStore })
 }

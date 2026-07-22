@@ -3,9 +3,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePulsePoll } from '@/lib/pulse/usePulsePoll'
 import { emberSeedIntent } from '@/lib/pulse/ember-seed'
-import { emberCopy } from '@/lib/pulse/copy'
-import { EmberMark, PlanOptionBody, splitPlanLabel } from '../../ui.client'
-import type { PublicEmber, PublicPlan, PublicPlanOption } from '@/lib/pulse/types'
+import { emberCopy, personIntentCopy } from '@/lib/pulse/copy'
+import { Avatar, EmberMark, PlanOptionBody, splitPlanLabel } from '../../ui.client'
+import type { PublicEmber, PublicFace, PublicPlan, PublicPlanOption } from '@/lib/pulse/types'
 
 // The no-account link view. C1-C: friends mark WHICH OPTIONS THEY'RE FREE FOR (availability, never
 // RSVP). There is no decline control — a non-response is simply no availability marked, and absence
@@ -22,24 +22,83 @@ function googleCalUrl(plan: PublicPlan, winner: PublicPlanOption): string {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&location=${loc}`
 }
 
-export function PlanView({ initial, initialEmber = null, token }: {
-  initial: PublicPlan; initialEmber?: PublicEmber | null; token: string
+// One tappable co-attendee (afterglow zone two). The spark dot marks the viewer's OWN standing tap
+// ("you're in for seeing them" — spark-dot vocabulary, never the hero flame); "you both" appears
+// only once mutual. A face never signals whether the other person has tapped when it isn't mutual.
+function PersonFace({ f, busy, onToggle }: { f: PublicFace; busy: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" disabled={busy} onClick={onToggle} aria-pressed={f.tapped}
+      aria-label={f.tapped ? personIntentCopy.untapLabel(f.displayName) : personIntentCopy.tapLabel(f.displayName)}
+      className="flex flex-col items-center gap-1.5"
+      style={{ background: 'none', border: 'none', padding: 4, width: 72, cursor: 'pointer', opacity: busy ? 0.5 : 1 }}>
+      <span className="relative inline-flex">
+        <Avatar name={f.displayName} seed={f.participantId} size={48} />
+        {f.tapped && (
+          <span aria-hidden style={{
+            position: 'absolute', right: -1, bottom: -1, width: 14, height: 14, borderRadius: '50%',
+            background: 'var(--spark)', border: '2.5px solid var(--hearth)', boxSizing: 'border-box',
+          }} />
+        )}
+      </span>
+      <span className="block truncate" style={{ fontSize: 12.5, fontWeight: f.tapped ? 600 : 500, maxWidth: 68 }}>
+        {f.displayName}
+      </span>
+      {f.mutual && (
+        <span style={{
+          fontSize: 10.5, fontWeight: 600, color: 'var(--spark)', background: 'var(--spark-tint)',
+          borderRadius: 999, padding: '1px 7px', lineHeight: 1.5,
+        }}>
+          {personIntentCopy.mutualBadge}
+        </span>
+      )}
+    </button>
+  )
+}
+
+export function PlanView({ initial, initialEmber = null, initialFaces = [], token }: {
+  initial: PublicPlan; initialEmber?: PublicEmber | null; initialFaces?: PublicFace[]; token: string
 }) {
   const router = useRouter()
   const [plan, setPlan] = useState<PublicPlan>(initial)
   const [ember, setEmber] = useState<PublicEmber | null>(initialEmber)
+  const [faces, setFaces] = useState<PublicFace[]>(initialFaces)
   const [busyOption, setBusyOption] = useState<string | null>(null)
   const [busyEmber, setBusyEmber] = useState(false)
+  const [busyFace, setBusyFace] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Poll for others' availability + the strike + the mutual-ember reveal. Never clobber while the
-  // viewer's own tap is in flight — the POST response is authoritative for that moment.
-  usePulsePoll<{ plan: PublicPlan; ember?: PublicEmber | null }>(`/api/pulse/plan/${token}/state`, (data) => {
-    if (!busyOption && !busyEmber && data?.plan) {
-      setPlan(data.plan)
-      setEmber(data.ember ?? null)
+  // Poll for others' availability + the strike + the mutual reveal (ember and person intents). Never
+  // clobber while any of the viewer's own taps is in flight — the POST response is authoritative.
+  usePulsePoll<{ plan: PublicPlan; ember?: PublicEmber | null; faces?: PublicFace[] }>(
+    `/api/pulse/plan/${token}/state`,
+    (data) => {
+      if (!busyOption && !busyEmber && !busyFace && data?.plan) {
+        setPlan(data.plan)
+        setEmber(data.ember ?? null)
+        setFaces(data.faces ?? [])
+      }
+    },
+  )
+
+  // A person-intent tap / withdrawal (add-intent-layer zone two). Server enforces eligibility; the
+  // response carries the viewer's own faces only (one-sided-toward-you stays invisible).
+  async function sendPerson(toParticipantId: string, method: 'POST' | 'DELETE') {
+    if (busyFace) return
+    setBusyFace(toParticipantId); setError(null)
+    try {
+      const res = await fetch(`/api/pulse/plan/${token}/person`, {
+        method, headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ toParticipantId }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data?.error ?? 'something went wrong'); return }
+      setFaces(data.faces ?? [])
+    } catch {
+      setError('network error — try again')
+    } finally {
+      setBusyFace(null)
     }
-  })
+  }
 
   // The "again" tap and its withdrawal (close-plan-loop). Server enforces eligibility.
   async function sendEmber(method: 'POST' | 'DELETE') {
@@ -117,6 +176,22 @@ export function PlanView({ initial, initialEmber = null, token }: {
             {busyEmber ? '…' : emberCopy.tapCta}
           </button>
         ) : null}
+
+        {/* Zone two: tappable co-attendee faces (add-intent-layer). Visually secondary to the "again"
+            control above; warm and skippable — no counters, no "you haven't tapped anyone" state. */}
+        {faces.length > 0 && (
+          <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--ember-tint)' }}>
+            <p style={{ fontWeight: 600, fontSize: 14 }}>{personIntentCopy.heading}</p>
+            <p style={{ fontSize: 12.5, color: 'var(--smoke)', margin: '2px 0 0' }}>{personIntentCopy.blurb}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {faces.map((f) => (
+                <PersonFace key={f.participantId} f={f} busy={busyFace === f.participantId}
+                  onToggle={() => sendPerson(f.participantId, f.tapped ? 'DELETE' : 'POST')} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {error && <p style={{ fontSize: 13, color: 'var(--ember-deep)' }}>{error}</p>}
       </div>
     )

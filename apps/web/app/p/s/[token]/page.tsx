@@ -34,9 +34,11 @@ export default async function PulsePage({ params }: { params: Promise<{ token: s
 
   const viewer = await getViewer()
   const now = new Date()
-  const [responses, crew] = await Promise.all([
+  const [responses, crew, pods, podMembers] = await Promise.all([
     repo.responsesForPulse(pulse.id),
     pulse.crewId ? repo.getCrewById(pulse.crewId) : Promise.resolve(null),
+    repo.podsForPulse(pulse.id),
+    repo.podMembersForPulse(pulse.id),
   ])
 
   // after(): analytics never holds up first paint (same pattern as the dash).
@@ -45,7 +47,7 @@ export default async function PulsePage({ params }: { params: Promise<{ token: s
     after(() => repo.logEvent('open', { pulseId: pulse.id, crewId: pulse.crewId, participantId: viewer?.id ?? null }))
   }
 
-  const initial = serializePulse(pulse, responses, toPublicViewer(viewer), crew, now)
+  const initial = serializePulse(pulse, responses, toPublicViewer(viewer), crew, now, pods, podMembers)
 
   return (
     <main className="bpd-main mx-auto flex min-h-full w-full max-w-md flex-col">
